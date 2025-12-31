@@ -1,0 +1,36 @@
+{
+  "name": "@accumen/sdk",
+  "version": "0.1.0",
+  "description": "AssemblyScript SDK for Accumen smart contracts",
+  "author": "Accumulate Network",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AccumulateNetwork/accumen"
+  },
+  "keywords": [
+    "accumulate",
+    "smart-contracts",
+    "wasm",
+    "assemblyscript",
+    "blockchain"
+  ],
+  "main": "build/release.js",
+  "types": "build/release.d.ts",
+  "scripts": {
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "test": "asp --summary"
+  },
+  "devDependencies": {
+    "assemblyscript": "^0.27.0",
+    "@as-pect/cli": "^8.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  }
+}
