@@ -1,11 +1,11 @@
 /**
- * Accumen SDK for AssemblyScript
+ * Infrix SDK for AssemblyScript
  *
- * This SDK provides everything needed to develop smart contracts for the Accumen platform.
+ * This SDK provides everything needed to develop smart contracts for the Infrix platform.
  *
  * @example
  * ```typescript
- * import { Storage, Env, U256, Address } from "@accumen/sdk";
+ * import { Storage, Env, U256, Address } from "@infrix/sdk";
  *
  * // Simple counter contract
  * const COUNTER_KEY = "counter";

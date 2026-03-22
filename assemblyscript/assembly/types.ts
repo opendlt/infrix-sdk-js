@@ -1,7 +1,7 @@
 /**
- * Accumen Types for AssemblyScript
+ * Infrix Types for AssemblyScript
  *
- * Core types for building Accumen smart contracts in AssemblyScript.
+ * Core types for building Infrix smart contracts in AssemblyScript.
  */
 
 // =============================================================================

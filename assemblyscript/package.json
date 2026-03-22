@@ -1,12 +1,12 @@
 {
-  "name": "@accumen/sdk",
+  "name": "@infrix/sdk",
   "version": "0.1.0",
-  "description": "AssemblyScript SDK for Accumen smart contracts",
+  "description": "AssemblyScript SDK for Infrix smart contracts",
   "author": "Accumulate Network",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AccumulateNetwork/accumen"
+    "url": "https://github.com/AccumulateNetwork/infrix"
   },
   "keywords": [
     "accumulate",

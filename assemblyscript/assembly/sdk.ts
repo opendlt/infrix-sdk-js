@@ -1,7 +1,7 @@
 /**
- * Accumen SDK
+ * Infrix SDK
  *
- * High-level API for developing Accumen smart contracts in AssemblyScript.
+ * High-level API for developing Infrix smart contracts in AssemblyScript.
  */
 
 import { U256, Hash, Address, Topic, Context, ErrorCode } from "./types";

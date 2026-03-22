@@ -1,4 +1,4 @@
-// Accumen AssemblyScript SDK Tests
+// Infrix AssemblyScript SDK Tests
 
 import {
     U256,
