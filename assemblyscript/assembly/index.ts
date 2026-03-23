@@ -49,6 +49,27 @@ export {
   ReentrancyGuard,
 } from "./sdk";
 
+// Export testing framework
+export {
+  describe,
+  it,
+  test,
+  expect,
+  Expect,
+  assertEq,
+  assertEq64,
+  assertTrue,
+  assertFalse,
+  fail,
+  TestContext,
+  TestResult,
+  ctx,
+  runTests,
+  testCount,
+  getTestName,
+  testSummary,
+} from "./testing";
+
 // =============================================================================
 // ACU-20 Token Standard Interface
 // =============================================================================
