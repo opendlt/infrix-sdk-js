@@ -159,6 +159,48 @@ export interface NetworkStatsResult {
   avgGasPerTx: number;
 }
 
+// ---- Contract Schema Types ----
+
+export interface ContractSchema {
+  schema_version: number;
+  name: string;
+  version?: string;
+  description?: string;
+  functions: FunctionSchemaEntry[];
+  events?: EventSchemaEntry[];
+  errors?: ErrorSchemaEntry[];
+}
+
+export interface FunctionSchemaEntry {
+  name: string;
+  mutability: 'mutable' | 'view' | 'init' | 'payable';
+  params: ParamSchemaEntry[];
+  returns: ParamSchemaEntry[];
+  doc?: string;
+}
+
+export interface ParamSchemaEntry {
+  name: string;
+  type: string;
+}
+
+export interface EventSchemaEntry {
+  name: string;
+  fields: FieldSchemaEntry[];
+}
+
+export interface FieldSchemaEntry {
+  name: string;
+  type: string;
+  indexed: boolean;
+}
+
+export interface ErrorSchemaEntry {
+  name: string;
+  code: number;
+  message: string;
+}
+
 export interface BatchCallRequest {
   url: string;
   function: string;
@@ -338,6 +380,63 @@ export class InfrixClient {
   async eventHistory(eventType?: string): Promise<DevnetEvent[]> {
     const result = await this.rpc<{ events: DevnetEvent[] }>('events.history', { eventType: eventType ?? '' });
     return result.events;
+  }
+
+  // ---- Schema & Runtime Binding ----
+
+  /** Fetch the embedded schema for a deployed contract. */
+  async getSchema(url: string): Promise<ContractSchema | null> {
+    const result = await this.rpc<{ schema: ContractSchema | null }>('contract.schema', { url });
+    return result.schema;
+  }
+
+  /**
+   * Create a runtime binding for a deployed contract using its embedded schema.
+   *
+   * Returns a Proxy object where method calls are automatically mapped to
+   * the contract's functions via JSON-RPC. View functions use `query`,
+   * mutable functions use `call`.
+   *
+   * @example
+   *   const counter = await client.bind('acc://my.acme/counter');
+   *   await counter.increment();
+   *   const count = await counter.get_count();
+   */
+  async bind(url: string): Promise<Record<string, (...args: unknown[]) => Promise<unknown>>> {
+    const schema = await this.getSchema(url);
+    if (!schema) {
+      throw new InfrixRPCError(-1, `Contract ${url} does not have an embedded schema`);
+    }
+
+    const client = this;
+    const fnMap = new Map<string, { mutability: string }>();
+    for (const fn of schema.functions) {
+      fnMap.set(fn.name, { mutability: fn.mutability });
+    }
+
+    return new Proxy({} as Record<string, (...args: unknown[]) => Promise<unknown>>, {
+      get(_target, prop: string) {
+        const fnInfo = fnMap.get(prop);
+        if (!fnInfo) {
+          return undefined;
+        }
+        return async (...args: unknown[]) => {
+          if (fnInfo.mutability === 'view') {
+            const result = await client.query(url, prop, args);
+            return result.returnData;
+          } else {
+            const result = await client.call(url, prop, args);
+            return result;
+          }
+        };
+      },
+      has(_target, prop: string) {
+        return fnMap.has(prop);
+      },
+      ownKeys() {
+        return Array.from(fnMap.keys());
+      },
+    });
   }
 
   // ---- WebSocket Subscriptions ----
