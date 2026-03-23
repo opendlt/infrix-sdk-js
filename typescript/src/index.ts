@@ -88,6 +88,77 @@ export interface ExplorerStatus {
   uptimeSeconds: number;
 }
 
+export interface IndexedEvent {
+  blockHeight: number;
+  txHash: string;
+  logIndex: number;
+  contractUrl: string;
+  eventName: string;
+  topics: string[];
+  data: string;
+  timestamp: string;
+}
+
+export interface EventFilterParams {
+  contractUrl?: string;
+  eventName?: string;
+  topics?: string[];
+  fromBlock?: number;
+  toBlock?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ReceiptFilterParams {
+  contractUrl?: string;
+  function?: string;
+  status?: string;
+  fromBlock?: number;
+  toBlock?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface StateDiffFilterParams {
+  contractUrl?: string;
+  storageKey?: string;
+  fromBlock?: number;
+  toBlock?: number;
+  limit?: number;
+}
+
+export interface IndexedStateDiff {
+  blockHeight: number;
+  txHash: string;
+  contractUrl: string;
+  storageKey: string;
+  oldValue: string;
+  newValue: string;
+  timestamp: string;
+}
+
+export interface ContractStatsResult {
+  url: string;
+  callCount: number;
+  totalGasUsed: number;
+  eventCount: number;
+  firstBlock: number;
+  latestBlock: number;
+  uniqueCallers: number;
+  successCount: number;
+  failureCount: number;
+  functionCounts: Record<string, number>;
+}
+
+export interface NetworkStatsResult {
+  totalContracts: number;
+  totalTransactions: number;
+  totalEvents: number;
+  totalBlocks: number;
+  totalGasUsed: number;
+  avgGasPerTx: number;
+}
+
 export interface BatchCallRequest {
   url: string;
   function: string;
@@ -209,6 +280,39 @@ export class InfrixClient {
     }));
     const result = await this.rpc<{ results: BatchCallResult[] }>('contract.callBatch', { calls: normalized });
     return result.results;
+  }
+
+  // ---- Index Queries ----
+
+  /** Query indexed events with filtering. */
+  async queryEvents(filter: EventFilterParams = {}): Promise<{ events: IndexedEvent[]; total: number }> {
+    return this.rpc<{ events: IndexedEvent[]; total: number }>('index.getEvents', filter as Record<string, unknown>);
+  }
+
+  /** Query indexed events by transaction hash. */
+  async queryEventsByTx(txHash: string): Promise<IndexedEvent[]> {
+    const result = await this.rpc<{ events: IndexedEvent[] }>('index.getEventsByTx', { txHash });
+    return result.events;
+  }
+
+  /** Query indexed receipts with filtering. */
+  async queryReceipts(filter: ReceiptFilterParams = {}): Promise<{ receipts: TransactionReceipt[]; total: number }> {
+    return this.rpc<{ receipts: TransactionReceipt[]; total: number }>('index.getReceipts', filter as Record<string, unknown>);
+  }
+
+  /** Query indexed state diffs with filtering. */
+  async queryStateDiffs(filter: StateDiffFilterParams = {}): Promise<{ diffs: IndexedStateDiff[] }> {
+    return this.rpc<{ diffs: IndexedStateDiff[] }>('index.getStateDiffs', filter as Record<string, unknown>);
+  }
+
+  /** Get aggregate statistics for a specific contract. */
+  async getContractStats(contractUrl: string): Promise<ContractStatsResult> {
+    return this.rpc<ContractStatsResult>('index.getContractStats', { contractUrl });
+  }
+
+  /** Get aggregate network statistics. */
+  async getNetworkStats(): Promise<NetworkStatsResult> {
+    return this.rpc<NetworkStatsResult>('index.getNetworkStats');
   }
 
   // ---- Explorer ----
