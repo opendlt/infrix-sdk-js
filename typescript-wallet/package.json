@@ -1,0 +1,20 @@
+{
+  "name": "@infrix/wallet",
+  "version": "0.1.0",
+  "description": "ADI-native smart wallet SDK for the Infrix platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc --noEmit"
+  },
+  "keywords": ["infrix", "wallet", "smart-contracts", "accumulate", "adi"],
+  "license": "MIT",
+  "dependencies": {
+    "@infrix/client": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
