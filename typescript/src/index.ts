@@ -477,6 +477,129 @@ export class InfrixClient {
       ws.close();
     };
   }
+
+  // ---- Shape-Shifting Contracts ----
+
+  /** Shapes sub-client for shape-shifting contract queries. */
+  shapes = {
+    /** Get the current active shape for a contract. */
+    current: (contractUrl: string): Promise<ShapeInfo> => {
+      return this.rpc<ShapeInfo>('shapes.current', { url: contractUrl });
+    },
+
+    /** List all defined shapes for a contract. */
+    list: (contractUrl: string): Promise<ShapeListResult> => {
+      return this.rpc<ShapeListResult>('shapes.list', { url: contractUrl });
+    },
+
+    /** Get evolution rules for a contract. */
+    rules: (contractUrl: string): Promise<ShapeRulesResult> => {
+      return this.rpc<ShapeRulesResult>('shapes.rules', { url: contractUrl });
+    },
+
+    /** Get shape transition history. */
+    history: (contractUrl: string, opts?: { limit?: number }): Promise<ShapeHistoryResult> => {
+      return this.rpc<ShapeHistoryResult>('shapes.history', {
+        url: contractUrl,
+        limit: opts?.limit ?? 10,
+      });
+    },
+
+    /** Get the current shape's parameters. */
+    params: (contractUrl: string): Promise<ShapeParamsResult> => {
+      return this.rpc<ShapeParamsResult>('shapes.params', { url: contractUrl });
+    },
+
+    /** Subscribe to shape transitions via WebSocket. */
+    subscribe: (contractUrl: string, onTransition: (t: ShapeTransitionEvent) => void): (() => void) => {
+      return this.subscribeEvents(contractUrl, (event: Record<string, unknown>) => {
+        if (event.type === 'shape_transition') {
+          onTransition(event as unknown as ShapeTransitionEvent);
+        }
+      });
+    },
+  };
+}
+
+// ---- Shape-Shifting Types ----
+
+export interface ShapeInfo {
+  contract_url: string;
+  shape_name: string;
+  activated_at: number;
+  blocks_active: number;
+}
+
+export interface ShapeDefinition {
+  name: string;
+  description?: string;
+  parameters: ShapeParameterDef[];
+  color?: string;
+  priority?: number;
+}
+
+export interface ShapeParameterDef {
+  name: string;
+  type: string;
+  value: unknown;
+  description?: string;
+}
+
+export interface ShapeListResult {
+  contract_name: string;
+  default_shape: string;
+  active_shape: string;
+  shapes: ShapeDefinition[];
+}
+
+export interface EvolutionRuleDef {
+  name: string;
+  description?: string;
+  condition: string;
+  target_shape: string;
+  source_shapes?: string[];
+  priority: number;
+  duration_blocks?: number;
+  enabled: boolean;
+}
+
+export interface ShapeRulesResult {
+  rules: EvolutionRuleDef[];
+}
+
+export interface ShapeTransitionRecord {
+  contract_url: string;
+  from_shape: string;
+  to_shape: string;
+  block_height: number;
+  timestamp: number;
+  trigger_rule: string;
+  trigger_condition: string;
+  duration_blocks_satisfied: number;
+  previous_shape_duration: number;
+  gas_consumed: number;
+  immune_reconfigured: boolean;
+}
+
+export interface ShapeHistoryResult {
+  transitions: ShapeTransitionRecord[];
+  total_transitions: number;
+  time_in_shape: Record<string, number>;
+}
+
+export interface ShapeParamsResult {
+  shape_name: string;
+  parameters: ShapeParameterDef[];
+}
+
+export interface ShapeTransitionEvent {
+  type: 'shape_transition';
+  contract_url: string;
+  from_shape: string;
+  to_shape: string;
+  block_height: number;
+  rule: string;
+  gas_used: number;
 }
 
 // Default export for convenience.
