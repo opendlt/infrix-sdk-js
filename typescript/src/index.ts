@@ -602,5 +602,109 @@ export interface ShapeTransitionEvent {
   gas_used: number;
 }
 
+// ---- Swarm Contract Types ----
+
+export interface SwarmStatus {
+  id: string;
+  name: string;
+  collective_immune_state: string;
+  version: number;
+  dissolved: boolean;
+  members: SwarmMemberInfo[];
+  channel_size: number;
+}
+
+export interface SwarmMemberInfo {
+  address: string;
+  alias: string;
+  role?: string;
+  state: string;
+}
+
+export interface SwarmChannelValue {
+  key: string;
+  value: string;
+  type?: string;
+}
+
+export interface SwarmCoordinateResult {
+  action_name: string;
+  step_results: SwarmStepResult[];
+  gas_used: number;
+  block_height: number;
+}
+
+export interface SwarmStepResult {
+  step_index: number;
+  target_member: string;
+  function: string;
+  return_value?: string;
+  gas_used: number;
+  error?: string;
+  reverted: boolean;
+}
+
+export interface SwarmUpgradeResult {
+  proposal_id: string;
+  status: string;
+  compatibility_results: SwarmCompatResult[];
+}
+
+export interface SwarmCompatResult {
+  member_alias: string;
+  compatible: boolean;
+  issues?: string[];
+}
+
+/** SwarmClient provides methods for interacting with swarm contracts. */
+export class SwarmClient {
+  constructor(private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>) {}
+
+  /** Get swarm status. */
+  async status(swarmId: string): Promise<SwarmStatus> {
+    return this.rpc<SwarmStatus>('swarm.status', { id: swarmId });
+  }
+
+  /** Read a channel value. */
+  async channelGet(swarmId: string, key: string): Promise<SwarmChannelValue> {
+    return this.rpc<SwarmChannelValue>('swarm.channel.get', { swarm_id: swarmId, key });
+  }
+
+  /** Write a channel value. */
+  async channelSet(swarmId: string, key: string, value: string): Promise<void> {
+    await this.rpc<void>('swarm.channel.set', { swarm_id: swarmId, key, value });
+  }
+
+  /** Execute a coordinated action. */
+  async coordinate(swarmId: string, action: string, args: Record<string, unknown> = {}): Promise<SwarmCoordinateResult> {
+    return this.rpc<SwarmCoordinateResult>('swarm.coordinate', { swarm_id: swarmId, action, args });
+  }
+
+  /** Add a member to the swarm. */
+  async addMember(swarmId: string, address: string, alias: string, role?: string): Promise<void> {
+    await this.rpc<void>('swarm.add_member', { swarm_id: swarmId, address, alias, role });
+  }
+
+  /** Remove a member from the swarm. */
+  async removeMember(swarmId: string, alias: string): Promise<void> {
+    await this.rpc<void>('swarm.remove_member', { swarm_id: swarmId, alias });
+  }
+
+  /** Resume a swarm from collective immune state. */
+  async resume(swarmId: string): Promise<void> {
+    await this.rpc<void>('swarm.resume', { swarm_id: swarmId });
+  }
+
+  /** Dissolve a swarm. */
+  async dissolve(swarmId: string): Promise<void> {
+    await this.rpc<void>('swarm.dissolve', { swarm_id: swarmId });
+  }
+
+  /** Submit an upgrade proposal. */
+  async upgrade(swarmId: string, proposal: Record<string, unknown>): Promise<SwarmUpgradeResult> {
+    return this.rpc<SwarmUpgradeResult>('swarm.upgrade', { swarm_id: swarmId, ...proposal });
+  }
+}
+
 // Default export for convenience.
 export default InfrixClient;
