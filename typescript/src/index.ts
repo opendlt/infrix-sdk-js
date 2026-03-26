@@ -706,5 +706,92 @@ export class SwarmClient {
   }
 }
 
+// ---- Mission Control Types ----
+
+export interface MissionMetrics {
+  contract_url: string;
+  block_height: number;
+  calls_total: number;
+  calls_per_block: number;
+  error_rate: number;
+  gas_total: number;
+  gas_per_call: { p50: number; p95: number; p99: number; avg: number };
+  unique_callers: number;
+  breaker_state: string;
+  confidence_score: number;
+  anomaly_score: number;
+  uptime: number;
+  active_shape?: string;
+  swarm_id?: string;
+}
+
+export interface MissionSLOStatus {
+  name: string;
+  metric: string;
+  target: number;
+  current_value: number;
+  compliance: number;
+  healthy: boolean;
+  burn_rate: number;
+}
+
+export interface MissionAlert {
+  id: string;
+  contract_url: string;
+  severity: string;
+  title: string;
+  metric_name: string;
+  metric_value: number;
+  status: string;
+}
+
+export interface MissionCostReport {
+  contract_url: string;
+  period: string;
+  total_gas: number;
+  total_cost_usd: number;
+  by_function: { function: string; call_count: number; total_gas: number; cost_usd: number; pct_of_total: number }[];
+  recommendations: { function: string; type: string; description: string }[];
+}
+
+export interface MissionLogEntry {
+  timestamp: number;
+  level: string;
+  contract: string;
+  function?: string;
+  block_height: number;
+  message: string;
+}
+
+/** MissionClient provides production observability methods. */
+export class MissionClient {
+  constructor(private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>) {}
+
+  async status(contract: string): Promise<MissionMetrics> {
+    return this.rpc<MissionMetrics>('mission.status', { contract });
+  }
+  async sloList(contract: string): Promise<MissionSLOStatus[]> {
+    const r = await this.rpc<{ slos: MissionSLOStatus[] }>('mission.slo.list', { contract });
+    return r.slos;
+  }
+  async sloCreate(contract: string, metric: string, target: number, window: string): Promise<void> {
+    await this.rpc<void>('mission.slo.create', { contract, metric, target, window });
+  }
+  async alerts(): Promise<MissionAlert[]> {
+    const r = await this.rpc<{ alerts: MissionAlert[] }>('mission.alert.list', {});
+    return r.alerts;
+  }
+  async cost(contract: string, period = '30d'): Promise<MissionCostReport> {
+    return this.rpc<MissionCostReport>('mission.cost', { contract, period });
+  }
+  async logs(contract: string, opts?: { level?: string; limit?: number }): Promise<MissionLogEntry[]> {
+    const r = await this.rpc<{ logs: MissionLogEntry[] }>('mission.logs', { contract, ...opts });
+    return r.logs;
+  }
+  async global(): Promise<Record<string, unknown>> {
+    return this.rpc<Record<string, unknown>>('mission.global', {});
+  }
+}
+
 // Default export for convenience.
 export default InfrixClient;
