@@ -793,5 +793,70 @@ export class MissionClient {
   }
 }
 
+// ---- Intent Graph Types ----
+
+export interface IntentResolveResult {
+  intentId: string;
+  status: string;
+  rankedPaths?: { paths: IntentRankedPath[] };
+  ambiguous?: boolean;
+  candidates?: { confidence: number; explanation: string }[];
+}
+
+export interface IntentRankedPath {
+  rank: number;
+  score: number;
+  path: { id: string; hopCount: number; totalGasEstimate: number; assetFlow: string[] };
+  simResult?: { success: boolean; actualOutput: number; totalGasUsed: number; slippage: number };
+}
+
+export interface IntentExecuteResult {
+  intentId: string;
+  status: string;
+  executionResult?: { success: boolean; actualOutput: number; outputAsset: string; totalGasUsed: number; matchesGhost: boolean };
+  txHash?: string;
+  blockHeight?: number;
+}
+
+export interface IntentGraphNode {
+  id: string;
+  name: string;
+  category: string;
+  confidenceScore: number;
+  immuneState: string;
+  tokenAssets?: string[];
+  functionCount: number;
+}
+
+/** IntentClient provides intent-based execution methods. */
+export class IntentClient {
+  constructor(private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>) {}
+
+  async resolve(input: string, userAddress: string): Promise<IntentResolveResult> {
+    return this.rpc<IntentResolveResult>('intent.resolve', { input, userAddress });
+  }
+  async execute(intentId: string, pathRank = 1): Promise<IntentExecuteResult> {
+    return this.rpc<IntentExecuteResult>('intent.execute', { intentId, pathRank });
+  }
+  async confirm(intentId: string, candidateIndex: number): Promise<{ status: string }> {
+    return this.rpc<{ status: string }>('intent.confirm', { intentId, candidateIndex });
+  }
+  async status(intentId: string): Promise<{ intentId: string; status: string }> {
+    return this.rpc<{ intentId: string; status: string }>('intent.status', { intentId });
+  }
+  async paths(intentId: string): Promise<{ rankedPaths: { paths: IntentRankedPath[] } }> {
+    return this.rpc<{ rankedPaths: { paths: IntentRankedPath[] } }>('intent.paths', { intentId });
+  }
+  async graphQuery(opts?: { category?: string; asset?: string; function?: string }): Promise<{ nodes?: IntentGraphNode[]; stats?: Record<string, number> }> {
+    return this.rpc<{ nodes?: IntentGraphNode[]; stats?: Record<string, number> }>('intent.graph.query', opts ?? {});
+  }
+  async graphStats(): Promise<Record<string, number>> {
+    return this.rpc<Record<string, number>>('intent.graph.stats', {});
+  }
+  async history(userAddress: string): Promise<Record<string, unknown>> {
+    return this.rpc<Record<string, unknown>>('intent.history', { userAddress });
+  }
+}
+
 // Default export for convenience.
 export default InfrixClient;
