@@ -93,6 +93,7 @@ export class InfrixWallet {
   private activeKey: Uint8Array | null = null;
   private guardians: string[] = [];
   private guardianThreshold = 0;
+  private localSponsorConfig: SponsorConfig | null = null;
 
   constructor(adi: string, options?: WalletOptions) {
     this.adi = adi;
@@ -105,8 +106,22 @@ export class InfrixWallet {
 
   /** Get the wallet's token balance (via explorer.status or L0 query). */
   async balance(): Promise<bigint> {
-    // Placeholder — would query L0 account balance in production.
-    return BigInt(0);
+    if (!this.rpcUrl) {
+      console.warn('InfrixWallet: no rpcUrl configured — returning 0 balance');
+      return 0n;
+    }
+
+    try {
+      const result = await this.rpc('account.balance', { url: this.adi });
+      const raw = result.balance;
+      if (typeof raw === 'string') return BigInt(raw);
+      if (typeof raw === 'number') return BigInt(raw);
+      if (typeof raw === 'bigint') return raw;
+      return 0n;
+    } catch {
+      // Node unreachable or account not yet on-chain — return zero.
+      return 0n;
+    }
   }
 
   /** Get the wallet's credit balance. */
@@ -243,8 +258,30 @@ export class InfrixWallet {
 
   /** Register a gas sponsorship configuration. */
   async registerSponsor(config: SponsorConfig): Promise<void> {
-    // Placeholder — would register with the sponsor registry on-chain.
-    void config;
+    if (!this.rpcUrl) {
+      // No endpoint configured — store the config locally for later submission.
+      this.localSponsorConfig = config;
+      console.warn('InfrixWallet: no rpcUrl configured — sponsor config stored locally');
+      return;
+    }
+
+    // Build a registration transaction and submit to the sponsor registry.
+    const params: Record<string, unknown> = {
+      sponsor: this.adi,
+      contracts: config.contracts ?? [],
+      callers: config.callers ?? [],
+      maxGasPerTx: config.maxGasPerTx ?? 0,
+      dailyLimit: config.dailyLimit ?? 0,
+    };
+
+    try {
+      await this.rpc('sponsor.register', params);
+    } catch {
+      // If the on-chain registration fails, keep the config locally so the
+      // caller can retry.
+      this.localSponsorConfig = config;
+      throw new Error('Failed to register sponsor on-chain; config stored locally');
+    }
   }
 
   // ---- Internal RPC ----
