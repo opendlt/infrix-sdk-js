@@ -1,230 +1,126 @@
 /**
- * @infrix/client — TypeScript client for the Infrix smart contract platform.
+ * @infrix/client — TypeScript client for the Infrix governance platform.
  *
- * Usage:
+ * The primary API surface is governance-oriented:
+ *   client.intents.*       — Intent lifecycle (submit, plan, approve, outcome)
+ *   client.objects.*       — Governed object operations
+ *   client.policies.*      — Policy evaluation and management
+ *   client.approvals.*     — Approval management
+ *   client.evidence.*      — Evidence chain access
+ *   client.trust.*         — Trust profile evaluation
+ *   client.capabilities.*  — Capability grant management
+ *   client.roles.*         — Role binding management
+ *   client.settlements.*   — Settlement instructions
+ *   client.escrows.*       — Escrow management
+ *   client.disclosures.*   — Disclosure grant management
+ *   client.anchors.*       — L0 anchor verification
+ *
+ * Contract operations are available via client.contracts.* for low-level access.
+ *
+ * @example
  *   import { InfrixClient } from '@infrix/client';
  *   const client = new InfrixClient('http://localhost:8080');
- *   const receipt = await client.deploy('acc://my.acme/counter', wasmHex);
- *   const result = await client.call('acc://my.acme/counter', 'increment');
+ *
+ *   // Governance-first: submit an intent
+ *   const result = await client.intents.submit({
+ *     type: 'TRANSFER',
+ *     sourceAssets: [{ asset: 'ACME', amount: 100 }],
+ *     targetState: { stateType: 'balance_increase', parameters: { account: 'acc://bob.acme/tokens' } }
+ *   });
+ *
+ *   // Low-level: direct contract call (bypasses governance)
+ *   const receipt = await client.contracts.deploy('acc://my.acme/counter', wasmHex);
+ *   const callResult = await client.contracts.call('acc://my.acme/counter', 'increment');
  */
 
-// ---- Types ----
+// ---- Re-export types ----
 
-export interface DeployResult {
-  txHash: string;
-  contractUrl: string;
-  blockHeight: number;
-  codeHash: string;
-}
+export type {
+  DeployResult,
+  CallResult,
+  QueryResult,
+  TransactionReceipt,
+  ContractInfo,
+  UpgradeResult,
+  TraceStep,
+  TraceResult,
+  ExplorerStatus,
+  IndexedEvent,
+  EventFilterParams,
+  ReceiptFilterParams,
+  StateDiffFilterParams,
+  IndexedStateDiff,
+  ContractStatsResult,
+  NetworkStatsResult,
+  ContractSchema,
+  FunctionSchemaEntry,
+  ParamSchemaEntry,
+  EventSchemaEntry,
+  FieldSchemaEntry,
+  ErrorSchemaEntry,
+  BatchCallRequest,
+  BatchCallResult,
+  DevnetEvent,
+} from './types/contract';
 
-export interface CallResult {
-  txHash: string;
-  returnData: string | string[] | null;
-  gasUsed: number;
-  blockHeight: number;
-}
+export * from './types/governance';
 
-export interface QueryResult {
-  returnData: string | string[] | null;
-}
+export {
+  SubClient,
+  IntentSubClient,
+  ObjectSubClient,
+  PolicySubClient,
+  ApprovalSubClient,
+  EvidenceSubClient,
+  TrustSubClient,
+  CapabilitySubClient,
+  RoleSubClient,
+  SettlementSubClient,
+  EscrowSubClient,
+  DisclosureSubClient,
+  AnchorSubClient,
+  ContractSubClient,
+} from './sub-clients';
 
-export interface TransactionReceipt {
-  txHash: string;
-  status: 'success' | 'failed';
-  gasUsed: number;
-  blockHeight: number;
-  contractUrl: string;
-  function: string;
-  error: string;
-  returnData: string;
-  timestamp: string;
-}
+// ---- Direct imports for internal use ----
 
-export interface ContractInfo {
-  url: string;
-  codeHash: string;
-  codeSize: number;
-  deployedAt: string;
-  callCount: number;
-  totalGasUsed: number;
-  functions: string[];
-  version: number;
-}
+import type {
+  DeployResult,
+  CallResult,
+  QueryResult,
+  TransactionReceipt,
+  ContractInfo,
+  UpgradeResult,
+  TraceResult,
+  ExplorerStatus,
+  IndexedEvent,
+  EventFilterParams,
+  ReceiptFilterParams,
+  StateDiffFilterParams,
+  IndexedStateDiff,
+  ContractStatsResult,
+  NetworkStatsResult,
+  ContractSchema,
+  BatchCallRequest,
+  BatchCallResult,
+  DevnetEvent,
+} from './types/contract';
 
-export interface UpgradeResult {
-  txHash: string;
-  contractUrl: string;
-  blockHeight: number;
-  newCodeHash: string;
-  version: number;
-}
-
-export interface TraceStep {
-  op: string;
-  detail: string;
-  gasCost: number;
-}
-
-export interface TraceResult {
-  txHash: string;
-  type: string;
-  contractUrl: string;
-  function: string;
-  args: string[];
-  result: string[];
-  gasUsed: number;
-  blockHeight: number;
-  status: string;
-  error: string;
-  durationMs: number;
-  steps: TraceStep[];
-  timestamp: string;
-}
-
-export interface ExplorerStatus {
-  blockHeight: number;
-  contractCount: number;
-  transactionCount: number;
-  uptimeSeconds: number;
-}
-
-export interface IndexedEvent {
-  blockHeight: number;
-  txHash: string;
-  logIndex: number;
-  contractUrl: string;
-  eventName: string;
-  topics: string[];
-  data: string;
-  timestamp: string;
-}
-
-export interface EventFilterParams {
-  contractUrl?: string;
-  eventName?: string;
-  topics?: string[];
-  fromBlock?: number;
-  toBlock?: number;
-  limit?: number;
-  offset?: number;
-}
-
-export interface ReceiptFilterParams {
-  contractUrl?: string;
-  function?: string;
-  status?: string;
-  fromBlock?: number;
-  toBlock?: number;
-  limit?: number;
-  offset?: number;
-}
-
-export interface StateDiffFilterParams {
-  contractUrl?: string;
-  storageKey?: string;
-  fromBlock?: number;
-  toBlock?: number;
-  limit?: number;
-}
-
-export interface IndexedStateDiff {
-  blockHeight: number;
-  txHash: string;
-  contractUrl: string;
-  storageKey: string;
-  oldValue: string;
-  newValue: string;
-  timestamp: string;
-}
-
-export interface ContractStatsResult {
-  url: string;
-  callCount: number;
-  totalGasUsed: number;
-  eventCount: number;
-  firstBlock: number;
-  latestBlock: number;
-  uniqueCallers: number;
-  successCount: number;
-  failureCount: number;
-  functionCounts: Record<string, number>;
-}
-
-export interface NetworkStatsResult {
-  totalContracts: number;
-  totalTransactions: number;
-  totalEvents: number;
-  totalBlocks: number;
-  totalGasUsed: number;
-  avgGasPerTx: number;
-}
-
-// ---- Contract Schema Types ----
-
-export interface ContractSchema {
-  schema_version: number;
-  name: string;
-  version?: string;
-  description?: string;
-  functions: FunctionSchemaEntry[];
-  events?: EventSchemaEntry[];
-  errors?: ErrorSchemaEntry[];
-}
-
-export interface FunctionSchemaEntry {
-  name: string;
-  mutability: 'mutable' | 'view' | 'init' | 'payable';
-  params: ParamSchemaEntry[];
-  returns: ParamSchemaEntry[];
-  doc?: string;
-}
-
-export interface ParamSchemaEntry {
-  name: string;
-  type: string;
-}
-
-export interface EventSchemaEntry {
-  name: string;
-  fields: FieldSchemaEntry[];
-}
-
-export interface FieldSchemaEntry {
-  name: string;
-  type: string;
-  indexed: boolean;
-}
-
-export interface ErrorSchemaEntry {
-  name: string;
-  code: number;
-  message: string;
-}
-
-export interface BatchCallRequest {
-  url: string;
-  function: string;
-  args?: unknown[];
-  gasLimit?: number;
-}
-
-export interface BatchCallResult {
-  url: string;
-  function: string;
-  txHash: string;
-  returnData: string | string[] | null;
-  gasUsed: number;
-  blockHeight: number;
-  status: string;
-  error: string;
-}
-
-export interface DevnetEvent {
-  type: string;
-  blockHeight: number;
-  timestamp: string;
-  data: Record<string, unknown>;
-}
+import {
+  IntentSubClient,
+  ObjectSubClient,
+  PolicySubClient,
+  ApprovalSubClient,
+  EvidenceSubClient,
+  TrustSubClient,
+  CapabilitySubClient,
+  RoleSubClient,
+  SettlementSubClient,
+  EscrowSubClient,
+  DisclosureSubClient,
+  AnchorSubClient,
+  ContractSubClient,
+} from './sub-clients';
 
 // ---- RPC Error ----
 
@@ -244,6 +140,49 @@ export class InfrixClient {
   private wsUrl: string;
   private idCounter = 0;
 
+  // ---- PRIMARY: Governance Sub-Clients ----
+
+  /** Intent lifecycle: submit, plan, approve, outcome, evidence. */
+  readonly intents: IntentSubClient;
+
+  /** Governed object operations: list, get, create, transition, audit. */
+  readonly objects: ObjectSubClient;
+
+  /** Policy evaluation and management: list, evaluate, simulate, decisions, conflicts. */
+  readonly policies: PolicySubClient;
+
+  /** Approval management: submit, list, pending, revoke. */
+  readonly approvals: ApprovalSubClient;
+
+  /** Evidence chain access: get, verify, export, anchor. */
+  readonly evidence: EvidenceSubClient;
+
+  /** Trust profile evaluation: list, get, evaluate, compare. */
+  readonly trust: TrustSubClient;
+
+  /** Capability grant management: list, grants, grant, revoke, check. */
+  readonly capabilities: CapabilitySubClient;
+
+  /** Role binding management: list, assign, check, revoke. */
+  readonly roles: RoleSubClient;
+
+  /** Settlement instruction management: list, create, approve, get. */
+  readonly settlements: SettlementSubClient;
+
+  /** Escrow management: list, create, release, dispute, get. */
+  readonly escrows: EscrowSubClient;
+
+  /** Disclosure grant management: list, grant, check, revoke. */
+  readonly disclosures: DisclosureSubClient;
+
+  /** L0 anchor verification: list, verify, stats, get. */
+  readonly anchors: AnchorSubClient;
+
+  // ---- SECONDARY: Contract Sub-Client ----
+
+  /** Low-level contract operations (deploy, call, query, upgrade, inspect). Bypasses governance. */
+  readonly contracts: ContractSubClient;
+
   /**
    * Create a client connected to an Infrix devnet.
    * @param baseUrl The base URL of the devnet server, e.g. "http://localhost:8080"
@@ -252,6 +191,25 @@ export class InfrixClient {
     const base = baseUrl.replace(/\/+$/, '');
     this.rpcUrl = `${base}/rpc`;
     this.wsUrl = base.replace(/^http/, 'ws') + '/ws';
+
+    const rpcFn = this.rpc.bind(this);
+
+    // PRIMARY: Governance sub-clients
+    this.intents = new IntentSubClient(rpcFn);
+    this.objects = new ObjectSubClient(rpcFn);
+    this.policies = new PolicySubClient(rpcFn);
+    this.approvals = new ApprovalSubClient(rpcFn);
+    this.evidence = new EvidenceSubClient(rpcFn);
+    this.trust = new TrustSubClient(rpcFn);
+    this.capabilities = new CapabilitySubClient(rpcFn);
+    this.roles = new RoleSubClient(rpcFn);
+    this.settlements = new SettlementSubClient(rpcFn);
+    this.escrows = new EscrowSubClient(rpcFn);
+    this.disclosures = new DisclosureSubClient(rpcFn);
+    this.anchors = new AnchorSubClient(rpcFn);
+
+    // SECONDARY: Contract sub-client
+    this.contracts = new ContractSubClient(rpcFn);
   }
 
   // ---- Low-level RPC ----
@@ -271,127 +229,119 @@ export class InfrixClient {
     return json.result as T;
   }
 
-  // ---- Contract Lifecycle ----
+  // ---- Deprecated Top-Level Contract Methods (backward compatibility) ----
 
-  /** Deploy a contract from hex-encoded WASM bytecode. */
+  /** @deprecated Use client.contracts.deploy() */
   async deploy(url: string, bytecodeHex: string, gasLimit = 500000): Promise<DeployResult> {
-    return this.rpc<DeployResult>('contract.deploy', { url, bytecode: bytecodeHex, gasLimit });
+    return this.contracts.deploy(url, bytecodeHex, { gasLimit });
   }
 
-  /** Execute a state-changing function on a deployed contract. */
+  /** @deprecated Use client.contracts.call() */
   async call(url: string, fn: string, args: unknown[] = [], gasLimit = 500000): Promise<CallResult> {
-    return this.rpc<CallResult>('contract.call', { url, function: fn, args, gasLimit });
+    return this.contracts.call(url, fn, args, { gasLimit });
   }
 
-  /** Execute a read-only query against a deployed contract. */
+  /** @deprecated Use client.contracts.query() */
   async query(url: string, fn: string, args: unknown[] = [], gasLimit = 500000): Promise<QueryResult> {
-    return this.rpc<QueryResult>('contract.query', { url, function: fn, args, gasLimit });
+    return this.contracts.query(url, fn, args);
   }
 
-  /** Upgrade a contract's bytecode while preserving state. */
+  /** @deprecated Use client.contracts.upgrade() */
   async upgrade(url: string, bytecodeHex: string): Promise<UpgradeResult> {
-    return this.rpc<UpgradeResult>('contract.upgrade', { url, bytecode: bytecodeHex });
+    return this.contracts.upgrade(url, bytecodeHex);
   }
 
-  /** Get contract metadata and exported functions. */
+  /** @deprecated Use client.contracts.inspect() */
   async inspect(url: string): Promise<ContractInfo> {
-    return this.rpc<ContractInfo>('contract.inspect', { url });
+    return this.contracts.inspect(url);
   }
 
-  // ---- Transaction History ----
+  // ---- Deprecated Transaction History ----
 
-  /** Retrieve a transaction receipt by hash. */
+  /** @deprecated Retrieve a transaction receipt by hash. */
   async getTransaction(txHash: string): Promise<TransactionReceipt> {
     return this.rpc<TransactionReceipt>('tx.get', { txHash });
   }
 
-  /** Retrieve a detailed execution trace for a transaction. */
+  /** @deprecated Retrieve a detailed execution trace for a transaction. */
   async getTrace(txHash: string): Promise<TraceResult> {
     return this.rpc<TraceResult>('tx.trace', { txHash });
   }
 
-  // ---- Batch Execution ----
+  // ---- Deprecated Batch Execution ----
 
-  /** Execute multiple contract calls in parallel (different contracts run concurrently). */
+  /** @deprecated Use client.contracts.callBatch() */
   async callBatch(calls: BatchCallRequest[]): Promise<BatchCallResult[]> {
-    const normalized = calls.map(c => ({
-      url: c.url,
-      function: c.function,
-      args: c.args ?? [],
-      gasLimit: c.gasLimit ?? 500000,
-    }));
-    const result = await this.rpc<{ results: BatchCallResult[] }>('contract.callBatch', { calls: normalized });
-    return result.results;
+    return this.contracts.callBatch(calls);
   }
 
-  // ---- Index Queries ----
+  // ---- Deprecated Index Queries ----
 
-  /** Query indexed events with filtering. */
+  /** @deprecated Query indexed events with filtering. */
   async queryEvents(filter: EventFilterParams = {}): Promise<{ events: IndexedEvent[]; total: number }> {
     return this.rpc<{ events: IndexedEvent[]; total: number }>('index.getEvents', filter as Record<string, unknown>);
   }
 
-  /** Query indexed events by transaction hash. */
+  /** @deprecated Query indexed events by transaction hash. */
   async queryEventsByTx(txHash: string): Promise<IndexedEvent[]> {
     const result = await this.rpc<{ events: IndexedEvent[] }>('index.getEventsByTx', { txHash });
     return result.events;
   }
 
-  /** Query indexed receipts with filtering. */
+  /** @deprecated Query indexed receipts with filtering. */
   async queryReceipts(filter: ReceiptFilterParams = {}): Promise<{ receipts: TransactionReceipt[]; total: number }> {
     return this.rpc<{ receipts: TransactionReceipt[]; total: number }>('index.getReceipts', filter as Record<string, unknown>);
   }
 
-  /** Query indexed state diffs with filtering. */
+  /** @deprecated Query indexed state diffs with filtering. */
   async queryStateDiffs(filter: StateDiffFilterParams = {}): Promise<{ diffs: IndexedStateDiff[] }> {
     return this.rpc<{ diffs: IndexedStateDiff[] }>('index.getStateDiffs', filter as Record<string, unknown>);
   }
 
-  /** Get aggregate statistics for a specific contract. */
+  /** @deprecated Get aggregate statistics for a specific contract. */
   async getContractStats(contractUrl: string): Promise<ContractStatsResult> {
     return this.rpc<ContractStatsResult>('index.getContractStats', { contractUrl });
   }
 
-  /** Get aggregate network statistics. */
+  /** @deprecated Get aggregate network statistics. */
   async getNetworkStats(): Promise<NetworkStatsResult> {
     return this.rpc<NetworkStatsResult>('index.getNetworkStats');
   }
 
-  // ---- Explorer ----
+  // ---- Deprecated Explorer ----
 
-  /** Get devnet status (block height, counts, uptime). */
+  /** @deprecated Get devnet status (block height, counts, uptime). */
   async status(): Promise<ExplorerStatus> {
     return this.rpc<ExplorerStatus>('explorer.status');
   }
 
-  /** List all deployed contracts. */
+  /** @deprecated List all deployed contracts. */
   async listContracts(): Promise<ContractInfo[]> {
     const result = await this.rpc<{ contracts: ContractInfo[] }>('explorer.contracts');
     return result.contracts;
   }
 
-  /** List recent transactions. */
+  /** @deprecated List recent transactions. */
   async listTransactions(): Promise<TransactionReceipt[]> {
     const result = await this.rpc<{ transactions: TransactionReceipt[] }>('explorer.transactions');
     return result.transactions;
   }
 
-  /** Get event history, optionally filtered by type. */
+  /** @deprecated Get event history, optionally filtered by type. */
   async eventHistory(eventType?: string): Promise<DevnetEvent[]> {
     const result = await this.rpc<{ events: DevnetEvent[] }>('events.history', { eventType: eventType ?? '' });
     return result.events;
   }
 
-  // ---- Schema & Runtime Binding ----
+  // ---- Deprecated Schema & Runtime Binding ----
 
-  /** Fetch the embedded schema for a deployed contract. */
+  /** @deprecated Use client.contracts.schema() */
   async getSchema(url: string): Promise<ContractSchema | null> {
-    const result = await this.rpc<{ schema: ContractSchema | null }>('contract.schema', { url });
-    return result.schema;
+    return this.contracts.schema(url);
   }
 
   /**
-   * Create a runtime binding for a deployed contract using its embedded schema.
+   * @deprecated Create a runtime binding for a deployed contract using its embedded schema.
    *
    * Returns a Proxy object where method calls are automatically mapped to
    * the contract's functions via JSON-RPC. View functions use `query`,
@@ -793,7 +743,7 @@ export class MissionClient {
   }
 }
 
-// ---- Intent Graph Types ----
+// ---- Intent Graph Types (legacy, kept for backward compatibility) ----
 
 export interface IntentResolveResult {
   intentId: string;
@@ -828,7 +778,7 @@ export interface IntentGraphNode {
   functionCount: number;
 }
 
-/** IntentClient provides intent-based execution methods. */
+/** IntentClient provides legacy intent-based execution methods. */
 export class IntentClient {
   constructor(private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>) {}
 
