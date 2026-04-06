@@ -41,9 +41,19 @@ export type IntentGoalType =
   | 'CREDENTIAL_ISSUE'
   | 'VAULT_CREATE'
   | 'SETTLEMENT'
+  | 'SETTLEMENT_NETTING'
   | 'ESCROW_CREATE'
   | 'OBJECT_TRANSITION'
-  | 'POLICY_CHANGE';
+  | 'POLICY_CHANGE'
+  | 'CONTRACT_UPGRADE'
+  | 'PATCH_PROPAGATION'
+  | 'REVERT_TRANSACTION'
+  | 'ROLE_ASSIGN'
+  | 'ROLE_REVOKE'
+  | 'ROLE_SUSPEND'
+  | 'ROLE_EMERGENCY'
+  | 'DISCLOSURE_GRANT'
+  | 'DISCLOSURE_REVOKE';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {
@@ -159,6 +169,23 @@ export interface PendingApproval {
   approvers: string[];
 }
 
+/** Result of intent parsing. */
+export interface ParseResult {
+  intent: Intent;
+  confidence: number;
+  ambiguous: boolean;
+  candidates?: IntentCandidate[];
+  warnings?: string[];
+  usedLLM?: boolean;
+}
+
+/** A candidate interpretation of an ambiguous intent. */
+export interface IntentCandidate {
+  intent: Intent;
+  confidence: number;
+  explanation: string;
+}
+
 // =============================================================================
 // Execution Plan Types
 // =============================================================================
@@ -179,6 +206,26 @@ export interface ExecutionPlan {
   driftThreshold?: number;
   trustAssumptions?: string[];
   compensationPlan?: PlanStep[];
+  ghostEvidence?: GhostPlanEvidence;
+}
+
+/** Ghost simulation evidence attached to a plan. */
+export interface GhostPlanEvidence {
+  simulatedAt: string;        // ISO 8601
+  totalGasEstimate: number;
+  stepPredictions: GhostStepPrediction[];
+  overallConfidence: number;
+  freshnessStatus: string;
+}
+
+/** Ghost prediction for a single plan step. */
+export interface GhostStepPrediction {
+  stageId: string;
+  gasPredicted: number;
+  statusPredicted: string;
+  stateRootAfter?: string;    // hex
+  readSetSize?: number;
+  writeSetSize?: number;
 }
 
 /** A single step in the execution plan. */
@@ -192,27 +239,107 @@ export interface PlanStep {
   executionTarget?: string;
   dependsOn?: string[];
   expectedOutput?: string;
+  stepType?: string;
+  contractCallParams?: ContractCallStepParams;
+  objectOperationParams?: ObjectOperationStepParams;
+  settlementParams?: SettlementStepParams;
+  bridgeParams?: BridgeStepParams;
+  approvalParams?: ApprovalStepParams;
+  swarmActionParams?: SwarmActionStepParams;
+  anchorParams?: AnchorStepParams;
+  trustProfileRef?: string;
 }
 
 export type PlanStepType =
   | 'contract_call'
   | 'contract_deploy'
   | 'object_create'
+  | 'object_mutate'
   | 'object_transition'
+  | 'policy_check'
+  | 'policy_evaluate'
+  | 'approval_gate'
+  | 'approval_checkpoint'
+  | 'settlement'
   | 'settlement_leg'
+  | 'bridge_action'
   | 'escrow_create'
   | 'escrow_release'
   | 'capability_grant'
   | 'capability_revoke'
   | 'role_assign'
   | 'role_revoke'
-  | 'policy_evaluate'
-  | 'approval_checkpoint'
   | 'evidence_anchor'
+  | 'anchor'
   | 'l0_transfer'
   | 'l0_data_write'
   | 'external_proof'
-  | 'compensation';
+  | 'wait'
+  | 'compensation'
+  | 'compensate'
+  | 'swarm_action';
+
+/** Parameters for a contract call step. */
+export interface ContractCallStepParams {
+  contract: string;
+  function: string;
+  arguments?: unknown[];
+  value?: number;
+  gasLimit?: number;
+}
+
+/** Parameters for an object operation step. */
+export interface ObjectOperationStepParams {
+  objectType: string;
+  objectId?: string;
+  fields?: Record<string, unknown>;
+  targetState?: string;
+}
+
+/** Parameters for a settlement step. */
+export interface SettlementStepParams {
+  sourceAccount: string;
+  destAccount: string;
+  amount: number;
+  tokenType: string;
+  conditions?: Record<string, unknown>;
+}
+
+/** Parameters for a bridge action step. */
+export interface BridgeStepParams {
+  sourceChain: string;
+  destChain: string;
+  messageType: string;
+  payload?: string;
+  trustProfileId?: string;
+}
+
+/** Parameters for a swarm action step. */
+export interface SwarmActionStepParams {
+  swarmId: string;
+  action: string;
+  memberIndex?: number;
+  targetMember?: string;
+  function?: string;
+  gasLimit?: number;
+}
+
+/** Parameters for an approval gate step. */
+export interface ApprovalStepParams {
+  requiredRoles?: string[];
+  requiredCount: number;
+  planHashBinding?: string;
+  timeoutBlocks?: number;
+}
+
+/** Parameters for an anchor step. */
+export interface AnchorStepParams {
+  artifactType: string;
+  artifactRef: string;
+  anchorLevel?: string;
+  dataAccount?: string;
+  requireConfirmation?: boolean;
+}
 
 /** Approval requirement within a plan. */
 export interface PlanApprovalReq {
@@ -249,6 +376,16 @@ export interface OutcomeRecord {
   driftAnalysis?: DriftAnalysis;
   outcomeHash: string;        // hex-encoded SHA-256
   planHashVerified: boolean;
+  complianceViolations?: ComplianceViolationRef[];
+  complianceReportId?: string;
+  forensicReportId?: string;
+  shapeTransitions?: ShapeTransitionRef[];
+  swarmOutcomes?: SwarmStepOutcome[];
+  trustProfilesUsed?: string[];
+  trustDrifts?: OutcomeTrustDrift[];
+  evidenceBundleId?: string;
+  anchorId?: string;
+  anchorStatus?: string;
 }
 
 /** Actual result for a single plan step. */
@@ -260,6 +397,12 @@ export interface StepOutcome {
   status: 'completed' | 'failed' | 'skipped' | 'compensated';
   error?: string;
   outputHash?: string;
+  ghostGasPredicted?: number;
+  ghostGasDrift?: number;
+  ghostStatusMatch?: boolean;
+  shapeTransition?: ShapeTransitionRef;
+  swarmOutcome?: SwarmStepOutcome;
+  trustResult?: StepTrustResult;
 }
 
 /** Evidence of an approval within the outcome. */
@@ -277,26 +420,127 @@ export interface DriftAnalysis {
   maxStepDrift: number;
   driftingSteps: string[];
   summary: string;
+  ghostDriftSummary?: string;
+  ghostMaxDrift?: number;
+}
+
+/** Trust drift between plan and execution for a trust profile. */
+export interface OutcomeTrustDrift {
+  profileId: string;
+  domain: string;
+  planState: string;
+  execState: string;
+  planVersion?: number;
+  execVersion?: number;
+  drifted: boolean;
+}
+
+/** Reference to a compliance violation detected during execution. */
+export interface ComplianceViolationRef {
+  invariantId: string;
+  framework: string;
+  severity: string;
+  description: string;
+  evidenceRef?: string;
+}
+
+/** Trust evaluation result for a single plan step. */
+export interface StepTrustResult {
+  profileId: string;
+  domain: string;
+  passed: boolean;
+  score?: number;
+  state?: string;
+  checkCount?: number;
+  failCount?: number;
+}
+
+/** Outcome of a swarm coordination step. */
+export interface SwarmStepOutcome {
+  swarmId: string;
+  action: string;
+  memberResults?: MemberResult[];
+  invariantsPassed?: boolean;
+  coordinationStatus?: string;
+}
+
+/** Result of a single swarm member's execution within a swarm step. */
+export interface MemberResult {
+  contractUrl: string;
+  success: boolean;
+  gasUsed: number;
+  error?: string;
+}
+
+/** Reference to a shape transition that occurred during execution. */
+export interface ShapeTransitionRef {
+  contractUrl: string;
+  fromShape: string;
+  toShape: string;
+  triggeredBy?: string;
+  blockHeight?: number;
 }
 
 // =============================================================================
 // Approval Types
 // =============================================================================
 
+/** Target types for approval envelopes. */
+export type ApprovalTargetType =
+  | 'intent'
+  | 'plan'
+  | 'object'
+  | 'object_operation'
+  | 'policy_change'
+  | 'capability_grant'
+  | 'workflow_stage'
+  | 'settlement'
+  | 'escrow'
+  | 'capability'
+  | 'role';
+
+/** Approval lifecycle states. */
+export type ApprovalState =
+  | 'pending'
+  | 'granted'
+  | 'denied'
+  | 'expired'
+  | 'revoked'
+  | 'active'
+  | 'consumed';
+
 /** A signed approval envelope. */
 export interface ApprovalEnvelope {
   id: string;
-  targetType: 'intent' | 'object' | 'settlement' | 'escrow' | 'capability' | 'role';
+  type?: string;
+  targetType: ApprovalTargetType;
   targetId: string;
   planHash: string;
+  intentId?: string;
+  objectId?: string;
+  workflowId?: string;
+  stageId?: string;
   scope?: ApprovalScope;
-  conditions?: Record<string, unknown>;
+  conditions?: ApprovalConditions | Record<string, unknown>;
+  simulationHash?: string;
+  ghostReceiptId?: string;
+  separationConstraints?: SeparationConstraint[];
+  requiredCredential?: string;
+  delegatedFrom?: string;
+  delegationChain?: string[];
   signerIdentity: string;
   signerRole?: string;
+  keyPageRef?: string;
+  signature?: string;
   signatureHex?: string;
+  signedAt?: string;          // ISO 8601
   createdAt: string;
   expiresAt?: string;
-  status: 'active' | 'revoked' | 'expired' | 'consumed';
+  expiresAtBlock?: number;
+  expiresAtTime?: string;
+  status: ApprovalState;
+  state?: ApprovalState;
+  revokedBy?: string;
   revokedAt?: string;
   revokeReason?: string;
 }
@@ -308,6 +552,21 @@ export interface ApprovalScope {
   maxAmount?: number;
   maxGas?: number;
   objectTypes?: string[];
+  targetAssets?: string[];
+}
+
+/** Conditions attached to an approval. */
+export interface ApprovalConditions {
+  minBlockHeight?: number;
+  maxBlockHeight?: number;
+  requiredState?: string;
+}
+
+/** Separation-of-duties constraint requiring distinct identities for specified roles. */
+export interface SeparationConstraint {
+  role1: string;
+  role2: string;
+  mustBeDifferentIdentity: boolean;
 }
 
 /** Filter for listing approvals. */
@@ -336,18 +595,50 @@ export interface ApprovalSubmitOptions {
 // Evidence Types
 // =============================================================================
 
+/** Evidence bundle lifecycle states. */
+export type BundleState =
+  | 'created'
+  | 'anchored'
+  | 'verified'
+  | 'expired';
+
+/** Anchor status for evidence bundles. */
+export type EvidenceAnchorStatus =
+  | 'unanchored'
+  | 'pending'
+  | 'anchored'
+  | 'verified'
+  | 'failed';
+
 /** Complete evidence bundle for an operation. */
 export interface EvidenceBundle {
   id: string;
+  type?: string;
   intentId: string;
   planId: string;
+  outcomeId?: string;
   chain: EvidenceChain;
   stateRoot: string;          // hex
-  anchorStatus: 'pending' | 'anchored' | 'verified' | 'failed';
+  anchorStatus: EvidenceAnchorStatus;
   anchorId?: string;
+  anchorTxHash?: string;      // hex
+  anchorBlockHeight?: number;
+  anchorDataIndex?: number;
   level: EvidenceLevel;
+  policyDecisions?: DecisionProofRef[];
+  approvalEvidence?: ApprovalEvidenceRef[];
+  trustAssumptions?: EvidenceTrustAssumption[];
+  externalProofs?: ExternalProofRef[];
+  driftAnalysis?: DriftAnalysisRef;
+  stepOutcomes?: StepOutcomeRef[];
+  bundleHash?: string;        // hex
+  chainVerified?: boolean;
+  state?: BundleState;
+  expiresAt?: string;
   createdAt: string;
+  updatedAt?: string;
   completedAt?: string;
+  auditEventIds?: string[];
 }
 
 /** Ordered chain of evidence links. */
@@ -356,6 +647,10 @@ export interface EvidenceChain {
   links: EvidenceLink[];
   chainHash: string;          // hex
   stateRoot: string;          // hex
+  createdAt?: string;         // ISO 8601
+  anchorId?: string;
+  anchorStatus?: string;
+  anchoredAt?: string;        // ISO 8601
 }
 
 /** A single link in the evidence chain. */
@@ -365,8 +660,9 @@ export interface EvidenceLink {
   contentHash: string;        // hex
   prevHash: string;           // hex
   timestamp: string;          // ISO 8601
-  blockHeight: number;
+  blockHeight?: number;
   stageId?: string;
+  artifactRef?: string;
   metadata?: Record<string, string>;
 }
 
@@ -380,13 +676,27 @@ export type EvidenceLinkType =
   | 'anchor_committed'
   | 'policy_evaluated'
   | 'capability_checked'
+  | 'capability_grant'
+  | 'capability_revoke'
+  | 'capability_exercise'
+  | 'capability_denied'
+  | 'grant_state'
+  | 'delegation_chain'
+  | 'sod_violation'
   | 'role_checked'
+  | 'role_state'
+  | 'role_assignment'
+  | 'role_revocation'
+  | 'role_sod_check'
+  | 'role_emergency_grant'
   | 'external_proof';
 
 export type EvidenceLevel =
+  | 'light'
   | 'basic'
   | 'standard'
   | 'comprehensive'
+  | 'full'
   | 'forensic';
 
 /** Result of evidence verification. */
@@ -401,6 +711,83 @@ export interface EvidenceVerificationResult {
 }
 
 export type EvidenceExportFormat = 'json' | 'cbor' | 'protobuf' | 'pdf';
+
+/** Reference to a policy decision within an evidence bundle. */
+export interface DecisionProofRef {
+  timestamp: string;
+  policyType: string;
+  scopeKey: string;
+  decision: string;
+  ruleId?: string;
+  auditMsg?: string;
+  actor?: string;
+  blockHeight?: number;
+}
+
+/** Reference to an approval within an evidence bundle. */
+export interface ApprovalEvidenceRef {
+  stageId: string;
+  identity: string;
+  role: string;
+  planHash: string;
+  signedAt: string;           // ISO 8601
+}
+
+/** Trust assumption captured within an evidence bundle. */
+export interface EvidenceTrustAssumption {
+  profileId: string;
+  profileName?: string;
+  evaluation?: string;
+  detail?: string;
+}
+
+/** Reference to a drift analysis within an evidence bundle. */
+export interface DriftAnalysisRef {
+  exceededThreshold: boolean;
+  maxStepDrift: number;
+  driftingSteps: string[];
+  summary: string;
+  ghostDriftSummary?: string;
+  ghostMaxDrift?: number;
+}
+
+/** Reference to a step outcome within an evidence bundle. */
+export interface StepOutcomeRef {
+  stageId: string;
+  plannedGas: number;
+  actualGas: number;
+  gasDrift: number;
+  status: string;
+  error?: string;
+  outputHash?: string;
+  ghostGasPredicted?: number;
+  ghostGasDrift?: number;
+  ghostStatusMatch?: boolean;
+}
+
+/** Reference to an external proof within an evidence bundle. */
+export interface ExternalProofRef {
+  sourceChain: string;
+  proofType: string;
+  proofHash: string;          // hex
+  txHash?: string;            // hex
+  blockHeight?: number;
+  verified: boolean;
+}
+
+/** Snapshot of a role binding state within an evidence link. */
+export interface RoleSnapshot {
+  bindingID: string;
+  roleName: string;
+  scope: string;
+  state: string;
+}
+
+/** SoD approver identity within an evidence link. */
+export interface RoleSoDApprover {
+  identity: string;
+  role: string;
+}
 
 // =============================================================================
 // Trust Types
@@ -436,31 +823,52 @@ export type BridgeProofType =
 
 export type TrustAssumption =
   | 'trustless'
+  | 'pow_majority'
   | 'honest_majority'
+  | 'bft_quorum'
   | 'honest_minority'
   | 'single_honest'
+  | 'optimistic'
   | 'trusted_operator'
+  | 'trusted_oracle'
+  | 'cryptographic'
   | 'economic_security';
 
 export type FinalityModel =
   | 'instant'
   | 'probabilistic'
+  | 'absolute'
   | 'deterministic'
+  | 'epoch_based'
+  | 'optimistic'
   | 'optimistic_challenge'
   | 'economic';
+
+/** Minimum trust requirements for evaluating a profile. */
+export interface TrustRequirement {
+  minFinalityModel?: FinalityModel;
+  maxTrustAssumption?: TrustAssumption;
+  minConfirmations?: number;
+  maxFreshnessAge?: number;   // seconds
+  requireAudit?: boolean;
+  allowedProofTypes?: BridgeProofType[];
+}
 
 /** Result of evaluating a trust profile against requirements. */
 export interface TrustEvaluation {
   profileId: string;
+  adapterId?: string;
   passed: boolean;
   checks: TrustCheck[];
   overallScore?: number;
 }
 
 export interface TrustCheck {
+  name?: string;
   requirement: string;
   actual: string;
   passed: boolean;
+  detail?: string;
   severity: 'critical' | 'warning' | 'info';
 }
 
@@ -520,18 +928,64 @@ export interface CapabilityListFilter {
 // Role Types
 // =============================================================================
 
+/** Role categories. */
+export type RoleCategory =
+  | 'system'
+  | 'governance'
+  | 'operational'
+  | 'emergency';
+
+/** Scope types for role bindings. */
+export type RoleScopeType =
+  | 'global'
+  | 'contract'
+  | 'object'
+  | 'adi'
+  | 'object_type'
+  | 'workflow'
+  | 'domain';
+
+/** Role binding lifecycle states. */
+export type BindingState =
+  | 'pending'
+  | 'active'
+  | 'suspended'
+  | 'revoked'
+  | 'expired';
+
+/** Well-known system role names. */
+export type SystemRole =
+  | 'admin'
+  | 'operator'
+  | 'treasury_officer'
+  | 'compliance_auditor'
+  | 'emergency_admin'
+  | 'signer'
+  | 'senior_signer'
+  | 'authority';
+
 /** A role binding assigning a role to an identity within a scope. */
 export interface RoleBinding {
   id: string;
   holderIdentity: string;
   roleName: string;
-  scopeType: 'global' | 'contract' | 'adi' | 'object_type';
+  roleCategory?: RoleCategory;
+  scopeType: RoleScopeType;
   scopeTarget: string;
   assignedBy: string;
   assignedAt: string;         // ISO 8601
   expiresAt?: string;
   revokedAt?: string;
-  status: 'active' | 'revoked' | 'expired';
+  status: BindingState;
+  holderKeyPage?: string;
+  holderDID?: string;
+  effectiveFrom?: string;     // ISO 8601
+  effectiveUntil?: string;    // ISO 8601
+  isEmergency?: boolean;
+  emergencyJustification?: string;
+  incompatibleRoles?: string[];
+  grantedViaIntentId?: string;
+  grantedViaPlanId?: string;
   conditions?: Record<string, unknown>;
 }
 
@@ -547,6 +1001,14 @@ export interface RoleAssignOptions {
   expiresAt?: string;
   conditions?: Record<string, unknown>;
   assignedBy?: string;
+  holderKeyPage?: string;
+  holderDID?: string;
+  roleCategory?: RoleCategory;
+  effectiveFrom?: string;
+  effectiveUntil?: string;
+  isEmergency?: boolean;
+  emergencyJustification?: string;
+  incompatibleRoles?: string[];
 }
 
 // =============================================================================
@@ -556,30 +1018,72 @@ export interface RoleAssignOptions {
 /** A settlement instruction describing a multi-leg atomic settlement. */
 export interface SettlementInstruction {
   id: string;
+  instructionUrl?: string;
+  instructionId?: string;
+  fromVault?: string;
+  toVault?: string;
+  assetType?: string;
+  amount?: number;
+  settlementMethod?: string;
   legs: SettlementLeg[];
+  requiredApprovals: number;
+  currentApprovals?: number;
+  deadline?: string;          // ISO 8601
   preconditions: SettlementPrecondition[];
+  proofRequirements?: string[];
   trustProfileRefs: string[];
+  compensationInstructions?: CompensationInstruction[];
+  nettingGroupId?: string;
+  reservationId?: string;
+  finalityRequirement?: string;
+  finalityBlockHeight?: number;
+  intentId?: string;
+  planId?: string;
   createdBy: string;
   createdAt: string;          // ISO 8601
+  updatedAt?: string;         // ISO 8601
   status: 'pending' | 'approved' | 'executing' | 'completed' | 'failed' | 'cancelled';
-  requiredApprovals: number;
-  currentApprovals: number;
+  state?: string;
   evidenceId?: string;
 }
 
 export interface SettlementLeg {
   legId: string;
   fromAccount: string;
+  fromVault?: string;
   toAccount: string;
+  toVault?: string;
   asset: string;
+  assetType?: string;
   amount: number;
   amountDecimal?: string;
   sequence: number;
+  domain?: string;
+  bridgeProofId?: string;
+  status?: string;
+  reservationId?: string;
+  settledAt?: string;         // ISO 8601
+  failReason?: string;
 }
 
 export interface SettlementPrecondition {
   type: 'balance_check' | 'approval' | 'trust_evaluation' | 'time_lock' | 'custom';
+  target?: string;
+  operator?: string;
+  value?: string;
   params: Record<string, unknown>;
+  satisfied?: boolean;
+  evaluatedAt?: string;       // ISO 8601
+}
+
+/** Compensation instruction for a failed settlement leg. */
+export interface CompensationInstruction {
+  legId: string;
+  action: string;
+  targetVault: string;
+  amount: number;
+  executed?: boolean;
+  executedAt?: string;        // ISO 8601
 }
 
 export interface SettlementListFilter {
@@ -605,24 +1109,71 @@ export interface SettlementCreateOptions {
 /** An escrow holding funds with conditional release. */
 export interface Escrow {
   id: string;
+  escrowUrl?: string;
+  escrowId?: string;
   depositor: string;
   beneficiary: string;
+  arbiter?: string;
   asset: string;
+  assetType?: string;
   amount: number;
   amountDecimal?: string;
+  deadline?: string;          // ISO 8601
+  parties?: EscrowParty[];
+  assets?: EscrowAsset[];
   releaseConditions: EscrowCondition[];
+  releaseLogic?: string;
+  disputes?: DisputeRecord[];
   disputeWindow?: number;     // seconds
-  arbiter?: string;
+  settlementInstructionId?: string;
   status: 'funded' | 'released' | 'disputed' | 'refunded' | 'expired';
+  state?: string;
   createdAt: string;          // ISO 8601
+  updatedAt?: string;         // ISO 8601
+  fundedAt?: string;          // ISO 8601
   releasedAt?: string;
+  intentId?: string;
+  planId?: string;
   evidenceId?: string;
 }
 
+/** A party to an escrow arrangement. */
+export interface EscrowParty {
+  partyId: string;
+  role: string;
+  address: string;
+  shareBps?: number;
+}
+
+/** An asset held within an escrow. */
+export interface EscrowAsset {
+  assetType: string;
+  amount: number;
+  released?: boolean;
+  refunded?: boolean;
+}
+
 export interface EscrowCondition {
+  conditionId?: string;
   type: 'approval' | 'time_lock' | 'external_proof' | 'state_check' | 'custom';
+  description?: string;
+  parameters?: Record<string, unknown>;
   params: Record<string, unknown>;
   satisfied: boolean;
+  satisfiedAt?: string;       // ISO 8601
+  evaluatedAt?: string;       // ISO 8601
+}
+
+/** A dispute record within an escrow. */
+export interface DisputeRecord {
+  disputeId: string;
+  filedBy: string;
+  filedAt: string;            // ISO 8601
+  reason: string;
+  evidence?: string[];
+  resolution?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;        // ISO 8601
 }
 
 export interface EscrowListFilter {
@@ -647,20 +1198,66 @@ export interface EscrowCreateOptions {
 // Disclosure Types
 // =============================================================================
 
+/** Disclosure target types. */
+export type DisclosureTargetType =
+  | 'object'
+  | 'contract_state'
+  | 'evidence'
+  | 'outcome'
+  | 'call_envelope';
+
+/** Disclosure scope types. */
+export type DisclosureScopeType =
+  | 'global'
+  | 'contract'
+  | 'object'
+  | 'workflow';
+
+/** Disclosure purpose categories. */
+export type DisclosurePurpose =
+  | 'audit'
+  | 'compliance'
+  | 'operational'
+  | 'investigation'
+  | 'counterparty';
+
+/** Disclosure proof types. */
+export type DisclosureProofType =
+  | 'none'
+  | 'zkp'
+  | 'authorization';
+
 /** A disclosure grant allowing access to specific object fields. */
 export interface DisclosureGrant {
   id: string;
+  grantUrl?: string;
   grantorIdentity: string;
+  grantorRole?: string;
   granteeIdentity: string;
+  granteeDid?: string;
+  granteeRole?: string;
   targetType: string;
   targetId: string;
   disclosedFields: string[];
-  purpose?: string;
+  disclosedKeys?: string[];
+  scopeType?: DisclosureScopeType;
+  scopeTarget?: string;
+  effectiveFrom?: string;     // ISO 8601
+  effectiveUntil?: string;    // ISO 8601
+  workflowStageScope?: string;
+  conditions?: Record<string, unknown>;
+  proofRequired?: boolean;
+  proofType?: DisclosureProofType;
+  purpose?: DisclosurePurpose | string;
+  justification?: string;
+  grantedViaIntentId?: string;
+  grantedViaPlanId?: string;
+  approvalRequired?: boolean;
+  authorityUrl?: string;
   grantedAt: string;          // ISO 8601
   expiresAt?: string;
   revokedAt?: string;
   status: 'active' | 'revoked' | 'expired';
-  conditions?: Record<string, unknown>;
 }
 
 export interface DisclosureListFilter {
@@ -683,17 +1280,65 @@ export interface DisclosureGrantOptions {
 // Anchor Types
 // =============================================================================
 
+/** Types of artifacts that can be anchored to L0. */
+export type ArtifactType =
+  | 'state_root'
+  | 'evidence_bundle'
+  | 'evidence_chain'
+  | 'outcome'
+  | 'outcome_digest'
+  | 'approval_digest'
+  | 'plan_hash'
+  | 'audit_checkpoint'
+  | 'settlement'
+  | 'custom';
+
+/** Anchor encoding types. */
+export type AnchorType =
+  | 'full'
+  | 'digest'
+  | 'merkle_root'
+  | 'batch';
+
+/** Anchor record lifecycle status. */
+export type AnchorRecordStatus =
+  | 'pending'
+  | 'submitted'
+  | 'committed'
+  | 'confirmed'
+  | 'verified'
+  | 'failed';
+
 /** A record anchored to L0 (Accumulate layer). */
 export interface AnchoredRecord {
   id: string;
-  artifactType: 'evidence_chain' | 'outcome' | 'settlement' | 'state_root' | 'custom';
+  artifactType: ArtifactType;
+  artifactId?: string;
   artifactHash: string;       // hex
+  anchorType?: AnchorType;
+  anchorData?: string;        // hex
+  anchorDataSize?: number;
   l0TxHash: string;           // hex
-  l0DataAccount: string;      // acc:// URL
   l0BlockHeight: number;
-  status: 'pending' | 'committed' | 'verified' | 'failed';
+  l0DataAccount: string;      // acc:// URL
+  l0DataIndex?: number;
+  previousAnchorId?: string;
+  previousAnchorHash?: string; // hex
+  infrixBlockHeight?: number;
+  stateRoot?: string;         // hex
+  status: AnchorRecordStatus;
+  submittedAt?: string;       // ISO 8601
   committedAt?: string;
+  confirmedAt?: string;
   verifiedAt?: string;
+  failedAt?: string;
+  failureReason?: string;
+  retryCount?: number;
+  anchoredByPolicy?: string;
+  anchoredViaIntentId?: string;
+  creditsConsumed?: number;
+  batchId?: string;
+  batchMerkleProof?: string[];
 }
 
 export interface AnchorListFilter {
@@ -727,6 +1372,33 @@ export interface AnchorStats {
 // =============================================================================
 // Object Types
 // =============================================================================
+
+/** Registry object types matching Go ObjectType constants. */
+export type ObjectType =
+  | 'asset'
+  | 'data_record'
+  | 'identity'
+  | 'permission_set'
+  | 'authority'
+  | 'contract'
+  | 'intent'
+  | 'approval'
+  | 'policy_binding'
+  | 'workflow_instance'
+  | 'execution_plan'
+  | 'outcome_record'
+  | 'anchored_record'
+  | 'credential'
+  | 'attestation'
+  | 'vault'
+  | 'capability_grant'
+  | 'settlement_instruction'
+  | 'escrow'
+  | 'bridge_proof'
+  | 'trust_profile'
+  | 'role_binding'
+  | 'evidence_bundle'
+  | 'disclosure_grant';
 
 /** A governed object in the object registry. */
 export interface GoverningObject {
@@ -821,4 +1493,72 @@ export interface PolicySimulationResult {
   matchedRules: PolicyDecision[];
   sideEffects: string[];
   warnings: string[];
+}
+
+// =============================================================================
+// L0 Protocol Object Types
+// =============================================================================
+
+/** An Accumulate token/credit account. */
+export interface Asset {
+  accountUrl: string;
+  tokenUrl: string;
+  balance: number;
+  creditBalance?: number;
+  ownerAdi: string;
+  authorityUrl: string;
+  lastTxBlock?: number;
+}
+
+/** An Accumulate data account. */
+export interface DataRecord {
+  accountUrl: string;
+  entryCount: number;
+  ownerAdi: string;
+  authorityUrl: string;
+  dataType?: string;
+}
+
+/** An Accumulate ADI (Accumulate Digital Identifier). */
+export interface Identity {
+  adiUrl: string;
+  keyBooks: string[];
+  subAccounts?: string[];
+  authorities?: string[];
+  createdAt?: string;
+}
+
+/** An Accumulate key page (permission set). */
+export interface PermissionSet {
+  keyPageUrl: string;
+  keyBookUrl: string;
+  keys: KeyEntry[];
+  creditBalance: number;
+  threshold: number;
+  version: number;
+}
+
+/** A key entry within a permission set. */
+export interface KeyEntry {
+  publicKeyHash: string;      // hex
+  delegate?: string;
+  lastUsedOn?: number;
+}
+
+/** An Accumulate key book (authority). */
+export interface Authority {
+  keyBookUrl: string;
+  ownerAdi: string;
+  pages: string[];
+  pageCount: number;
+}
+
+/** A deployed contract object. */
+export interface ContractObject {
+  contractUrl: string;
+  ownerAdi: string;
+  authorityUrl: string;
+  codeHash: string;           // hex
+  version: number;
+  deployedAt?: string;
 }
