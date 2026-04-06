@@ -39,6 +39,16 @@ export type { KeyStore, KeyInfo } from './keystore';
 export { SessionManager } from './session';
 export type { SessionScope, SessionKey } from './session';
 
+// Governance types (re-exported from wallet governance types)
+export type {
+  IntentGoal,
+  IntentResult,
+  IntentSubmitOptions,
+  ApprovalEnvelope,
+  OutcomeRecord,
+  EvidenceBundle,
+} from './governance-types';
+
 // Crypto
 export { generateEd25519KeyPair, signEd25519, verifyEd25519, sha256, toHex, fromHex } from './crypto';
 export type { Ed25519KeyPair } from './crypto';

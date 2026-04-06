@@ -22,6 +22,23 @@ export interface SessionScope {
   expiresAt?: Date | string;
   /** Maximum number of operations (0 = unlimited). */
   maxUses?: number;
+
+  // Governance permissions
+
+  /** Allow intent submission via this session key. */
+  allowIntentSubmit?: boolean;
+  /** Allow approval signing via this session key. */
+  allowApproval?: boolean;
+  /** Intent goal types this session can submit. */
+  allowedGoalTypes?: string[];
+  /** Maximum gas budget per intent submitted via this session. */
+  maxGasPerIntent?: number;
+  /** Object types this session can create/transition. */
+  allowedObjectTypes?: string[];
+  /** Capabilities this session can exercise. */
+  allowedCapabilities?: string[];
+  /** Roles this session can act under. */
+  allowedRoles?: string[];
 }
 
 /** A session key with its scope and remaining usage. */
@@ -78,8 +95,15 @@ export class SessionManager {
   /**
    * Validate whether a session key is permitted to perform the given operation.
    * Throws an error describing the violation if not allowed.
+   *
+   * For contract operations, pass contractUrl and functionName.
+   * For governance operations, pass the RPC method as operation with optional params.
    */
-  validate(publicKey: Uint8Array, contractUrl: string, functionName: string): void {
+  validate(
+    publicKey: Uint8Array,
+    operation: string,
+    functionNameOrParams?: string | Record<string, unknown>
+  ): void {
     const sk = this.sessions.get(toHex(publicKey));
     if (!sk) throw new Error('Session key not found');
 
@@ -97,6 +121,31 @@ export class SessionManager {
     if (sk.usesLeft === 0) {
       throw new Error('Session key has no remaining uses');
     }
+
+    // Governance operation checks
+    if (operation === 'intent.submit') {
+      if (sk.scope.allowIntentSubmit === false) {
+        throw new Error('Session key not authorized for intent submission');
+      }
+      const params = typeof functionNameOrParams === 'object' ? functionNameOrParams : undefined;
+      if (sk.scope.allowedGoalTypes?.length && params?.goalType) {
+        if (!sk.scope.allowedGoalTypes.includes(params.goalType as string)) {
+          throw new Error(`Session key not authorized for goal type: ${params.goalType}`);
+        }
+      }
+      return;
+    }
+
+    if (operation === 'approval.submit') {
+      if (sk.scope.allowApproval === false) {
+        throw new Error('Session key not authorized for approvals');
+      }
+      return;
+    }
+
+    // Contract operation checks (legacy signature: operation=contractUrl, functionNameOrParams=fnName)
+    const contractUrl = operation;
+    const functionName = typeof functionNameOrParams === 'string' ? functionNameOrParams : '';
 
     // Check contract whitelist.
     if (sk.scope.contracts && sk.scope.contracts.length > 0) {

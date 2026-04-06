@@ -21,6 +21,14 @@
 import { toHex } from './crypto';
 import { MemoryKeyStore, KeyStore, KeyInfo } from './keystore';
 import { SessionManager, SessionScope, SessionKey } from './session';
+import type {
+  IntentGoal,
+  IntentResult,
+  IntentSubmitOptions,
+  ApprovalEnvelope,
+  OutcomeRecord,
+  EvidenceBundle,
+} from './governance-types';
 
 /** Options for creating a wallet. */
 export interface WalletOptions {
@@ -282,6 +290,148 @@ export class InfrixWallet {
       this.localSponsorConfig = config;
       throw new Error('Failed to register sponsor on-chain; config stored locally');
     }
+  }
+
+  // ---- Governance Operations ----
+
+  /**
+   * Submit an intent signed with the wallet's active key.
+   *
+   * @param goal - Intent goal (structured or natural language)
+   * @param opts - Optional constraints, preferences
+   * @returns IntentResult with intentId and status
+   */
+  async submitIntent(
+    goal: IntentGoal | string,
+    opts?: IntentSubmitOptions
+  ): Promise<IntentResult> {
+    const params: Record<string, unknown> = {
+      userAddress: this.adi,
+    };
+    if (typeof goal === 'string') {
+      params.rawInput = goal;
+    } else {
+      params.goal = goal;
+    }
+    if (opts?.constraints) params.constraints = opts.constraints;
+    if (opts?.preferences) params.preferences = opts.preferences;
+    if (opts?.metadata) params.metadata = opts.metadata;
+
+    // Sign the intent submission
+    if (this.activeKey) {
+      const message = new TextEncoder().encode(JSON.stringify(params));
+      const signature = await this.keyStore.sign(this.activeKey, message);
+      params.signature = toHex(signature);
+      params.publicKey = toHex(this.activeKey);
+    }
+
+    return this.rpc('intent.submit', params) as unknown as IntentResult;
+  }
+
+  /**
+   * Approve an intent's execution plan with a signed ApprovalEnvelope.
+   *
+   * @param intentId - Intent to approve
+   * @param planHash - Hash of the plan being approved (hex). If omitted, fetches the plan automatically.
+   * @returns The signed ApprovalEnvelope
+   */
+  async approveIntent(
+    intentId: string,
+    planHash?: string
+  ): Promise<ApprovalEnvelope> {
+    // If planHash not provided, fetch the plan and compute it
+    if (!planHash) {
+      const plan = await this.rpc('intent.plan', { intentId });
+      planHash = (plan as Record<string, unknown>).planHash as string;
+    }
+
+    return this.signApproval(intentId, planHash!);
+  }
+
+  /**
+   * Create and submit a signed ApprovalEnvelope.
+   *
+   * Signs the plan hash with the wallet's active key and submits
+   * the approval to the network.
+   *
+   * @param targetId - ID of the target being approved
+   * @param planHash - Hash of the plan/state being approved
+   * @param opts - Optional: role, conditions, scope
+   */
+  async signApproval(
+    targetId: string,
+    planHash: string,
+    opts?: { role?: string; conditions?: Record<string, unknown> }
+  ): Promise<ApprovalEnvelope> {
+    if (!this.activeKey) {
+      throw new Error('No active key. Call generateKey() first.');
+    }
+
+    // Sign the planHash
+    const message = new TextEncoder().encode(`approve:${targetId}:${planHash}`);
+    const signature = await this.keyStore.sign(this.activeKey, message);
+
+    const params: Record<string, unknown> = {
+      targetId,
+      planHash,
+      identity: this.adi,
+      signatureHex: toHex(signature),
+      publicKey: toHex(this.activeKey),
+      ...opts,
+    };
+
+    return this.rpc('approval.submit', params) as unknown as ApprovalEnvelope;
+  }
+
+  /**
+   * Get the outcome of a completed intent.
+   *
+   * @param intentId - The intent ID
+   */
+  async getIntentOutcome(intentId: string): Promise<OutcomeRecord> {
+    return this.rpc('intent.outcome', { intentId }) as unknown as OutcomeRecord;
+  }
+
+  /**
+   * Get the evidence bundle for an intent.
+   *
+   * @param intentId - The intent ID
+   */
+  async getEvidence(intentId: string): Promise<EvidenceBundle> {
+    return this.rpc('intent.evidence', { intentId }) as unknown as EvidenceBundle;
+  }
+
+  /**
+   * Check if this wallet has a specific capability.
+   *
+   * @param capability - Capability string to check
+   * @param scope - Optional scope constraint
+   */
+  async hasCapability(
+    capability: string,
+    scope?: string
+  ): Promise<boolean> {
+    const result = await this.rpc('capability.check', {
+      identity: this.adi,
+      capability,
+      scope,
+    });
+    return (result as Record<string, unknown>).granted as boolean;
+  }
+
+  /**
+   * Check if this wallet has a specific role.
+   *
+   * @param role - Role name to check
+   * @param scope - Optional scope constraint
+   */
+  async hasRole(role: string, scope?: string): Promise<boolean> {
+    const result = await this.rpc('role.check', {
+      identity: this.adi,
+      role,
+      scope,
+    });
+    return (result as Record<string, unknown>).hasRole as boolean;
   }
 
   // ---- Internal RPC ----
