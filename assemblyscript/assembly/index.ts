@@ -49,6 +49,9 @@ export {
   ReentrancyGuard,
 } from "./sdk";
 
+// Export governance module
+export { Governance } from "./governance";
+
 // Export testing framework
 export {
   describe,

@@ -323,3 +323,123 @@ export declare function host_assert(
   msg_ptr: usize,
   msg_len: u32
 ): void;
+
+// =============================================================================
+// Governance Operations
+// =============================================================================
+
+/** Submit an intent. Returns result length or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_submit_intent")
+export declare function host_governance_submit_intent(
+  goal_ptr: usize,
+  goal_len: u32,
+  output_ptr: usize
+): i32;
+
+/** Get intent status. Returns result length or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_get_intent_status")
+export declare function host_governance_get_intent_status(
+  intent_id_ptr: usize,
+  intent_id_len: u32,
+  output_ptr: usize
+): i32;
+
+/** Create a governed object. Returns ID length or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_create_object")
+export declare function host_governance_create_object(
+  type_ptr: usize,
+  type_len: u32,
+  fields_ptr: usize,
+  fields_len: u32,
+  output_ptr: usize
+): i32;
+
+/** Get a governed object. Returns data length or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_get_object")
+export declare function host_governance_get_object(
+  type_ptr: usize,
+  type_len: u32,
+  id_ptr: usize,
+  id_len: u32,
+  output_ptr: usize
+): i32;
+
+/** Transition an object state. Returns 0 on success or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_transition_object")
+export declare function host_governance_transition_object(
+  type_ptr: usize,
+  type_len: u32,
+  id_ptr: usize,
+  id_len: u32,
+  state_ptr: usize,
+  state_len: u32
+): i32;
+
+/** Check if identity has capability. Returns 1 if yes, 0 if no. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_has_capability")
+export declare function host_governance_has_capability(
+  identity_ptr: usize,
+  identity_len: u32,
+  cap_ptr: usize,
+  cap_len: u32
+): i32;
+
+/** Grant capability. Returns grant ID length or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_grant_capability")
+export declare function host_governance_grant_capability(
+  grantee_ptr: usize,
+  grantee_len: u32,
+  caps_ptr: usize,
+  caps_len: u32,
+  scope_ptr: usize,
+  scope_len: u32,
+  output_ptr: usize
+): i32;
+
+/** Check if identity has role. Returns 1 if yes, 0 if no. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_has_role")
+export declare function host_governance_has_role(
+  identity_ptr: usize,
+  identity_len: u32,
+  role_ptr: usize,
+  role_len: u32
+): i32;
+
+/** Require approval. Returns 0 on success, negative if approval not met. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_require_approval")
+export declare function host_governance_require_approval(
+  role_ptr: usize,
+  role_len: u32,
+  threshold: u32
+): i32;
+
+/** Evaluate policy. Returns result length or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_evaluate_policy")
+export declare function host_governance_evaluate_policy(
+  scope_ptr: usize,
+  scope_len: u32,
+  type_ptr: usize,
+  type_len: u32,
+  operands_ptr: usize,
+  operands_len: u32,
+  output_ptr: usize
+): i32;
+
+/** Get evidence bundle. Returns data length or negative error. */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_get_evidence")
+export declare function host_governance_get_evidence(
+  intent_id_ptr: usize,
+  intent_id_len: u32,
+  output_ptr: usize
+): i32;
