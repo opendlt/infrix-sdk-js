@@ -65,6 +65,9 @@ export type {
 
 export * from './types/governance';
 
+export { withGovernanceSugar } from './sugar';
+export type { GovernedResult } from './sugar';
+
 export {
   SubClient,
   IntentSubClient,
