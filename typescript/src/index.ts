@@ -1,21 +1,27 @@
 /**
- * @infrix/client — TypeScript client for the Infrix governance platform.
+ * @infrix/client — Policy-governed execution and evidence layer for Accumulate.
  *
- * The primary API surface is governance-oriented:
- *   client.intents.*       — Intent lifecycle (submit, plan, approve, outcome)
+ * All operations flow through the canonical governance spine:
+ *   Intent -> Plan -> Approval -> Execution -> Outcome -> Evidence -> Anchor
+ *
+ * Primary sub-clients (governance spine):
+ *   client.intents.*       — Submit governed operations
+ *   client.policies.*      — Evaluate governance policies
+ *   client.approvals.*     — Manage approval workflows
+ *   client.evidence.*      — Inspect evidence chains
+ *   client.trust.*         — Manage external dependency trust
+ *   client.anchors.*       — Verify L0 anchor proofs
+ *
+ * Secondary sub-clients (protocol primitives):
  *   client.objects.*       — Governed object operations
- *   client.policies.*      — Policy evaluation and management
- *   client.approvals.*     — Approval management
- *   client.evidence.*      — Evidence chain access
- *   client.trust.*         — Trust profile evaluation
- *   client.capabilities.*  — Capability grant management
  *   client.roles.*         — Role binding management
+ *   client.capabilities.*  — Capability grant management
  *   client.settlements.*   — Settlement instructions
  *   client.escrows.*       — Escrow management
  *   client.disclosures.*   — Disclosure grant management
- *   client.anchors.*       — L0 anchor verification
  *
- * Contract operations are available via client.contracts.* for low-level access.
+ * Contract operations (low-level, wraps as governed intent):
+ *   client.contracts.*     — Contract build, deploy, call, query
  *
  * @example
  *   import { InfrixClient } from '@infrix/client';
@@ -27,10 +33,6 @@
  *     sourceAssets: [{ asset: 'ACME', amount: 100 }],
  *     targetState: { stateType: 'balance_increase', parameters: { account: 'acc://bob.acme/tokens' } }
  *   });
- *
- *   // Low-level: direct contract call (bypasses governance)
- *   const receipt = await client.contracts.deploy('acc://my.acme/counter', wasmHex);
- *   const callResult = await client.contracts.call('acc://my.acme/counter', 'increment');
  */
 
 // ---- Re-export types ----
