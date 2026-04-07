@@ -53,7 +53,21 @@ export type IntentGoalType =
   | 'ROLE_SUSPEND'
   | 'ROLE_EMERGENCY'
   | 'DISCLOSURE_GRANT'
-  | 'DISCLOSURE_REVOKE';
+  | 'DISCLOSURE_REVOKE'
+  | 'CONTRACT_DEPLOY'
+  | 'CONTRACT_CALL'
+  | 'SWARM_CREATE'
+  | 'SWARM_JOIN'
+  | 'SWARM_COORDINATE'
+  | 'SWARM_DISSOLVE'
+  | 'SHAPE_TRANSITION'
+  | 'BRIDGE_SEND'
+  | 'BRIDGE_RECEIVE'
+  | 'CAPABILITY_REVOKE'
+  | 'POLICY_UNBIND'
+  | 'ANCHOR_FORCE'
+  | 'TRUST_PROFILE_CREATE'
+  | 'TRUST_PROFILE_UPDATE';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {
@@ -228,17 +242,30 @@ export interface GhostStepPrediction {
   writeSetSize?: number;
 }
 
+/** Canonical spine stages. */
+export type SpineStage =
+  | 'intent'
+  | 'plan'
+  | 'approval'
+  | 'execution'
+  | 'outcome'
+  | 'evidence'
+  | 'anchor';
+
 /** A single step in the execution plan. */
 export interface PlanStep {
   stageId: string;
   stageName: string;
   type: PlanStepType;
+  /** Canonical spine stage this step represents. */
+  spineStage: SpineStage;
   description: string;
   gasEstimate: number;
   policyCondition?: string;
   executionTarget?: string;
   dependsOn?: string[];
   expectedOutput?: string;
+  /** @deprecated Use typed params and StepFamily() dispatch instead. */
   stepType?: string;
   contractCallParams?: ContractCallStepParams;
   objectOperationParams?: ObjectOperationStepParams;
@@ -294,6 +321,8 @@ export interface ObjectOperationStepParams {
   objectId?: string;
   fields?: Record<string, unknown>;
   targetState?: string;
+  /** Explicit operation: 'create' | 'mutate' | 'transition'. */
+  operation?: 'create' | 'mutate' | 'transition';
 }
 
 /** Parameters for a settlement step. */
@@ -386,7 +415,63 @@ export interface OutcomeRecord {
   evidenceBundleId?: string;
   anchorId?: string;
   anchorStatus?: string;
+  /** Finality state of this outcome. */
+  finality: OutcomeFinality;
 }
+
+/** Outcome finality states. */
+export type OutcomeFinality =
+  | 'provisional'
+  | 'locally_final'
+  | 'external_contingent'
+  | 'compensated'
+  | 'disputed'
+  | 'l0_anchored_final';
+
+// =============================================================================
+// Gap 15: Cross-cutting governance types
+// =============================================================================
+
+/** Anchor class — classifies the anchoring treatment for an artifact type. */
+export type AnchorClass =
+  | 'no_anchor'
+  | 'digest_only'
+  | 'batch'
+  | 'full';
+
+/** Privacy class — disclosure privacy classification for object fields. */
+export type PrivacyClass =
+  | 'public'
+  | 'internal'
+  | 'confidential'
+  | 'restricted'
+  | 'secret';
+
+/** Settlement method — how value is moved in a settlement instruction. */
+export type SettlementMethod =
+  | 'atomic'
+  | 'phased'
+  | 'netting'
+  | 'bridge'
+  | 'escrow';
+
+/** Execution family — the category of execution runtime for a plan step. */
+export type ExecutionFamily =
+  | 'wasm'
+  | 'rule_pack'
+  | 'workflow_native'
+  | 'verifier_plugin'
+  | 'external_adapter'
+  | 'agent_module'
+  | 'confidential';
+
+/** Trust response action — deterministic downstream effect of trust drift. */
+export type TrustResponseAction =
+  | 'pause_plan'
+  | 'invalidate_approval'
+  | 'downgrade_evidence'
+  | 'block_finality'
+  | 'fallback';
 
 /** Actual result for a single plan step. */
 export interface StepOutcome {

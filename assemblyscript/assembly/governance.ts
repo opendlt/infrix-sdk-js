@@ -312,6 +312,62 @@ export namespace Governance {
   }
 
   // =========================================================================
+  // Gap 15: Governance Type Constants
+  // =========================================================================
+
+  // --- Outcome Finality ---
+  export const FINALITY_PROVISIONAL: string = "provisional";
+  export const FINALITY_LOCALLY_FINAL: string = "locally_final";
+  export const FINALITY_EXTERNAL_CONTINGENT: string = "external_contingent";
+  export const FINALITY_COMPENSATED: string = "compensated";
+  export const FINALITY_DISPUTED: string = "disputed";
+  export const FINALITY_L0_ANCHORED_FINAL: string = "l0_anchored_final";
+
+  // --- Anchor Class ---
+  export const ANCHOR_CLASS_NONE: string = "no_anchor";
+  export const ANCHOR_CLASS_DIGEST_ONLY: string = "digest_only";
+  export const ANCHOR_CLASS_BATCH: string = "batch";
+  export const ANCHOR_CLASS_FULL: string = "full";
+
+  // --- Privacy Class ---
+  export const PRIVACY_PUBLIC: string = "public";
+  export const PRIVACY_INTERNAL: string = "internal";
+  export const PRIVACY_CONFIDENTIAL: string = "confidential";
+  export const PRIVACY_RESTRICTED: string = "restricted";
+  export const PRIVACY_SECRET: string = "secret";
+
+  // --- Settlement Method ---
+  export const SETTLEMENT_ATOMIC: string = "atomic";
+  export const SETTLEMENT_PHASED: string = "phased";
+  export const SETTLEMENT_NETTING: string = "netting";
+  export const SETTLEMENT_BRIDGE: string = "bridge";
+  export const SETTLEMENT_ESCROW: string = "escrow";
+
+  // --- Execution Family ---
+  export const EXEC_FAMILY_WASM: string = "wasm";
+  export const EXEC_FAMILY_RULE_PACK: string = "rule_pack";
+  export const EXEC_FAMILY_WORKFLOW_NATIVE: string = "workflow_native";
+  export const EXEC_FAMILY_VERIFIER_PLUGIN: string = "verifier_plugin";
+  export const EXEC_FAMILY_EXTERNAL_ADAPTER: string = "external_adapter";
+  export const EXEC_FAMILY_AGENT_MODULE: string = "agent_module";
+  export const EXEC_FAMILY_CONFIDENTIAL: string = "confidential";
+
+  // --- Trust Response Action ---
+  export const TRUST_RESPONSE_PAUSE_PLAN: string = "pause_plan";
+  export const TRUST_RESPONSE_INVALIDATE_APPROVAL: string = "invalidate_approval";
+  export const TRUST_RESPONSE_DOWNGRADE_EVIDENCE: string = "downgrade_evidence";
+  export const TRUST_RESPONSE_BLOCK_FINALITY: string = "block_finality";
+  export const TRUST_RESPONSE_FALLBACK: string = "fallback";
+
+  // --- Intent Goal Types ---
+  export const GOAL_BRIDGE_SEND: string = "BRIDGE_SEND";
+  export const GOAL_BRIDGE_RECEIVE: string = "BRIDGE_RECEIVE";
+  export const GOAL_CAPABILITY_REVOKE: string = "CAPABILITY_REVOKE";
+  export const GOAL_POLICY_UNBIND: string = "POLICY_UNBIND";
+  export const GOAL_ANCHOR_FORCE: string = "ANCHOR_FORCE";
+  export const GOAL_TRUST_PROFILE_UPDATE: string = "TRUST_PROFILE_UPDATE";
+
+  // =========================================================================
   // Evidence Operations
   // =========================================================================
 
