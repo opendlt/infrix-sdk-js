@@ -357,7 +357,6 @@ export namespace Governance {
   export const TRUST_RESPONSE_INVALIDATE_APPROVAL: string = "invalidate_approval";
   export const TRUST_RESPONSE_DOWNGRADE_EVIDENCE: string = "downgrade_evidence";
   export const TRUST_RESPONSE_BLOCK_FINALITY: string = "block_finality";
-  export const TRUST_RESPONSE_FALLBACK: string = "fallback";
 
   // --- Intent Goal Types ---
   export const GOAL_BRIDGE_SEND: string = "BRIDGE_SEND";

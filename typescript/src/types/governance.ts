@@ -470,8 +470,7 @@ export type TrustResponseAction =
   | 'pause_plan'
   | 'invalidate_approval'
   | 'downgrade_evidence'
-  | 'block_finality'
-  | 'fallback';
+  | 'block_finality';
 
 /** Actual result for a single plan step. */
 export interface StepOutcome {
