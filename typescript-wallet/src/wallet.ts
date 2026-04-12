@@ -1,9 +1,14 @@
 /**
  * InfrixWallet — ADI-native smart wallet for the Infrix platform.
  *
- * Provides key management, transaction signing, session keys, contract
- * interaction, and social recovery — all backed by Accumulate Digital
- * Identifiers (ADIs).
+ * The wallet's public surface is governance-first: keys, session keys,
+ * social recovery, and submission of intents that flow through the
+ * canonical spine (Intent -> Plan -> Approval -> Execution -> Outcome ->
+ * Evidence -> Anchor). All state-changing actions — including contract
+ * deployment and contract calls — are expressed as intents via
+ * `submitIntent` with an appropriate goal type (e.g. CONTRACT_DEPLOY,
+ * CONTRACT_CALL, OBJECT_CREATE). There is no direct contract surface on
+ * the wallet.
  *
  * @example
  * ```typescript
@@ -14,7 +19,14 @@
  * });
  *
  * await wallet.generateKey();
- * const result = await wallet.call('acc://game.acme/counter', 'increment');
+ * const result = await wallet.submitIntent({
+ *   type: 'CONTRACT_CALL',
+ *   customParams: {
+ *     contractAddress: 'acc://game.acme/counter',
+ *     function: 'increment',
+ *     arguments: [],
+ *   },
+ * });
  * ```
  */
 
@@ -36,42 +48,6 @@ export interface WalletOptions {
   rpcUrl?: string;
   /** Custom key store implementation. Default: MemoryKeyStore */
   keyStore?: KeyStore;
-}
-
-/** Transaction descriptor for signing. */
-export interface Transaction {
-  contractUrl: string;
-  function: string;
-  args: unknown[];
-  gasLimit?: number;
-}
-
-/** Signed transaction ready for submission. */
-export interface SignedTransaction {
-  transaction: Transaction;
-  publicKey: Uint8Array;
-  signature: Uint8Array;
-}
-
-/** Receipt from a state-changing call. */
-export interface CallReceipt {
-  txHash: string;
-  returnData: unknown;
-  gasUsed: number;
-  blockHeight: number;
-}
-
-/** Receipt from a contract deployment. */
-export interface DeployReceipt {
-  txHash: string;
-  contractUrl: string;
-  blockHeight: number;
-  codeHash: string;
-}
-
-/** Result from a read-only query. */
-export interface QueryResult {
-  returnData: unknown;
 }
 
 /** Social recovery request. */
@@ -160,59 +136,6 @@ export class InfrixWallet {
   /** List all keys in the wallet. */
   async listKeys(): Promise<KeyInfo[]> {
     return this.keyStore.listKeys();
-  }
-
-  // ---- Transaction Signing ----
-
-  /** Sign a transaction with the active key. */
-  async sign(tx: Transaction): Promise<SignedTransaction> {
-    if (!this.activeKey) throw new Error('No active key. Call generateKey() first.');
-    const message = new TextEncoder().encode(
-      `${tx.contractUrl}:${tx.function}:${JSON.stringify(tx.args)}`,
-    );
-    const signature = await this.keyStore.sign(this.activeKey, message);
-    return { transaction: tx, publicKey: this.activeKey, signature };
-  }
-
-  /** Sign and submit a transaction to the network. */
-  async signAndSubmit(tx: Transaction): Promise<CallReceipt> {
-    await this.sign(tx); // Signing is implicit; devnet doesn't require signatures.
-    return this.call(tx.contractUrl, tx.function, tx.args);
-  }
-
-  // ---- Contract Interaction ----
-
-  /** Deploy a contract. */
-  async deploy(url: string, code: Uint8Array): Promise<DeployReceipt> {
-    const hex = Array.from(code).map(b => b.toString(16).padStart(2, '0')).join('');
-    const result = await this.rpc('contract.deploy', { url, bytecode: hex, gasLimit: 500000 });
-    return {
-      txHash: result.txHash as string,
-      contractUrl: result.contractUrl as string,
-      blockHeight: result.blockHeight as number,
-      codeHash: result.codeHash as string,
-    };
-  }
-
-  /** Execute a state-changing function on a contract. */
-  async call(contractUrl: string, fn: string, args: unknown[] = []): Promise<CallReceipt> {
-    const result = await this.rpc('contract.call', {
-      url: contractUrl, function: fn, args, gasLimit: 500000,
-    });
-    return {
-      txHash: result.txHash as string,
-      returnData: result.returnData,
-      gasUsed: result.gasUsed as number,
-      blockHeight: result.blockHeight as number,
-    };
-  }
-
-  /** Execute a read-only query. */
-  async query(contractUrl: string, fn: string, args: unknown[] = []): Promise<QueryResult> {
-    const result = await this.rpc('contract.query', {
-      url: contractUrl, function: fn, args,
-    });
-    return { returnData: result.returnData };
   }
 
   // ---- Session Keys ----

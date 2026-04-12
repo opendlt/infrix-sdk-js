@@ -20,8 +20,11 @@
  *   client.escrows.*       — Escrow management
  *   client.disclosures.*   — Disclosure grant management
  *
- * Contract operations (low-level, wraps as governed intent):
- *   client.contracts.*     — Contract build, deploy, call, query
+ * Contract inspection (read-only only):
+ *   client.contracts.*     — query, simulate, inspect, schema
+ *   Contract mutations (deploy/call/upgrade) must be submitted as intents
+ *   via client.intents.submit({ type: 'CONTRACT_DEPLOY' | 'CONTRACT_CALL' |
+ *   'CONTRACT_UPGRADE', ... }).
  *
  * @example
  *   import { InfrixClient } from '@infrix/client';
@@ -38,12 +41,10 @@
 // ---- Re-export types ----
 
 export type {
-  DeployResult,
   CallResult,
   QueryResult,
   TransactionReceipt,
   ContractInfo,
-  UpgradeResult,
   TraceStep,
   TraceResult,
   ExplorerStatus,
@@ -60,8 +61,6 @@ export type {
   EventSchemaEntry,
   FieldSchemaEntry,
   ErrorSchemaEntry,
-  BatchCallRequest,
-  BatchCallResult,
   DevnetEvent,
 } from './types/contract';
 
@@ -89,27 +88,7 @@ export {
 
 // ---- Direct imports for internal use ----
 
-import type {
-  DeployResult,
-  CallResult,
-  QueryResult,
-  TransactionReceipt,
-  ContractInfo,
-  UpgradeResult,
-  TraceResult,
-  ExplorerStatus,
-  IndexedEvent,
-  EventFilterParams,
-  ReceiptFilterParams,
-  StateDiffFilterParams,
-  IndexedStateDiff,
-  ContractStatsResult,
-  NetworkStatsResult,
-  ContractSchema,
-  BatchCallRequest,
-  BatchCallResult,
-  DevnetEvent,
-} from './types/contract';
+import type { DevnetEvent } from './types/contract';
 
 import {
   IntentSubClient,
@@ -183,9 +162,13 @@ export class InfrixClient {
   /** L0 anchor verification: list, verify, stats, get. */
   readonly anchors: AnchorSubClient;
 
-  // ---- SECONDARY: Contract Sub-Client ----
+  // ---- Read-only Contract Inspection ----
 
-  /** Low-level contract operations (deploy, call, query, upgrade, inspect). Bypasses governance. */
+  /**
+   * Read-only contract inspection: query, simulate, inspect, schema.
+   * State-changing contract operations (deploy, call, upgrade) must be
+   * submitted as intents via `client.intents.submit(...)`.
+   */
   readonly contracts: ContractSubClient;
 
   /**
@@ -585,71 +568,6 @@ export class MissionClient {
   }
   async global(): Promise<Record<string, unknown>> {
     return this.rpc<Record<string, unknown>>('mission.global', {});
-  }
-}
-
-// ---- Intent Graph Types (legacy, kept for backward compatibility) ----
-
-export interface IntentResolveResult {
-  intentId: string;
-  status: string;
-  rankedPaths?: { paths: IntentRankedPath[] };
-  ambiguous?: boolean;
-  candidates?: { confidence: number; explanation: string }[];
-}
-
-export interface IntentRankedPath {
-  rank: number;
-  score: number;
-  path: { id: string; hopCount: number; totalGasEstimate: number; assetFlow: string[] };
-  simResult?: { success: boolean; actualOutput: number; totalGasUsed: number; slippage: number };
-}
-
-export interface IntentExecuteResult {
-  intentId: string;
-  status: string;
-  executionResult?: { success: boolean; actualOutput: number; outputAsset: string; totalGasUsed: number; matchesGhost: boolean };
-  txHash?: string;
-  blockHeight?: number;
-}
-
-export interface IntentGraphNode {
-  id: string;
-  name: string;
-  category: string;
-  confidenceScore: number;
-  immuneState: string;
-  tokenAssets?: string[];
-  functionCount: number;
-}
-
-/** IntentClient provides legacy intent-based execution methods. */
-export class IntentClient {
-  constructor(private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>) {}
-
-  async resolve(input: string, userAddress: string): Promise<IntentResolveResult> {
-    return this.rpc<IntentResolveResult>('intent.resolve', { input, userAddress });
-  }
-  async execute(intentId: string, pathRank = 1): Promise<IntentExecuteResult> {
-    return this.rpc<IntentExecuteResult>('intent.execute', { intentId, pathRank });
-  }
-  async confirm(intentId: string, candidateIndex: number): Promise<{ status: string }> {
-    return this.rpc<{ status: string }>('intent.confirm', { intentId, candidateIndex });
-  }
-  async status(intentId: string): Promise<{ intentId: string; status: string }> {
-    return this.rpc<{ intentId: string; status: string }>('intent.status', { intentId });
-  }
-  async paths(intentId: string): Promise<{ rankedPaths: { paths: IntentRankedPath[] } }> {
-    return this.rpc<{ rankedPaths: { paths: IntentRankedPath[] } }>('intent.paths', { intentId });
-  }
-  async graphQuery(opts?: { category?: string; asset?: string; function?: string }): Promise<{ nodes?: IntentGraphNode[]; stats?: Record<string, number> }> {
-    return this.rpc<{ nodes?: IntentGraphNode[]; stats?: Record<string, number> }>('intent.graph.query', opts ?? {});
-  }
-  async graphStats(): Promise<Record<string, number>> {
-    return this.rpc<Record<string, number>>('intent.graph.stats', {});
-  }
-  async history(userAddress: string): Promise<Record<string, unknown>> {
-    return this.rpc<Record<string, unknown>>('intent.history', { userAddress });
   }
 }
 

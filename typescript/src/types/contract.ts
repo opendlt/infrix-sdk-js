@@ -1,17 +1,16 @@
 /**
- * Contract types extracted from the original InfrixClient.
- *
- * These types support the ContractSubClient and backward-compatible
- * top-level methods on InfrixClient.
+ * Contract inspection and read-only simulation types. State-changing
+ * contract operations (deploy, call, upgrade) are governance-routed as
+ * intents; their results are `IntentResult` values from the governance
+ * types module, not raw contract receipts.
  */
 
-export interface DeployResult {
-  txHash: string;
-  contractUrl: string;
-  blockHeight: number;
-  codeHash: string;
-}
-
+/**
+ * Result of a read-only simulation. `txHash` and `blockHeight` are
+ * provided only when the simulation is pinned to a specific block for
+ * determinism; simulations do not mutate state and do not produce
+ * anchored receipts.
+ */
 export interface CallResult {
   txHash: string;
   returnData: string | string[] | null;
@@ -43,14 +42,6 @@ export interface ContractInfo {
   callCount: number;
   totalGasUsed: number;
   functions: string[];
-  version: number;
-}
-
-export interface UpgradeResult {
-  txHash: string;
-  contractUrl: string;
-  blockHeight: number;
-  newCodeHash: string;
   version: number;
 }
 
@@ -192,24 +183,6 @@ export interface ErrorSchemaEntry {
   name: string;
   code: number;
   message: string;
-}
-
-export interface BatchCallRequest {
-  url: string;
-  function: string;
-  args?: unknown[];
-  gasLimit?: number;
-}
-
-export interface BatchCallResult {
-  url: string;
-  function: string;
-  txHash: string;
-  returnData: string | string[] | null;
-  gasUsed: number;
-  blockHeight: number;
-  status: string;
-  error: string;
 }
 
 export interface DevnetEvent {

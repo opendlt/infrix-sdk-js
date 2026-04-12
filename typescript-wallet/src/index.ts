@@ -1,19 +1,29 @@
 /**
  * @infrix/wallet — ADI-native smart wallet SDK for the Infrix platform.
  *
+ * The wallet exposes only governance-first primitives. State-changing
+ * operations are submitted as intents via `submitIntent` and flow through
+ * the canonical spine (Intent -> Plan -> Approval -> Execution -> Outcome
+ * -> Evidence -> Anchor).
+ *
  * @example
  * ```typescript
  * import { InfrixWallet, InfrixProvider } from '@infrix/wallet';
  *
- * // Direct usage
  * const wallet = new InfrixWallet('acc://alice.acme');
  * await wallet.generateKey();
- * await wallet.call('acc://game.acme/counter', 'increment');
+ * const result = await wallet.submitIntent({
+ *   type: 'CONTRACT_CALL',
+ *   customParams: {
+ *     contractAddress: 'acc://game.acme/counter',
+ *     function: 'increment',
+ *     arguments: [],
+ *   },
+ * });
  *
- * // Browser extension bridge
  * if (InfrixProvider.isAvailable()) {
  *   const wallet = await InfrixProvider.connect();
- *   console.log(wallet.adi); // "acc://alice.acme"
+ *   console.log(wallet.adi);
  * }
  * ```
  */
@@ -22,11 +32,6 @@
 export { InfrixWallet } from './wallet';
 export type {
   WalletOptions,
-  Transaction,
-  SignedTransaction,
-  CallReceipt,
-  DeployReceipt,
-  QueryResult,
   RecoveryRequest,
   SponsorConfig,
 } from './wallet';
