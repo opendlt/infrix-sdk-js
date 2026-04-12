@@ -1,7 +1,7 @@
 {
   "name": "@infrix/client",
   "version": "0.1.0",
-  "description": "TypeScript client for the Infrix smart contract platform",
+  "description": "TypeScript client for the Infrix governance-first execution platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
@@ -9,7 +9,7 @@
     "build": "tsc",
     "test": "tsc --noEmit && node --test dist/index.test.js"
   },
-  "keywords": ["infrix", "smart-contracts", "wasm", "accumulate", "blockchain"],
+  "keywords": ["infrix", "governance", "intent", "policy", "accumulate", "wasm", "blockchain"],
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.4.0"
