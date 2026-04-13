@@ -489,6 +489,9 @@ export namespace Governance {
   export const GOAL_ANCHOR_FORCE: string = "ANCHOR_FORCE";
   export const GOAL_TRUST_PROFILE_CREATE: string = "TRUST_PROFILE_CREATE";
   export const GOAL_TRUST_PROFILE_UPDATE: string = "TRUST_PROFILE_UPDATE";
+  // Gap 2 closure: system-origin intents for bootstrap and periodic anchoring.
+  export const GOAL_BOOTSTRAP_ROLE: string = "BOOTSTRAP_ROLE";
+  export const GOAL_SYSTEM_ANCHOR_PERIODIC: string = "SYSTEM_ANCHOR_PERIODIC";
 
   // =========================================================================
   // Evidence Operations
