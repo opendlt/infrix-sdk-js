@@ -52,6 +52,7 @@ export type IntentGoalType =
   | 'ROLE_REVOKE'
   | 'ROLE_SUSPEND'
   | 'ROLE_EMERGENCY'
+  | 'ROLE_NORMALIZE'
   | 'DISCLOSURE_GRANT'
   | 'DISCLOSURE_REVOKE'
   | 'CONTRACT_DEPLOY'
@@ -445,21 +446,34 @@ export type PrivacyClass =
   | 'internal'
   | 'confidential'
   | 'restricted'
-  | 'secret';
+  | 'secret'
+  | 'never_disclosable'
+  | 'zkp_only';
 
 /** Settlement method — how value is moved in a settlement instruction. */
 export type SettlementMethod =
   | 'atomic'
+  | 'dvp'
   | 'phased'
   | 'netting'
   | 'bridge'
-  | 'escrow';
+  | 'escrow'
+  | 'regulated';
 
 /** Execution family — the category of execution runtime for a plan step. */
 export type ExecutionFamily =
   | 'wasm'
+  | 'object_op'
+  | 'settlement'
+  | 'bridge'
+  | 'approval_gate'
+  | 'policy_check'
+  | 'disclosure_action'
+  | 'swarm_action'
+  | 'anchor'
+  | 'wait'
+  | 'external_proof'
   | 'rule_pack'
-  | 'workflow_native'
   | 'verifier_plugin'
   | 'external_adapter'
   | 'agent_module'
