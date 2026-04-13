@@ -52,6 +52,16 @@ export {
 // Export governance module
 export { Governance } from "./governance";
 
+// Gap 15 cross-cutting governance enum namespaces (wire-compatible with TS/Rust SDKs)
+export {
+  AnchorClass,
+  PrivacyClass,
+  SettlementMethod,
+  ExecutionFamily,
+  TrustResponseAction,
+  OutcomeFinality,
+} from "./governance";
+
 // Export testing framework
 export {
   describe,

@@ -22,6 +22,85 @@ import {
 
 const MAX_OUTPUT_SIZE: i32 = 65536;
 
+// =============================================================================
+// Gap 15: Cross-cutting governance type constants.
+//
+// These mirror the Go source-of-truth definitions in
+// pkg/anchor/doctrine.go, pkg/disclosure/privacy_class.go,
+// pkg/objects/types.go (SettlementMethod), pkg/executor/execution_family.go,
+// pkg/trust/response_orchestrator.go, and pkg/workflow/outcome_finality.go.
+// Wire values are strings to match the JSON shape used by the TypeScript
+// and Rust SDKs.
+// =============================================================================
+
+/** Anchor class — classifies the anchoring treatment for an artifact type. */
+export namespace AnchorClass {
+  export const NoAnchor: string = "no_anchor";
+  export const DigestOnly: string = "digest_only";
+  export const Batch: string = "batch";
+  export const Full: string = "full";
+}
+
+/** Privacy class — disclosure privacy classification for object fields. */
+export namespace PrivacyClass {
+  export const Public: string = "public";
+  export const Internal: string = "internal";
+  export const Confidential: string = "confidential";
+  export const Restricted: string = "restricted";
+  export const Secret: string = "secret";
+  export const NeverDisclosable: string = "never_disclosable";
+  export const ZkpOnly: string = "zkp_only";
+}
+
+/** Settlement method — how value is moved in a settlement instruction. */
+export namespace SettlementMethod {
+  export const Atomic: string = "atomic";
+  export const Dvp: string = "dvp";
+  export const Phased: string = "phased";
+  export const Netting: string = "netting";
+  export const Bridge: string = "bridge";
+  export const Escrow: string = "escrow";
+  export const Regulated: string = "regulated";
+}
+
+/** Execution family — the category of execution runtime for a plan step. */
+export namespace ExecutionFamily {
+  export const Wasm: string = "wasm";
+  export const ObjectOp: string = "object_op";
+  export const Settlement: string = "settlement";
+  export const Bridge: string = "bridge";
+  export const ApprovalGate: string = "approval_gate";
+  export const PolicyCheck: string = "policy_check";
+  export const DisclosureAction: string = "disclosure_action";
+  export const SwarmAction: string = "swarm_action";
+  export const Anchor: string = "anchor";
+  export const Wait: string = "wait";
+  export const ExternalProof: string = "external_proof";
+  export const RulePack: string = "rule_pack";
+  export const VerifierPlugin: string = "verifier_plugin";
+  export const ExternalAdapter: string = "external_adapter";
+  export const AgentModule: string = "agent_module";
+  export const Confidential: string = "confidential";
+}
+
+/** Trust response action — deterministic downstream effect of trust drift. */
+export namespace TrustResponseAction {
+  export const PausePlan: string = "pause_plan";
+  export const InvalidateApproval: string = "invalidate_approval";
+  export const DowngradeEvidence: string = "downgrade_evidence";
+  export const BlockFinality: string = "block_finality";
+}
+
+/** Outcome finality states for an OutcomeRecord. */
+export namespace OutcomeFinality {
+  export const Provisional: string = "provisional";
+  export const LocallyFinal: string = "locally_final";
+  export const ExternalContingent: string = "external_contingent";
+  export const Compensated: string = "compensated";
+  export const Disputed: string = "disputed";
+  export const L0AnchoredFinal: string = "l0_anchored_final";
+}
+
 export namespace Governance {
   // =========================================================================
   // Intent Operations
@@ -359,11 +438,56 @@ export namespace Governance {
   export const TRUST_RESPONSE_BLOCK_FINALITY: string = "block_finality";
 
   // --- Intent Goal Types ---
+  // Full parity with pkg/intent/types.go (source of truth). All 38
+  // goal-type string literals must match the Go constants exactly;
+  // the mediator's goal-type dispatch is string-keyed. Keep TS and
+  // Rust SDK enums (sdk/typescript/src/types/governance.ts,
+  // sdk/rust/infrix-types/src/governance.rs) in lockstep.
+  export const GOAL_CONVERT: string = "CONVERT";
+  export const GOAL_EARN_YIELD: string = "EARN_YIELD";
+  export const GOAL_BORROW: string = "BORROW";
+  export const GOAL_PROVIDE_LIQUIDITY: string = "PROVIDE_LIQUIDITY";
+  export const GOAL_SWAP: string = "SWAP";
+  export const GOAL_STAKE: string = "STAKE";
+  export const GOAL_BRIDGE: string = "BRIDGE";
+  export const GOAL_COMPOUND: string = "COMPOUND";
+  export const GOAL_CUSTOM: string = "CUSTOM";
+  export const GOAL_OBJECT_CREATE: string = "OBJECT_CREATE";
+  export const GOAL_OBJECT_MUTATE: string = "OBJECT_MUTATE";
+  export const GOAL_TRANSFER: string = "TRANSFER";
+  export const GOAL_POLICY_BIND: string = "POLICY_BIND";
+  export const GOAL_CAPABILITY_GRANT: string = "CAPABILITY_GRANT";
+  export const GOAL_WORKFLOW_START: string = "WORKFLOW_START";
+  export const GOAL_CREDENTIAL_ISSUE: string = "CREDENTIAL_ISSUE";
+  export const GOAL_VAULT_CREATE: string = "VAULT_CREATE";
+  export const GOAL_SETTLEMENT: string = "SETTLEMENT";
+  export const GOAL_SETTLEMENT_NETTING: string = "SETTLEMENT_NETTING";
+  export const GOAL_ESCROW_CREATE: string = "ESCROW_CREATE";
+  export const GOAL_OBJECT_TRANSITION: string = "OBJECT_TRANSITION";
+  export const GOAL_POLICY_CHANGE: string = "POLICY_CHANGE";
+  export const GOAL_CONTRACT_UPGRADE: string = "CONTRACT_UPGRADE";
+  export const GOAL_PATCH_PROPAGATION: string = "PATCH_PROPAGATION";
+  export const GOAL_REVERT_TRANSACTION: string = "REVERT_TRANSACTION";
+  export const GOAL_ROLE_ASSIGN: string = "ROLE_ASSIGN";
+  export const GOAL_ROLE_REVOKE: string = "ROLE_REVOKE";
+  export const GOAL_ROLE_SUSPEND: string = "ROLE_SUSPEND";
+  export const GOAL_ROLE_EMERGENCY: string = "ROLE_EMERGENCY";
+  export const GOAL_ROLE_NORMALIZE: string = "ROLE_NORMALIZE";
+  export const GOAL_DISCLOSURE_GRANT: string = "DISCLOSURE_GRANT";
+  export const GOAL_DISCLOSURE_REVOKE: string = "DISCLOSURE_REVOKE";
+  export const GOAL_CONTRACT_DEPLOY: string = "CONTRACT_DEPLOY";
+  export const GOAL_CONTRACT_CALL: string = "CONTRACT_CALL";
+  export const GOAL_SWARM_CREATE: string = "SWARM_CREATE";
+  export const GOAL_SWARM_JOIN: string = "SWARM_JOIN";
+  export const GOAL_SWARM_COORDINATE: string = "SWARM_COORDINATE";
+  export const GOAL_SWARM_DISSOLVE: string = "SWARM_DISSOLVE";
+  export const GOAL_SHAPE_TRANSITION: string = "SHAPE_TRANSITION";
   export const GOAL_BRIDGE_SEND: string = "BRIDGE_SEND";
   export const GOAL_BRIDGE_RECEIVE: string = "BRIDGE_RECEIVE";
   export const GOAL_CAPABILITY_REVOKE: string = "CAPABILITY_REVOKE";
   export const GOAL_POLICY_UNBIND: string = "POLICY_UNBIND";
   export const GOAL_ANCHOR_FORCE: string = "ANCHOR_FORCE";
+  export const GOAL_TRUST_PROFILE_CREATE: string = "TRUST_PROFILE_CREATE";
   export const GOAL_TRUST_PROFILE_UPDATE: string = "TRUST_PROFILE_UPDATE";
 
   // =========================================================================
