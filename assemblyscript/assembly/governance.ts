@@ -492,6 +492,12 @@ export namespace Governance {
   // Gap 2 closure: system-origin intents for bootstrap and periodic anchoring.
   export const GOAL_BOOTSTRAP_ROLE: string = "BOOTSTRAP_ROLE";
   export const GOAL_SYSTEM_ANCHOR_PERIODIC: string = "SYSTEM_ANCHOR_PERIODIC";
+  // Gap 2 full closure: system-origin intents for periodic invalidation
+  // sweeps (approval auto-invalidation, role expiry, capability expiry)
+  // that previously fabricated synthetic IntentContexts.
+  export const GOAL_APPROVAL_INVALIDATE: string = "APPROVAL_INVALIDATE";
+  export const GOAL_ROLE_EXPIRE: string = "ROLE_EXPIRE";
+  export const GOAL_CAPABILITY_EXPIRE: string = "CAPABILITY_EXPIRE";
 
   // =========================================================================
   // Evidence Operations
