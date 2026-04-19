@@ -498,6 +498,19 @@ export namespace Governance {
   export const GOAL_APPROVAL_INVALIDATE: string = "APPROVAL_INVALIDATE";
   export const GOAL_ROLE_EXPIRE: string = "ROLE_EXPIRE";
   export const GOAL_CAPABILITY_EXPIRE: string = "CAPABILITY_EXPIRE";
+  // Gap 13 fourth-pass closure: sponsorship configuration is now a
+  // first-class governed object; registration / lifecycle transit the
+  // canonical spine via these intent goals.
+  export const GOAL_SPONSOR_REGISTER: string = "SPONSOR_REGISTER";
+  export const GOAL_SPONSOR_UPDATE: string = "SPONSOR_UPDATE";
+  export const GOAL_SPONSOR_REVOKE: string = "SPONSOR_REVOKE";
+  export const GOAL_SPONSOR_PAUSE: string = "SPONSOR_PAUSE";
+  export const GOAL_SPONSOR_RESUME: string = "SPONSOR_RESUME";
+  // Gap 13 fourth-pass closure: dispute resolution is the binding seam
+  // by which an arbiter closes a still-pending dispute on a settlement
+  // instruction, replacing the prior dead-end where disputes had no
+  // closure path at all.
+  export const GOAL_DISPUTE_RESOLVE: string = "DISPUTE_RESOLVE";
 
   // =========================================================================
   // Evidence Operations
