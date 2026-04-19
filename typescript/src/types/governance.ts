@@ -21,7 +21,16 @@ export interface Intent {
   metadata?: Record<string, string>;
 }
 
-/** Intent goal types matching Go IntentGoalType constants. */
+/**
+ * Intent goal types matching Go IntentGoalType constants in
+ * pkg/intent/types.go. The mediator dispatches by exact string match,
+ * so this union MUST stay in perfect parity with ValidGoalTypes (see
+ * pkg/intent/sdk_goal_parity_test.go:TestSDKGoalParity_TypeScript —
+ * that test fails loud if any entry here is missing from Go or any
+ * Go entry is missing here). GOAL_TRANSFER and GOAL_ESCROW_CREATE
+ * were removed in Gap 13 first-pass; single-leg transfers and escrow
+ * creation now route through 'SETTLEMENT' with the appropriate method.
+ */
 export type IntentGoalType =
   | 'CONVERT'
   | 'EARN_YIELD'
@@ -34,7 +43,6 @@ export type IntentGoalType =
   | 'CUSTOM'
   | 'OBJECT_CREATE'
   | 'OBJECT_MUTATE'
-  | 'TRANSFER'
   | 'POLICY_BIND'
   | 'CAPABILITY_GRANT'
   | 'WORKFLOW_START'
@@ -42,7 +50,6 @@ export type IntentGoalType =
   | 'VAULT_CREATE'
   | 'SETTLEMENT'
   | 'SETTLEMENT_NETTING'
-  | 'ESCROW_CREATE'
   | 'OBJECT_TRANSITION'
   | 'POLICY_CHANGE'
   | 'CONTRACT_UPGRADE'
@@ -68,7 +75,23 @@ export type IntentGoalType =
   | 'POLICY_UNBIND'
   | 'ANCHOR_FORCE'
   | 'TRUST_PROFILE_CREATE'
-  | 'TRUST_PROFILE_UPDATE';
+  | 'TRUST_PROFILE_UPDATE'
+  | 'BOOTSTRAP_ROLE'
+  | 'SYSTEM_ANCHOR_PERIODIC'
+  | 'APPROVAL_INVALIDATE'
+  | 'ROLE_EXPIRE'
+  | 'CAPABILITY_EXPIRE'
+  | 'SPONSOR_REGISTER'
+  | 'SPONSOR_UPDATE'
+  | 'SPONSOR_REVOKE'
+  | 'SPONSOR_PAUSE'
+  | 'SPONSOR_RESUME'
+  | 'DISPUTE_RESOLVE'
+  | 'RULE_PACK_EVAL'
+  | 'VERIFIER_RUN'
+  | 'EXTERNAL_ADAPTER_CALL'
+  | 'AGENT_RUN'
+  | 'CONFIDENTIAL_EXEC';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {

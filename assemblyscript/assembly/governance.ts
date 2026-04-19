@@ -438,11 +438,19 @@ export namespace Governance {
   export const TRUST_RESPONSE_BLOCK_FINALITY: string = "block_finality";
 
   // --- Intent Goal Types ---
-  // Full parity with pkg/intent/types.go (source of truth). All 38
+  // Full parity with pkg/intent/types.go (source of truth). All 60
   // goal-type string literals must match the Go constants exactly;
   // the mediator's goal-type dispatch is string-keyed. Keep TS and
   // Rust SDK enums (sdk/typescript/src/types/governance.ts,
   // sdk/rust/infrix-types/src/governance.rs) in lockstep.
+  //
+  // Gap 13 first-pass removed GOAL_TRANSFER and GOAL_ESCROW_CREATE —
+  // single-leg transfers and escrow creation now route through
+  // GOAL_SETTLEMENT with the appropriate method.
+  //
+  // Gap 15 closure adds bidirectional parity fences in
+  // pkg/intent/sdk_goal_parity_test.go for AS, TS, and Rust — a
+  // missing-or-stale constant in any SDK now fails the build.
   export const GOAL_CONVERT: string = "CONVERT";
   export const GOAL_EARN_YIELD: string = "EARN_YIELD";
   export const GOAL_BORROW: string = "BORROW";
@@ -454,7 +462,6 @@ export namespace Governance {
   export const GOAL_CUSTOM: string = "CUSTOM";
   export const GOAL_OBJECT_CREATE: string = "OBJECT_CREATE";
   export const GOAL_OBJECT_MUTATE: string = "OBJECT_MUTATE";
-  export const GOAL_TRANSFER: string = "TRANSFER";
   export const GOAL_POLICY_BIND: string = "POLICY_BIND";
   export const GOAL_CAPABILITY_GRANT: string = "CAPABILITY_GRANT";
   export const GOAL_WORKFLOW_START: string = "WORKFLOW_START";
@@ -462,7 +469,6 @@ export namespace Governance {
   export const GOAL_VAULT_CREATE: string = "VAULT_CREATE";
   export const GOAL_SETTLEMENT: string = "SETTLEMENT";
   export const GOAL_SETTLEMENT_NETTING: string = "SETTLEMENT_NETTING";
-  export const GOAL_ESCROW_CREATE: string = "ESCROW_CREATE";
   export const GOAL_OBJECT_TRANSITION: string = "OBJECT_TRANSITION";
   export const GOAL_POLICY_CHANGE: string = "POLICY_CHANGE";
   export const GOAL_CONTRACT_UPGRADE: string = "CONTRACT_UPGRADE";
