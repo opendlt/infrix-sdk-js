@@ -529,6 +529,10 @@ export namespace Governance {
   export const GOAL_EXTERNAL_ADAPTER_CALL: string = "EXTERNAL_ADAPTER_CALL";
   export const GOAL_AGENT_RUN: string = "AGENT_RUN";
   export const GOAL_CONFIDENTIAL_EXEC: string = "CONFIDENTIAL_EXEC";
+  // Gap 15 sixth-pass §15 closure: generic admin/operator action
+  // envelope routing /rpc state-mutating methods through the canonical
+  // governance pipeline.
+  export const GOAL_SUBSYSTEM_ACTION: string = "SUBSYSTEM_ACTION";
 
   // =========================================================================
   // Evidence Operations

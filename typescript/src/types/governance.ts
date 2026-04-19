@@ -91,7 +91,8 @@ export type IntentGoalType =
   | 'VERIFIER_RUN'
   | 'EXTERNAL_ADAPTER_CALL'
   | 'AGENT_RUN'
-  | 'CONFIDENTIAL_EXEC';
+  | 'CONFIDENTIAL_EXEC'
+  | 'SUBSYSTEM_ACTION';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {
