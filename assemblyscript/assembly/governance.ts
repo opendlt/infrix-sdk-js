@@ -511,6 +511,18 @@ export namespace Governance {
   // instruction, replacing the prior dead-end where disputes had no
   // closure path at all.
   export const GOAL_DISPUTE_RESOLVE: string = "DISPUTE_RESOLVE";
+  // Gap 14 execution-pluralism peer families: each peer execution
+  // family has a first-class user-submittable intent so it is
+  // reachable through the canonical spine, not just via a synthetic
+  // plan. Smart contracts (CONTRACT_CALL) are one peer family among
+  // many; rule packs, verifier plugins, external adapters, agent
+  // modules, and confidential execution environments are equally
+  // normalised through their own goals.
+  export const GOAL_RULE_PACK_EVAL: string = "RULE_PACK_EVAL";
+  export const GOAL_VERIFIER_RUN: string = "VERIFIER_RUN";
+  export const GOAL_EXTERNAL_ADAPTER_CALL: string = "EXTERNAL_ADAPTER_CALL";
+  export const GOAL_AGENT_RUN: string = "AGENT_RUN";
+  export const GOAL_CONFIDENTIAL_EXEC: string = "CONFIDENTIAL_EXEC";
 
   // =========================================================================
   // Evidence Operations
