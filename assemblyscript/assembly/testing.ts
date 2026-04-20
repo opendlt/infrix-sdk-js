@@ -3,7 +3,7 @@
  *
  * Provides a `describe`/`it` test structure that mirrors popular testing
  * libraries. Test functions prefixed with `test_` are automatically discovered
- * and executed by `infrix test`.
+ * and executed by `infrix contract test`.
  *
  * @example
  * ```typescript
@@ -249,7 +249,7 @@ export const ctx = new TestContext();
 
 /**
  * Runs all registered tests and returns results.
- * Called by `infrix test` via the exported `test_run_all` function.
+ * Called by `infrix contract test` via the exported `test_run_all` function.
  */
 export function runTests(): TestResult[] {
   _results = [];
@@ -284,7 +284,7 @@ export function getTestName(index: i32): string {
   return "";
 }
 
-// ---- Summary (exported for infrix test discovery) ----
+// ---- Summary (exported for infrix contract test discovery) ----
 
 /**
  * Returns a formatted test summary string.
