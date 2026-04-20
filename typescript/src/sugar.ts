@@ -29,12 +29,18 @@ export interface GovernedResult<T = unknown> {
  * Mixin that adds convenience wrappers to InfrixClient.
  *
  * These methods submit intents, poll for completion, and return
- * unified GovernedResult objects.
+ * unified GovernedResult objects. Every helper delegates to the
+ * canonical governance spine — the supported goal types come from
+ * the `IntentGoalType` union in `./types/governance` (line 34-95).
  *
  * @example
  * ```typescript
  * const governed = withGovernanceSugar(client);
- * const result = await governed.transfer('acc://alice.acme/tokens', 'acc://bob.acme/tokens', 100);
+ * const result = await governed.singleLegSettlement(
+ *   'acc://alice.acme/tokens',
+ *   'acc://bob.acme/tokens',
+ *   100,
+ * );
  * ```
  */
 export function withGovernanceSugar(client: InfrixClient) {
@@ -42,46 +48,52 @@ export function withGovernanceSugar(client: InfrixClient) {
     ...client,
 
     /**
-     * Transfer tokens via governed intent pipeline.
+     * Move value between two accounts via the governed settlement
+     * pipeline. The Gap 13 first-pass closure removed the standalone
+     * `TRANSFER` goal type; single-leg transfers and escrow creation
+     * now route through `SETTLEMENT` with a single Leg (see
+     * `sdk/typescript/src/types/governance.ts:28-32`).
      *
-     * Internally submits a TRANSFER intent, waits for plan approval
-     * (auto-approved if policy allows), and returns the outcome.
+     * Internally builds a one-leg SettlementInstruction and routes it
+     * through the canonical spine: Intent → Plan → Approval →
+     * Execution → Outcome → Evidence → Anchor.
      *
      * @param from - Source account URL
      * @param to - Destination account URL
-     * @param amount - Amount to transfer
-     * @param opts - Optional: asset type, max gas budget
+     * @param amount - Amount to move
+     * @param opts - Optional: asset type, trust profile reference
      *
      * @example
      * ```typescript
-     * const result = await governed.transfer(
+     * const result = await governed.singleLegSettlement(
      *   'acc://alice.acme/tokens',
      *   'acc://bob.acme/tokens',
      *   100
      * );
-     * console.log(`Transfer completed: ${result.intentId}, gas: ${result.gasUsed}`);
+     * console.log(`Settlement completed: ${result.intentId}, gas: ${result.gasUsed}`);
      * ```
      */
-    async transfer(
+    async singleLegSettlement(
       from: string,
       to: string,
       amount: number,
-      opts?: { asset?: string; maxGas?: number }
-    ): Promise<GovernedResult> {
-      const goal: IntentGoal = {
-        type: 'TRANSFER',
-        sourceAssets: [{ asset: opts?.asset ?? 'ACME', amount }],
-        targetState: {
-          stateType: 'balance_increase',
-          parameters: { from, to, amount: String(amount) },
-        },
-      };
-
-      const result = await client.intents.submit(goal, {
-        constraints: opts?.maxGas ? { maxGas: opts.maxGas } : undefined,
+      opts?: { asset?: string; trustProfile?: string }
+    ): Promise<GovernedResult<SettlementInstruction>> {
+      const result = await client.settlements.create({
+        legs: [
+          {
+            legId: 'leg-1',
+            fromAccount: from,
+            toAccount: to,
+            asset: opts?.asset ?? 'ACME',
+            amount,
+            sequence: 0,
+          },
+        ],
+        trustProfileRefs: opts?.trustProfile ? [opts.trustProfile] : [],
       });
 
-      return pollForCompletion(client, result.intentId);
+      return pollForCompletion(client, result.intentId) as Promise<GovernedResult<SettlementInstruction>>;
     },
 
     /**

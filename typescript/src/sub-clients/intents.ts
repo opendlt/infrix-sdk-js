@@ -32,9 +32,12 @@ export class IntentSubClient extends SubClient {
    * @example
    * ```typescript
    * const result = await client.intents.submit({
-   *   type: 'TRANSFER',
-   *   sourceAssets: [{ asset: 'ACME', amount: 100 }],
-   *   targetState: { stateType: 'balance_increase', parameters: { account: 'acc://bob.acme/tokens' } }
+   *   type: 'CONTRACT_CALL',
+   *   customParams: {
+   *     contract: 'acc://mytoken.acme',
+   *     function: 'transfer',
+   *     args: ['acc://bob.acme/tokens', '100'],
+   *   },
    * });
    * ```
    */

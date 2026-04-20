@@ -13,6 +13,15 @@ import type {
  * `client.intents.submit(...)` with a goal of `CONTRACT_DEPLOY`,
  * `CONTRACT_CALL`, or `CONTRACT_UPGRADE`. There is no low-level mutation
  * path on this sub-client.
+ *
+ * Transports:
+ *   - query / inspect / schema → JSON-RPC (registered in
+ *     pkg/devnet/rpc_handler.go: contract.query / contract.inspect /
+ *     contract.schema). Read-only and gated.
+ *   - simulate → REST POST /v4/contracts/{addr}/simulate
+ *     (pkg/api/v4/rest/contracts.go::handleSimulate). The simulate
+ *     endpoint is REST-native; it carries the V4 governance-metadata
+ *     envelope that the JSON-RPC dispatcher does not produce.
  */
 export class ContractSubClient extends SubClient {
   /** Execute a read-only query on a contract (no state change). */
@@ -31,6 +40,11 @@ export class ContractSubClient extends SubClient {
   /**
    * Simulate a call without committing state. Used for gas estimation
    * and preview; does not emit evidence or mutate state.
+   *
+   * Routed through REST POST /v4/contracts/{addr}/simulate to match the
+   * server-side handler at pkg/api/v4/rest/contracts.go:51. The legacy
+   * JSON-RPC `contract.simulate` method was never registered server-side
+   * and would have returned method-not-found at runtime.
    */
   async simulate(
     url: string,
@@ -38,12 +52,15 @@ export class ContractSubClient extends SubClient {
     args: unknown[] = [],
     opts?: { gasLimit?: number }
   ): Promise<CallResult> {
-    return this.rpc<CallResult>('contract.simulate', {
-      url,
-      function: fn,
-      args,
-      gasLimit: opts?.gasLimit ?? 500000,
-    });
+    return this.rest<CallResult>(
+      'POST',
+      `/v4/contracts/${encodeURIComponent(url)}/simulate`,
+      {
+        function: fn,
+        arguments: args,
+        gasLimit: opts?.gasLimit ?? 500000,
+      }
+    );
   }
 
   /** Get contract metadata. */

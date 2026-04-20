@@ -30,11 +30,14 @@
  *   import { InfrixClient } from '@infrix/client';
  *   const client = new InfrixClient('http://localhost:8080');
  *
- *   // Governance-first: submit an intent
+ *   // Governance-first: submit a CONTRACT_CALL intent
  *   const result = await client.intents.submit({
- *     type: 'TRANSFER',
- *     sourceAssets: [{ asset: 'ACME', amount: 100 }],
- *     targetState: { stateType: 'balance_increase', parameters: { account: 'acc://bob.acme/tokens' } }
+ *     type: 'CONTRACT_CALL',
+ *     customParams: {
+ *       contract: 'acc://mytoken.acme',
+ *       function: 'transfer',
+ *       args: ['acc://bob.acme/tokens', '100'],
+ *     },
  *   });
  */
 
@@ -171,6 +174,8 @@ export class InfrixClient {
    */
   readonly contracts: ContractSubClient;
 
+  private restBase: string;
+
   /**
    * Create a client connected to an Infrix devnet.
    * @param baseUrl The base URL of the devnet server, e.g. "http://localhost:8080"
@@ -179,25 +184,27 @@ export class InfrixClient {
     const base = baseUrl.replace(/\/+$/, '');
     this.rpcUrl = `${base}/rpc`;
     this.wsUrl = base.replace(/^http/, 'ws') + '/ws';
+    this.restBase = base;
 
     const rpcFn = this.rpc.bind(this);
+    const restFn = this.rest.bind(this);
 
     // PRIMARY: Governance sub-clients
-    this.intents = new IntentSubClient(rpcFn);
-    this.objects = new ObjectSubClient(rpcFn);
-    this.policies = new PolicySubClient(rpcFn);
-    this.approvals = new ApprovalSubClient(rpcFn);
-    this.evidence = new EvidenceSubClient(rpcFn);
-    this.trust = new TrustSubClient(rpcFn);
-    this.capabilities = new CapabilitySubClient(rpcFn);
-    this.roles = new RoleSubClient(rpcFn);
-    this.settlements = new SettlementSubClient(rpcFn);
-    this.escrows = new EscrowSubClient(rpcFn);
-    this.disclosures = new DisclosureSubClient(rpcFn);
-    this.anchors = new AnchorSubClient(rpcFn);
+    this.intents = new IntentSubClient(rpcFn, restFn);
+    this.objects = new ObjectSubClient(rpcFn, restFn);
+    this.policies = new PolicySubClient(rpcFn, restFn);
+    this.approvals = new ApprovalSubClient(rpcFn, restFn);
+    this.evidence = new EvidenceSubClient(rpcFn, restFn);
+    this.trust = new TrustSubClient(rpcFn, restFn);
+    this.capabilities = new CapabilitySubClient(rpcFn, restFn);
+    this.roles = new RoleSubClient(rpcFn, restFn);
+    this.settlements = new SettlementSubClient(rpcFn, restFn);
+    this.escrows = new EscrowSubClient(rpcFn, restFn);
+    this.disclosures = new DisclosureSubClient(rpcFn, restFn);
+    this.anchors = new AnchorSubClient(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
-    this.contracts = new ContractSubClient(rpcFn);
+    this.contracts = new ContractSubClient(rpcFn, restFn);
   }
 
   // ---- Low-level RPC ----
@@ -217,6 +224,35 @@ export class InfrixClient {
     return json.result as T;
   }
 
+  /**
+   * Low-level REST against /v4/* endpoints. Parses the V4 envelope
+   * (V4Response{Data, Governance, Meta} or V4Response{Error, Meta} per
+   * pkg/api/v4/rest/middleware.go) and returns `result.data` on success
+   * or throws InfrixRPCError on the envelope's error code+message.
+   */
+  private async rest<T>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    path: string,
+    body?: unknown
+  ): Promise<T> {
+    const url = `${this.restBase}${path}`;
+    const init: RequestInit = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body !== undefined) {
+      init.body = JSON.stringify(body);
+    }
+    const res = await fetch(url, init);
+    const json = await res.json();
+    if (json && json.error) {
+      const code = typeof json.error.code === 'number' ? json.error.code : -32603;
+      const msg = typeof json.error.message === 'string' ? json.error.message : 'rest error';
+      throw new InfrixRPCError(code, msg);
+    }
+    return (json && json.data !== undefined ? json.data : json) as T;
+  }
+
   // ---- WebSocket Subscriptions ----
 
   /**
@@ -233,7 +269,8 @@ export class InfrixClient {
    */
   subscribe(onEvent: (event: DevnetEvent) => void, eventType?: string): () => void {
     // Use dynamic import of 'ws' in Node, or native WebSocket in browser.
-    const WS = typeof WebSocket !== 'undefined' ? WebSocket : require('ws');
+    const g = globalThis as { WebSocket?: typeof WebSocket; require?: (m: string) => unknown };
+    const WS: typeof WebSocket = g.WebSocket ?? (g.require ? (g.require('ws') as typeof WebSocket) : (undefined as unknown as typeof WebSocket));
     const ws = new WS(this.wsUrl);
 
     ws.onopen = () => {
@@ -242,9 +279,12 @@ export class InfrixClient {
       }
     };
 
-    ws.onmessage = (msg: { data: string | Buffer }) => {
+    ws.onmessage = (msg: { data: unknown }) => {
       try {
-        const event = JSON.parse(typeof msg.data === 'string' ? msg.data : msg.data.toString());
+        const raw = typeof msg.data === 'string'
+          ? msg.data
+          : (msg.data as { toString(): string }).toString();
+        const event = JSON.parse(raw);
         onEvent(event);
       } catch {
         // Ignore malformed messages.
@@ -254,6 +294,14 @@ export class InfrixClient {
     return () => {
       ws.close();
     };
+  }
+
+  /**
+   * Alias of `subscribe` for callers that prefer the verbose name.
+   * Some sub-clients (shapes, swarm) call this internally.
+   */
+  subscribeEvents(_filter: unknown, onEvent: (event: Record<string, unknown>) => void): () => void {
+    return this.subscribe(onEvent as unknown as (event: DevnetEvent) => void);
   }
 
   // ---- Shape-Shifting Contracts ----

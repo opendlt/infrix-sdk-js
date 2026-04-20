@@ -109,7 +109,7 @@ export namespace Governance {
   /**
    * Submit an intent from within a contract.
    *
-   * @param goalType - The intent goal type (e.g. "TRANSFER", "OBJECT_CREATE")
+   * @param goalType - The intent goal type (e.g. "CONTRACT_CALL", "OBJECT_CREATE")
    * @param params - Serialized intent parameters
    * @returns Serialized IntentResult, or null on failure
    */
@@ -444,8 +444,8 @@ export namespace Governance {
   // Rust SDK enums (sdk/typescript/src/types/governance.ts,
   // sdk/rust/infrix-types/src/governance.rs) in lockstep.
   //
-  // Gap 13 first-pass removed GOAL_TRANSFER and GOAL_ESCROW_CREATE —
-  // single-leg transfers and escrow creation now route through
+  // Gap 13 first-pass removed the standalone single-leg transfer and
+  // escrow-create goal types — those flows now route through
   // GOAL_SETTLEMENT with the appropriate method.
   //
   // Gap 15 closure adds bidirectional parity fences in

@@ -27,9 +27,9 @@ export interface Intent {
  * so this union MUST stay in perfect parity with ValidGoalTypes (see
  * pkg/intent/sdk_goal_parity_test.go:TestSDKGoalParity_TypeScript —
  * that test fails loud if any entry here is missing from Go or any
- * Go entry is missing here). GOAL_TRANSFER and GOAL_ESCROW_CREATE
- * were removed in Gap 13 first-pass; single-leg transfers and escrow
- * creation now route through 'SETTLEMENT' with the appropriate method.
+ * Go entry is missing here). The standalone single-leg transfer and
+ * escrow-create goal types were removed in Gap 13 first-pass; those
+ * flows now route through 'SETTLEMENT' with the appropriate method.
  */
 export type IntentGoalType =
   | 'CONVERT'
