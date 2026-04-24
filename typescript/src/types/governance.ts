@@ -92,7 +92,8 @@ export type IntentGoalType =
   | 'EXTERNAL_ADAPTER_CALL'
   | 'AGENT_RUN'
   | 'CONFIDENTIAL_EXEC'
-  | 'SUBSYSTEM_ACTION';
+  | 'SUBSYSTEM_ACTION'
+  | 'PLUGIN_UPGRADE';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {

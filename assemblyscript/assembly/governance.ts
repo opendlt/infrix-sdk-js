@@ -533,6 +533,11 @@ export namespace Governance {
   // envelope routing /rpc state-mutating methods through the canonical
   // governance pipeline.
   export const GOAL_SUBSYSTEM_ACTION: string = "SUBSYSTEM_ACTION";
+  // Spec §5.3 plugin upgrade lifecycle: the canonical governance seam
+  // for proposing a plugin descriptor change. Mints a
+  // CompatibilityReport sized by RiskClass that drives the approval
+  // requirement for the actual descriptor swap.
+  export const GOAL_PLUGIN_UPGRADE: string = "PLUGIN_UPGRADE";
 
   // =========================================================================
   // Evidence Operations
