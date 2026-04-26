@@ -539,6 +539,11 @@ export namespace Governance {
   // requirement for the actual descriptor swap.
   export const GOAL_PLUGIN_UPGRADE: string = "PLUGIN_UPGRADE";
 
+  // G-19 phase 5 (spec §5.1): plugin admission lifecycle. Drives a
+  // plugin from boot-time pending into LifecycleActive via the
+  // canonical mediator + admission policy + approval pipeline.
+  export const GOAL_PLUGIN_REGISTER: string = "PLUGIN_REGISTER";
+
   // =========================================================================
   // Evidence Operations
   // =========================================================================

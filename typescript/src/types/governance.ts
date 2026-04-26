@@ -93,7 +93,8 @@ export type IntentGoalType =
   | 'AGENT_RUN'
   | 'CONFIDENTIAL_EXEC'
   | 'SUBSYSTEM_ACTION'
-  | 'PLUGIN_UPGRADE';
+  | 'PLUGIN_UPGRADE'
+  | 'PLUGIN_REGISTER';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {
