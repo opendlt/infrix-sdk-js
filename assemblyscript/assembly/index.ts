@@ -1,31 +1,73 @@
 /**
  * Infrix SDK for AssemblyScript
  *
- * This SDK provides everything needed to develop smart contracts for the Infrix platform.
+ * Infrix is a governance-first execution fabric. The PRIMARY way you
+ * interact with Infrix from AssemblyScript is by emitting governance
+ * intents that describe a desired outcome — submitIntent(goal,
+ * params, ...). Plans, policies, approvals, trust, evidence, and
+ * anchoring are first-class.
  *
- * @example
+ * Contract operations (@contract decorator pattern, raw Storage /
+ * Env access) remain available as a secondary, lower-level surface
+ * for the WASM execution family. Most users should reach for the
+ * governance API first; contract operations are what the spine
+ * schedules under the hood once a plan is approved.
+ *
+ * @example Governance-first
  * ```typescript
- * import { Storage, Env, U256, Address } from "@infrix/sdk";
+ * import { Governance } from "@infrix/sdk";
  *
- * // Simple counter contract
+ * // Submit a governed transfer intent — the canonical surface.
+ * Governance.submitIntent(
+ *   "GOVERNED_TRANSFER",
+ *   { from: "acc://alice.acme", to: "acc://bob.acme", amount: 100 },
+ * );
+ * ```
+ *
+ * @example Contract operations (secondary, low-level)
+ * ```typescript
+ * import { Storage, U256 } from "@infrix/sdk";
+ *
+ * // Direct contract storage — used inside WASM contract bodies that
+ * // execute as the result of an approved governance plan.
  * const COUNTER_KEY = "counter";
  *
  * export function increment(): void {
  *   let count = Storage.getU256(COUNTER_KEY);
- *   if (count === null) {
- *     count = U256.zero();
- *   }
+ *   if (count === null) count = U256.zero();
  *   Storage.setU256(COUNTER_KEY, count.add(U256.one()));
  * }
- *
- * export function getCount(): U256 {
- *   const count = Storage.getU256(COUNTER_KEY);
- *   return count !== null ? count : U256.zero();
- * }
  * ```
+ *
+ * G-21 phase 2: governance exports are listed FIRST so any tool that
+ * reads index.ts surface alphabetically or top-down sees governance
+ * first. The governance-first sentinel test in
+ * sdk/assemblyscript/__tests__/governance_first_sentinel.test.ts
+ * locks the export ordering.
  */
 
-// Export all types
+// =============================================================================
+// PRIMARY: governance surface
+// =============================================================================
+
+// Governance module is the canonical first contact with Infrix.
+export { Governance } from "./governance";
+
+// Cross-cutting governance enums (wire-compatible with TS / Rust SDKs).
+export {
+  AnchorClass,
+  PrivacyClass,
+  SettlementMethod,
+  ExecutionFamily,
+  TrustResponseAction,
+  OutcomeFinality,
+} from "./governance";
+
+// =============================================================================
+// SECONDARY: contract operations + value types
+// =============================================================================
+
+// Value-type primitives shared across both surfaces.
 export {
   U256,
   Hash,
@@ -35,7 +77,9 @@ export {
   ErrorCode,
 } from "./types";
 
-// Export SDK modules
+// Contract / execution-family modules. These are the lower-level
+// primitives the spine schedules once a plan is approved; user code
+// generally reaches for governance first.
 export {
   Storage,
   StorageMap,
@@ -48,19 +92,6 @@ export {
   Utils,
   ReentrancyGuard,
 } from "./sdk";
-
-// Export governance module
-export { Governance } from "./governance";
-
-// Gap 15 cross-cutting governance enum namespaces (wire-compatible with TS/Rust SDKs)
-export {
-  AnchorClass,
-  PrivacyClass,
-  SettlementMethod,
-  ExecutionFamily,
-  TrustResponseAction,
-  OutcomeFinality,
-} from "./governance";
 
 // Export testing framework
 export {
