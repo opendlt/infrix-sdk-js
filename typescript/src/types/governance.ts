@@ -96,7 +96,8 @@ export type IntentGoalType =
   | 'PLUGIN_UPGRADE'
   | 'PLUGIN_REGISTER'
   | 'GAS_SCHEDULE_UPDATE'
-  | 'RATE_LIMIT_UPDATE';
+  | 'RATE_LIMIT_UPDATE'
+  | 'SESSION_KEY_DELEGATE';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {

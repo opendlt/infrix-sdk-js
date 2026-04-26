@@ -552,6 +552,13 @@ export namespace Governance {
   export const GOAL_GAS_SCHEDULE_UPDATE: string = "GAS_SCHEDULE_UPDATE";
   export const GOAL_RATE_LIMIT_UPDATE: string = "RATE_LIMIT_UPDATE";
 
+  // G-25 phase 1c — operator-initiated session-key delegation. The
+  // wallet's hardware key signs once to authorize a freshly-generated
+  // ED25519 session key with a narrowly-scoped capability (Purpose=
+  // approval, WorkflowStageScope=current_session, ExpiresAt ≤ now+1h).
+  // Repeat approvals during the session use the in-memory session key.
+  export const GOAL_SESSION_KEY_DELEGATE: string = "SESSION_KEY_DELEGATE";
+
   // =========================================================================
   // Evidence Operations
   // =========================================================================
