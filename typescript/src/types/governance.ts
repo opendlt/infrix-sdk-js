@@ -94,7 +94,9 @@ export type IntentGoalType =
   | 'CONFIDENTIAL_EXEC'
   | 'SUBSYSTEM_ACTION'
   | 'PLUGIN_UPGRADE'
-  | 'PLUGIN_REGISTER';
+  | 'PLUGIN_REGISTER'
+  | 'GAS_SCHEDULE_UPDATE'
+  | 'RATE_LIMIT_UPDATE';
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {

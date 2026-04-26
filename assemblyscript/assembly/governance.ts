@@ -544,6 +544,14 @@ export namespace Governance {
   // canonical mediator + admission policy + approval pipeline.
   export const GOAL_PLUGIN_REGISTER: string = "PLUGIN_REGISTER";
 
+  // G-24 closed-loop operational controls. The GasController and
+  // RateLimitController observe runtime signals (latency, abuse) and
+  // propose typed governance intents that adjust the gas schedule and
+  // per-actor rate limits. Direct in-memory mutation is forbidden;
+  // every adjustment leaves an evidence trail.
+  export const GOAL_GAS_SCHEDULE_UPDATE: string = "GAS_SCHEDULE_UPDATE";
+  export const GOAL_RATE_LIMIT_UPDATE: string = "RATE_LIMIT_UPDATE";
+
   // =========================================================================
   // Evidence Operations
   // =========================================================================
