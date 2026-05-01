@@ -466,6 +466,7 @@ export namespace Governance {
   export const GOAL_CAPABILITY_GRANT: string = "CAPABILITY_GRANT";
   export const GOAL_WORKFLOW_START: string = "WORKFLOW_START";
   export const GOAL_CREDENTIAL_ISSUE: string = "CREDENTIAL_ISSUE";
+  export const GOAL_CREDENTIAL_REVOKE: string = "CREDENTIAL_REVOKE";
   export const GOAL_VAULT_CREATE: string = "VAULT_CREATE";
   export const GOAL_SETTLEMENT: string = "SETTLEMENT";
   export const GOAL_SETTLEMENT_NETTING: string = "SETTLEMENT_NETTING";
