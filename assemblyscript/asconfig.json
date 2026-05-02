@@ -20,7 +20,6 @@
     "bindings": "esm",
     "exportRuntime": true,
     "runtime": "stub",
-    "use": "abort=",
-    "lowMemoryLimit": true
+    "use": "abort="
   }
 }
