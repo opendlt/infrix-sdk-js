@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsc --noEmit",
+    "test": "tsc && node --test \"dist/surface.test.js\"",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": ["infrix", "wallet", "smart-contracts", "accumulate", "adi"],
@@ -21,10 +21,8 @@
     "url": "git+https://github.com/opendlt/infrix-accumen.git",
     "directory": "sdk/typescript-wallet"
   },
-  "dependencies": {
-    "@infrix/client": "^0.1.0"
-  },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "@types/node": "^20.10.0",
+    "typescript": "~5.6.0"
   }
 }

@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsc --noEmit && node --test dist/index.test.js",
+    "test": "tsc && node --test \"dist/surface.test.js\"",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": ["infrix", "governance", "intent", "policy", "accumulate", "wasm", "blockchain"],
