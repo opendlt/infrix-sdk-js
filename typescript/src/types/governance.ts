@@ -24,13 +24,21 @@ export interface Intent {
 /**
  * Intent goal types matching Go IntentGoalType constants in
  * pkg/intent/types.go. The mediator dispatches by exact string match,
- * so this union MUST stay in perfect parity with ValidGoalTypes (see
- * pkg/intent/sdk_goal_parity_test.go:TestSDKGoalParity_TypeScript —
- * that test fails loud if any entry here is missing from Go or any
- * Go entry is missing here). The standalone single-leg transfer and
- * escrow-create goal types were removed in Gap 13 first-pass; those
- * flows now route through 'SETTLEMENT' with the appropriate method.
+ * so this union MUST stay in perfect parity with ValidGoalTypes.
+ *
+ * P2-002 closure: the body of this union is generated from the Go
+ * source of truth by `pkg/codegen/sdk_goals.go::Generate`. Run
+ * `go run ./cmd/sdkgen` after changing the Go enum; the matching
+ * fence test (`pkg/codegen/sdk_goals_test.go::
+ * TestSDKGoals_GeneratedFilesUpToDate`) fails CI if this region drifts
+ * from the canonical map. Hand-edit the markers' inner content at your
+ * peril — codegen will overwrite it.
+ *
+ * The standalone single-leg transfer and escrow-create goal types were
+ * removed in Gap 13 first-pass; those flows now route through
+ * 'SETTLEMENT' with the appropriate method.
  */
+// SDKGEN-BEGIN(intent_goal_type)
 export type IntentGoalType =
   | 'CONVERT'
   | 'EARN_YIELD'
@@ -99,6 +107,7 @@ export type IntentGoalType =
   | 'GAS_SCHEDULE_UPDATE'
   | 'RATE_LIMIT_UPDATE'
   | 'SESSION_KEY_DELEGATE';
+// SDKGEN-END(intent_goal_type)
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {

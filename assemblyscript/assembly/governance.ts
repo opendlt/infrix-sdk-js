@@ -438,19 +438,18 @@ export namespace Governance {
   export const TRUST_RESPONSE_BLOCK_FINALITY: string = "block_finality";
 
   // --- Intent Goal Types ---
-  // Full parity with pkg/intent/types.go (source of truth). All 60
-  // goal-type string literals must match the Go constants exactly;
-  // the mediator's goal-type dispatch is string-keyed. Keep TS and
-  // Rust SDK enums (sdk/typescript/src/types/governance.ts,
-  // sdk/rust/infrix-types/src/governance.rs) in lockstep.
+  // P2-002 closure: this block is generated from the Go source of
+  // truth (pkg/intent/types.go) by `pkg/codegen/sdk_goals.go::Generate`.
+  // Run `go run ./cmd/sdkgen` after changing the Go enum; the matching
+  // fence test fails CI if this region drifts. Keep TS and Rust SDK
+  // enums (sdk/typescript/src/types/governance.ts,
+  // sdk/rust/infrix-types/src/governance.rs) in lockstep — the same
+  // codegen tool maintains all three.
   //
   // Gap 13 first-pass removed the standalone single-leg transfer and
-  // escrow-create goal types — those flows now route through
+  // escrow-create goal types — those flows route through
   // GOAL_SETTLEMENT with the appropriate method.
-  //
-  // Gap 15 closure adds bidirectional parity fences in
-  // pkg/intent/sdk_goal_parity_test.go for AS, TS, and Rust — a
-  // missing-or-stale constant in any SDK now fails the build.
+  // SDKGEN-BEGIN(intent_goal_type)
   export const GOAL_CONVERT: string = "CONVERT";
   export const GOAL_EARN_YIELD: string = "EARN_YIELD";
   export const GOAL_BORROW: string = "BORROW";
@@ -496,69 +495,29 @@ export namespace Governance {
   export const GOAL_ANCHOR_FORCE: string = "ANCHOR_FORCE";
   export const GOAL_TRUST_PROFILE_CREATE: string = "TRUST_PROFILE_CREATE";
   export const GOAL_TRUST_PROFILE_UPDATE: string = "TRUST_PROFILE_UPDATE";
-  // Gap 2 closure: system-origin intents for bootstrap and periodic anchoring.
   export const GOAL_BOOTSTRAP_ROLE: string = "BOOTSTRAP_ROLE";
   export const GOAL_SYSTEM_ANCHOR_PERIODIC: string = "SYSTEM_ANCHOR_PERIODIC";
-  // Gap 2 full closure: system-origin intents for periodic invalidation
-  // sweeps (approval auto-invalidation, role expiry, capability expiry)
-  // that previously fabricated synthetic IntentContexts.
   export const GOAL_APPROVAL_INVALIDATE: string = "APPROVAL_INVALIDATE";
   export const GOAL_ROLE_EXPIRE: string = "ROLE_EXPIRE";
   export const GOAL_CAPABILITY_EXPIRE: string = "CAPABILITY_EXPIRE";
-  // Gap 13 fourth-pass closure: sponsorship configuration is now a
-  // first-class governed object; registration / lifecycle transit the
-  // canonical spine via these intent goals.
   export const GOAL_SPONSOR_REGISTER: string = "SPONSOR_REGISTER";
   export const GOAL_SPONSOR_UPDATE: string = "SPONSOR_UPDATE";
   export const GOAL_SPONSOR_REVOKE: string = "SPONSOR_REVOKE";
   export const GOAL_SPONSOR_PAUSE: string = "SPONSOR_PAUSE";
   export const GOAL_SPONSOR_RESUME: string = "SPONSOR_RESUME";
-  // Gap 13 fourth-pass closure: dispute resolution is the binding seam
-  // by which an arbiter closes a still-pending dispute on a settlement
-  // instruction, replacing the prior dead-end where disputes had no
-  // closure path at all.
   export const GOAL_DISPUTE_RESOLVE: string = "DISPUTE_RESOLVE";
-  // Gap 14 execution-pluralism peer families: each peer execution
-  // family has a first-class user-submittable intent so it is
-  // reachable through the canonical spine, not just via a synthetic
-  // plan. Smart contracts (CONTRACT_CALL) are one peer family among
-  // many; rule packs, verifier plugins, external adapters, agent
-  // modules, and confidential execution environments are equally
-  // normalised through their own goals.
   export const GOAL_RULE_PACK_EVAL: string = "RULE_PACK_EVAL";
   export const GOAL_VERIFIER_RUN: string = "VERIFIER_RUN";
   export const GOAL_EXTERNAL_ADAPTER_CALL: string = "EXTERNAL_ADAPTER_CALL";
   export const GOAL_AGENT_RUN: string = "AGENT_RUN";
   export const GOAL_CONFIDENTIAL_EXEC: string = "CONFIDENTIAL_EXEC";
-  // Gap 15 sixth-pass §15 closure: generic admin/operator action
-  // envelope routing /rpc state-mutating methods through the canonical
-  // governance pipeline.
   export const GOAL_SUBSYSTEM_ACTION: string = "SUBSYSTEM_ACTION";
-  // Spec §5.3 plugin upgrade lifecycle: the canonical governance seam
-  // for proposing a plugin descriptor change. Mints a
-  // CompatibilityReport sized by RiskClass that drives the approval
-  // requirement for the actual descriptor swap.
   export const GOAL_PLUGIN_UPGRADE: string = "PLUGIN_UPGRADE";
-
-  // G-19 phase 5 (spec §5.1): plugin admission lifecycle. Drives a
-  // plugin from boot-time pending into LifecycleActive via the
-  // canonical mediator + admission policy + approval pipeline.
   export const GOAL_PLUGIN_REGISTER: string = "PLUGIN_REGISTER";
-
-  // G-24 closed-loop operational controls. The GasController and
-  // RateLimitController observe runtime signals (latency, abuse) and
-  // propose typed governance intents that adjust the gas schedule and
-  // per-actor rate limits. Direct in-memory mutation is forbidden;
-  // every adjustment leaves an evidence trail.
   export const GOAL_GAS_SCHEDULE_UPDATE: string = "GAS_SCHEDULE_UPDATE";
   export const GOAL_RATE_LIMIT_UPDATE: string = "RATE_LIMIT_UPDATE";
-
-  // G-25 phase 1c — operator-initiated session-key delegation. The
-  // wallet's hardware key signs once to authorize a freshly-generated
-  // ED25519 session key with a narrowly-scoped capability (Purpose=
-  // approval, WorkflowStageScope=current_session, ExpiresAt ≤ now+1h).
-  // Repeat approvals during the session use the in-memory session key.
   export const GOAL_SESSION_KEY_DELEGATE: string = "SESSION_KEY_DELEGATE";
+  // SDKGEN-END(intent_goal_type)
 
   // =========================================================================
   // Evidence Operations
