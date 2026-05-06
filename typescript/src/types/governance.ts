@@ -668,8 +668,10 @@ export interface ApprovalEnvelope {
   signerIdentity: string;
   signerRole?: string;
   keyPageRef?: string;
-  signature?: string;
-  signatureHex?: string;
+  signature: string;
+  signerPublicKey: string;
+  signatureAlgorithm: 'ed25519';
+  signaturePayload: string;
   signedAt?: string;          // ISO 8601
   createdAt: string;
   expiresAt?: string;
@@ -720,11 +722,15 @@ export interface ApprovalListFilter {
 
 /** Options for submitting an approval. */
 export interface ApprovalSubmitOptions {
-  identity?: string;
+  identity: string;
   role?: string;
   conditions?: Record<string, unknown>;
   scope?: ApprovalScope;
-  signatureHex?: string;
+  signature: string;
+  signerPublicKey: string;
+  signatureAlgorithm: 'ed25519';
+  signaturePayload: string;
+  stageId?: string;
   expiresAt?: string;
 }
 

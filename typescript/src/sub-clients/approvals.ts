@@ -10,18 +10,21 @@ import type {
  */
 export class ApprovalSubClient extends SubClient {
   /**
-   * Submit an approval for a target (intent plan, object transition, etc.).
+   * Submit a cryptographically signed approval for a target.
    *
+   * @param targetType - The target domain being approved (intent, object, settlement, etc.)
    * @param targetId - The ID of the target being approved (intentId, objectId, etc.)
    * @param planHash - SHA-256 hash of the plan/state being approved
-   * @param opts - Identity, role, conditions, scope, signature
+   * @param opts - Identity, role, conditions, scope, and Ed25519 proof fields
    */
   async submit(
+    targetType: string,
     targetId: string,
     planHash: string,
-    opts?: ApprovalSubmitOptions
+    opts: ApprovalSubmitOptions
   ): Promise<ApprovalEnvelope> {
     return this.rpc<ApprovalEnvelope>('approval.submit', {
+      targetType,
       targetId,
       planHash,
       ...opts,

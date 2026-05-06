@@ -5,7 +5,7 @@
  * AES-256-GCM via the Web Crypto API for production use.
  */
 
-import { generateEd25519KeyPair, toHex, fromHex, sha256, Ed25519KeyPair } from './crypto';
+import { generateEd25519KeyPair, toHex, sha256, Ed25519KeyPair, decodePrivateKeyEnvelope } from './crypto';
 
 /** Metadata about a stored key. */
 export interface KeyInfo {
@@ -54,7 +54,6 @@ export class MemoryKeyStore implements KeyStore {
   async sign(publicKey: Uint8Array, message: Uint8Array): Promise<Uint8Array> {
     const stored = this.keys.get(toHex(publicKey));
     if (!stored) throw new Error('Key not found');
-    // Simplified: import and use crypto module's sign.
     const { signEd25519 } = await import('./crypto');
     return signEd25519(stored.keyPair.privateKey, message);
   }
@@ -77,8 +76,7 @@ export class MemoryKeyStore implements KeyStore {
 
   async importKey(encryptedKey: Uint8Array, password: string): Promise<KeyInfo> {
     const privateKey = await decryptWithPassword(encryptedKey, password);
-    if (privateKey.length !== 64) throw new Error('Invalid key size');
-    const publicKey = privateKey.slice(32, 64);
+    const { publicKey } = decodePrivateKeyEnvelope(privateKey);
     const kp: Ed25519KeyPair = { publicKey, privateKey };
     const info: KeyInfo = {
       publicKey,

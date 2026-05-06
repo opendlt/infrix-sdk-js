@@ -290,16 +290,23 @@ export class InfrixWallet {
       throw new Error('No active key. Call generateKey() first.');
     }
 
-    // Sign the planHash
-    const message = new TextEncoder().encode(`approve:${targetId}:${planHash}`);
+    const signaturePayload = approvalSignaturePayload(targetId, planHash, this.adi);
+    const message = new TextEncoder().encode(signaturePayload);
     const signature = await this.keyStore.sign(this.activeKey, message);
 
     const params: Record<string, unknown> = {
+      intentId: targetId,
+      targetType: 'intent',
       targetId,
       planHash,
+      actor: this.adi,
       identity: this.adi,
-      signatureHex: toHex(signature),
-      publicKey: toHex(this.activeKey),
+      purpose: 'approval',
+      workflowInstance: targetId,
+      signature: toHex(signature),
+      signerPublicKey: toHex(this.activeKey),
+      signatureAlgorithm: 'ed25519',
+      signaturePayload,
       ...opts,
     };
 
@@ -370,4 +377,11 @@ export class InfrixWallet {
     if (json.error) throw new Error(json.error.message);
     return json.result as Record<string, unknown>;
   }
+}
+
+function approvalSignaturePayload(targetId: string, planHash: string, identity: string): string {
+  if (!targetId) throw new Error('approval signature requires targetId');
+  if (!planHash) throw new Error('approval signature requires planHash');
+  if (!identity) throw new Error('approval signature requires identity');
+  return ['infrix-approval-v1', targetId, planHash, identity].join(':');
 }
