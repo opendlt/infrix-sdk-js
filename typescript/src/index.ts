@@ -175,6 +175,35 @@ export class InfrixClient {
   readonly contracts: ContractSubClient;
 
   private restBase: string;
+  private defaultDisclosure: {
+    actor?: string;
+    purpose?: string;
+    workflowInstance?: string;
+    identity?: string;
+  } = {};
+
+  /**
+   * Set the default Gap 12 disclosure context that every RPC call
+   * will inject if the caller does not supply its own actor / purpose /
+   * workflowInstance. Server-side handlers reject calls without
+   * disclosure context, so most operations require at least an actor
+   * + purpose to be set.
+   *
+   * @example
+   *   client.setDisclosureContext({
+   *     actor: 'acc://operator.acme',
+   *     purpose: 'operational',
+   *     workflowInstance: 'demo-001',
+   *   });
+   */
+  setDisclosureContext(ctx: {
+    actor?: string;
+    purpose?: string;
+    workflowInstance?: string;
+    identity?: string;
+  }): void {
+    this.defaultDisclosure = { ...this.defaultDisclosure, ...ctx };
+  }
 
   /**
    * Create a client connected to an Infrix devnet.
@@ -211,7 +240,16 @@ export class InfrixClient {
 
   private async rpc<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     const id = ++this.idCounter;
-    const body = JSON.stringify({ jsonrpc: '2.0', method, params, id });
+    // Inject the default Gap 12 disclosure context for any field the
+    // caller did not already set. Keeps callers from having to thread
+    // actor / purpose / workflowInstance through every sub-client call.
+    const mergedParams: Record<string, unknown> = { ...params };
+    for (const k of ['actor', 'purpose', 'workflowInstance', 'identity'] as const) {
+      if (mergedParams[k] === undefined && this.defaultDisclosure[k] !== undefined) {
+        mergedParams[k] = this.defaultDisclosure[k];
+      }
+    }
+    const body = JSON.stringify({ jsonrpc: '2.0', method, params: mergedParams, id });
     const res = await fetch(this.rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

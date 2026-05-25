@@ -49,7 +49,17 @@ export class IntentSubClient extends SubClient {
     if (typeof goal === 'string') {
       params.rawInput = goal;
     } else {
-      params.goal = goal;
+      // Server wire shape: flatten { type, customParams } at the top
+      // level as { goalType, customParams } (Gap 12 govSubmitParams).
+      const g = goal as unknown as Record<string, unknown>;
+      if (g.type !== undefined) params.goalType = g.type;
+      if (g.customParams !== undefined) params.customParams = g.customParams;
+      // Forward any other goal-level keys verbatim for forward-compat.
+      for (const k of Object.keys(g)) {
+        if (k !== 'type' && k !== 'customParams' && params[k] === undefined) {
+          params[k] = g[k];
+        }
+      }
     }
     if (opts?.constraints) params.constraints = opts.constraints;
     if (opts?.preferences) params.preferences = opts.preferences;
