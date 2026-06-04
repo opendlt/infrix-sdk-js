@@ -41,6 +41,7 @@ type RequiredClientMembers =
   | 'settlements'
   | 'escrows'
   | 'disclosures'
+  | 'predicates'
   | 'contracts';
 type _HasClientMembers = RequiredClientMembers extends ClientKeys ? true : false;
 const _hasClientMembers: _HasClientMembers = true;

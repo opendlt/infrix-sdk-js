@@ -87,6 +87,7 @@ export {
   DisclosureSubClient,
   AnchorSubClient,
   ContractSubClient,
+  PredicateSubClient,
 } from './sub-clients';
 
 // ---- Direct imports for internal use ----
@@ -107,6 +108,7 @@ import {
   DisclosureSubClient,
   AnchorSubClient,
   ContractSubClient,
+  PredicateSubClient,
 } from './sub-clients';
 
 // ---- RPC Error ----
@@ -164,6 +166,9 @@ export class InfrixClient {
 
   /** L0 anchor verification: list, verify, stats, get. */
   readonly anchors: AnchorSubClient;
+
+  /** ZK predicate catalog + read-only proof verification (catalog, verify). */
+  readonly predicates: PredicateSubClient;
 
   // ---- Read-only Contract Inspection ----
 
@@ -231,6 +236,7 @@ export class InfrixClient {
     this.escrows = new EscrowSubClient(rpcFn, restFn);
     this.disclosures = new DisclosureSubClient(rpcFn, restFn);
     this.anchors = new AnchorSubClient(rpcFn, restFn);
+    this.predicates = new PredicateSubClient(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);
@@ -274,10 +280,17 @@ export class InfrixClient {
     body?: unknown
   ): Promise<T> {
     const url = `${this.restBase}${path}`;
-    const init: RequestInit = {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-    };
+    // Inject the Gap 12 disclosure context as headers (X-Actor /
+    // X-Purpose / X-Workflow-Instance). Non-exempt /v4/* routes reject
+    // requests missing these with 400; mirroring the RPC path's
+    // default-context injection so REST sub-clients need no per-call
+    // header plumbing.
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.defaultDisclosure.actor) headers['X-Actor'] = this.defaultDisclosure.actor;
+    if (this.defaultDisclosure.purpose) headers['X-Purpose'] = this.defaultDisclosure.purpose;
+    if (this.defaultDisclosure.workflowInstance)
+      headers['X-Workflow-Instance'] = this.defaultDisclosure.workflowInstance;
+    const init: RequestInit = { method, headers };
     if (body !== undefined) {
       init.body = JSON.stringify(body);
     }

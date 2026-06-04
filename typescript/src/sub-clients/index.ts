@@ -12,3 +12,10 @@ export { EscrowSubClient } from './escrows';
 export { DisclosureSubClient } from './disclosures';
 export { AnchorSubClient } from './anchors';
 export { ContractSubClient } from './contracts';
+export { PredicateSubClient } from './predicates';
+export type {
+  PredicateCatalog,
+  PredicateCatalogEntry,
+  PredicateProofEnvelope,
+  PredicateVerifyResult,
+} from './predicates';
