@@ -19,3 +19,11 @@ export type {
   PredicateProofEnvelope,
   PredicateVerifyResult,
 } from './predicates';
+export { EIP712SubClient } from './eip712';
+export type {
+  EIP712IntentRequest,
+  AssetAmount,
+  PreparedEIP712Intent,
+  SubmittedEIP712Intent,
+  Eip1193Provider,
+} from './eip712';

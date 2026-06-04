@@ -88,6 +88,7 @@ export {
   AnchorSubClient,
   ContractSubClient,
   PredicateSubClient,
+  EIP712SubClient,
 } from './sub-clients';
 
 // ---- Direct imports for internal use ----
@@ -109,6 +110,7 @@ import {
   AnchorSubClient,
   ContractSubClient,
   PredicateSubClient,
+  EIP712SubClient,
 } from './sub-clients';
 
 // ---- RPC Error ----
@@ -169,6 +171,9 @@ export class InfrixClient {
 
   /** ZK predicate catalog + read-only proof verification (catalog, verify). */
   readonly predicates: PredicateSubClient;
+
+  /** MetaMask EIP-712 intent signing -> Accumulate submission (prepare, submit). */
+  readonly eip712: EIP712SubClient;
 
   // ---- Read-only Contract Inspection ----
 
@@ -237,6 +242,7 @@ export class InfrixClient {
     this.disclosures = new DisclosureSubClient(rpcFn, restFn);
     this.anchors = new AnchorSubClient(rpcFn, restFn);
     this.predicates = new PredicateSubClient(rpcFn, restFn);
+    this.eip712 = new EIP712SubClient(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);
