@@ -2,27 +2,75 @@
 import type { InfrixClient } from './index';
 import type {
   IntentGoal,
+  IntentGoalType,
   GoverningObject,
   CapabilityGrant,
   RoleBinding,
   SettlementInstruction,
   Escrow,
   DisclosureGrant,
+  OutcomeRecord,
+  OutcomeFinality,
 } from './types/governance';
 
 declare function setTimeout(cb: (...args: any[]) => void, ms: number): any;
 
 /**
  * High-level operation result combining intent lifecycle artifacts.
+ *
+ * The convenience verbs return this after submitting a governed intent
+ * and (optionally) waiting for it to reach a terminal state — hiding the
+ * Intent → Plan → Approval → Execution → Outcome → Evidence → Anchor
+ * spine behind one call while still surfacing every spine artifact for
+ * inspection.
  */
 export interface GovernedResult<T = unknown> {
   intentId: string;
   planId: string;
   outcomeId: string;
+  /** Terminal intent status: 'completed' | 'failed' | 'cancelled' | 'timeout' (when not waited, the submit status). */
   status: string;
   gasUsed: number;
   result?: T;
+  /** Evidence bundle id, resolved from the outcome once execution completes. */
   evidenceId?: string;
+  /** L0 anchor record id, when the outcome has been anchored. */
+  anchorId?: string;
+  /** Outcome finality state (provisional … l0_anchored_final). */
+  finality?: OutcomeFinality;
+  /** Populated on a failed/compensated outcome — the first failing step's error. */
+  failureReason?: string;
+  /** The full outcome record, when execution has completed. */
+  outcome?: OutcomeRecord;
+}
+
+/** Options shared by the high-level governed verbs. */
+export interface GovernedOptions {
+  /** Wait for the intent to reach a terminal state (default: true). */
+  wait?: boolean;
+  /** Maximum time to wait when waiting (default: 30000ms). */
+  maxWaitMs?: number;
+  /** Poll interval when waiting (default: 500ms). */
+  pollIntervalMs?: number;
+  /** Throw InfrixGovernanceError on a failed/cancelled/timeout terminal state (default: false). */
+  throwOnFailure?: boolean;
+}
+
+/**
+ * Error thrown by the high-level verbs when an intent reaches a
+ * non-success terminal state and `throwOnFailure` is set.
+ */
+export class InfrixGovernanceError extends Error {
+  readonly intentId: string;
+  readonly status: string;
+  readonly result: GovernedResult;
+  constructor(message: string, result: GovernedResult) {
+    super(message);
+    this.name = 'InfrixGovernanceError';
+    this.intentId = result.intentId;
+    this.status = result.status;
+    this.result = result;
+  }
 }
 
 /**
@@ -46,6 +94,115 @@ export interface GovernedResult<T = unknown> {
 export function withGovernanceSugar(client: InfrixClient) {
   return {
     ...client,
+
+    /**
+     * Submit any governed goal and (by default) wait for it to reach a
+     * terminal state, returning a unified GovernedResult with the
+     * outcome, evidence, and anchor wired in. This is the generic
+     * primitive the typed verbs below build on.
+     *
+     * Actor / purpose are taken from the client's disclosure context
+     * (`client.setDisclosureContext(...)`), which the RPC layer injects
+     * into every submission — set it once before calling.
+     *
+     * @example
+     * ```typescript
+     * client.setDisclosureContext({ actor: 'acc://alice.acme', purpose: 'operational' });
+     * const r = await governed.submitAndWait(
+     *   { type: 'CONTRACT_CALL', customParams: { contract, function: 'increment', args: '[]' } },
+     *   { throwOnFailure: true },
+     * );
+     * ```
+     */
+    async submitAndWait<T = unknown>(
+      goal: IntentGoal,
+      opts?: GovernedOptions
+    ): Promise<GovernedResult<T>> {
+      const submitted = await client.intents.submit(goal);
+      if (opts?.wait === false) {
+        return {
+          intentId: submitted.intentId,
+          planId: submitted.planId ?? '',
+          outcomeId: submitted.outcomeId ?? '',
+          status: submitted.status,
+          gasUsed: submitted.gasUsed ?? 0,
+        } as GovernedResult<T>;
+      }
+      return waitForCompletion(client, submitted.intentId, opts) as Promise<GovernedResult<T>>;
+    },
+
+    /**
+     * Deploy a WASM contract through the governed spine. Hides the
+     * canonical CONTRACT_DEPLOY wire shape
+     * (`customParams: { authority, bytecode }`, bytecode hex-encoded).
+     *
+     * @param authority - The deploying ADI URL that will own the contract.
+     * @param wasm - Contract bytecode as a Uint8Array, or a hex string.
+     * @param opts - Wait/timeout options.
+     *
+     * @example
+     * ```typescript
+     * const bytes = await readFile('counter.wasm');
+     * const r = await governed.deployContract('acc://alice.acme/counter', bytes,
+     *   { throwOnFailure: true });
+     * console.log('deployed, anchored:', r.finality, r.anchorId);
+     * ```
+     */
+    async deployContract(
+      authority: string,
+      wasm: Uint8Array | string,
+      opts?: GovernedOptions
+    ): Promise<GovernedResult> {
+      const goal: IntentGoal = {
+        type: 'CONTRACT_DEPLOY' as IntentGoalType,
+        customParams: { authority, bytecode: toHex(wasm) },
+      };
+      return this.submitAndWait(goal, opts);
+    },
+
+    /**
+     * Call a contract function through the governed spine. Hides the
+     * canonical CONTRACT_CALL wire shape
+     * (`customParams: { contract, function, args }`, args a JSON array string).
+     *
+     * @param contractUrl - The contract account URL.
+     * @param fn - The function name to call.
+     * @param args - Positional arguments (JSON-encoded onto the wire).
+     * @param opts - Wait/timeout options.
+     */
+    async callContract(
+      contractUrl: string,
+      fn: string,
+      args: unknown[] = [],
+      opts?: GovernedOptions
+    ): Promise<GovernedResult> {
+      const goal: IntentGoal = {
+        type: 'CONTRACT_CALL' as IntentGoalType,
+        customParams: { contract: contractUrl, function: fn, args: JSON.stringify(args) },
+      };
+      return this.submitAndWait(goal, opts);
+    },
+
+    /**
+     * Upgrade an existing contract through the governed spine. Hides the
+     * canonical CONTRACT_UPGRADE wire shape
+     * (`customParams: { contract, newCode }`, newCode hex-encoded).
+     *
+     * @param contractUrl - The contract account URL being upgraded.
+     * @param newWasm - The replacement bytecode as a Uint8Array, or a hex string.
+     * @param opts - Wait/timeout options.
+     */
+    async upgradeContract(
+      contractUrl: string,
+      newWasm: Uint8Array | string,
+      opts?: GovernedOptions
+    ): Promise<GovernedResult> {
+      const goal: IntentGoal = {
+        type: 'CONTRACT_UPGRADE' as IntentGoalType,
+        customParams: { contract: contractUrl, newCode: toHex(newWasm) },
+      };
+      return this.submitAndWait(goal, opts);
+    },
 
     /**
      * Move value between two accounts via the governed settlement
@@ -289,23 +446,30 @@ export function withGovernanceSugar(client: InfrixClient) {
 }
 
 /**
- * Poll an intent until it reaches a terminal state.
- * Returns the unified GovernedResult.
+ * Wait for an intent to reach a terminal state, returning a unified
+ * GovernedResult with the outcome, evidence, anchor, and finality wired
+ * in. This is the high-level "submit then wait" the convenience verbs
+ * use, and is exported so callers who submit manually can reuse it.
+ *
+ * On a non-success terminal state (failed / cancelled / timeout), when
+ * `throwOnFailure` is set, an InfrixGovernanceError is thrown carrying
+ * the GovernedResult; otherwise the result is returned with its status
+ * and (for failures) failureReason populated.
  *
  * @param client - InfrixClient instance
- * @param intentId - The intent to poll
- * @param maxWaitMs - Maximum time to wait (default: 30000ms)
- * @param pollIntervalMs - Polling interval (default: 500ms)
+ * @param intentId - The intent to wait on
+ * @param opts - Wait/timeout/throw options
  */
-async function pollForCompletion(
+export async function waitForCompletion(
   client: InfrixClient,
   intentId: string,
-  maxWaitMs = 30000,
-  pollIntervalMs = 500
+  opts?: GovernedOptions
 ): Promise<GovernedResult> {
+  const maxWaitMs = opts?.maxWaitMs ?? 30000;
+  const pollIntervalMs = opts?.pollIntervalMs ?? 500;
   const deadline = Date.now() + maxWaitMs;
 
-  while (Date.now() < deadline) {
+  for (;;) {
     const intent = await client.intents.get(intentId);
 
     if (
@@ -313,36 +477,89 @@ async function pollForCompletion(
       intent.status === 'failed' ||
       intent.status === 'cancelled'
     ) {
-      let gasUsed = 0;
-      const outcomeId = intent.outcomeId ?? '';
+      const result: GovernedResult = {
+        intentId,
+        planId: intent.planId ?? '',
+        outcomeId: intent.outcomeId ?? '',
+        status: intent.status,
+        gasUsed: 0,
+      };
 
       if (intent.outcomeId) {
         try {
           const outcome = await client.intents.outcome(intentId);
-          gasUsed = outcome.totalGasUsed;
+          result.outcome = outcome;
+          result.gasUsed = outcome.totalGasUsed;
+          result.outcomeId = outcome.id || result.outcomeId;
+          result.evidenceId = outcome.evidenceBundleId;
+          result.anchorId = outcome.anchorId;
+          result.finality = outcome.finality;
+          if (outcome.overallStatus !== 'completed') {
+            const failed = outcome.stepOutcomes?.find((s) => s.status === 'failed');
+            result.failureReason = failed?.error ?? `outcome ${outcome.overallStatus}`;
+          }
         } catch {
-          // Outcome may not be available yet
+          // Outcome may not be queryable yet; return what we have.
         }
       }
 
-      return {
+      if (intent.status !== 'completed' && opts?.throwOnFailure) {
+        throw new InfrixGovernanceError(
+          `intent ${intentId} ended ${intent.status}${result.failureReason ? `: ${result.failureReason}` : ''}`,
+          result
+        );
+      }
+      return result;
+    }
+
+    if (Date.now() >= deadline) {
+      const timeout: GovernedResult = {
         intentId,
         planId: intent.planId ?? '',
-        outcomeId,
-        status: intent.status,
-        gasUsed,
-        evidenceId: undefined,
+        outcomeId: intent.outcomeId ?? '',
+        status: 'timeout',
+        gasUsed: 0,
+        failureReason: `did not reach a terminal state within ${maxWaitMs}ms`,
       };
+      if (opts?.throwOnFailure) {
+        throw new InfrixGovernanceError(`intent ${intentId} timed out`, timeout);
+      }
+      return timeout;
     }
 
     await new Promise((r) => setTimeout(r, pollIntervalMs));
   }
+}
 
-  return {
-    intentId,
-    planId: '',
-    outcomeId: '',
-    status: 'timeout',
-    gasUsed: 0,
-  };
+/**
+ * Backward-compatible alias retained for callers of the original
+ * internal poller. Prefer {@link waitForCompletion}.
+ */
+async function pollForCompletion(
+  client: InfrixClient,
+  intentId: string,
+  maxWaitMs = 30000,
+  pollIntervalMs = 500
+): Promise<GovernedResult> {
+  return waitForCompletion(client, intentId, { maxWaitMs, pollIntervalMs });
+}
+
+/**
+ * Hex-encode contract bytecode for the canonical deploy/upgrade wire
+ * shape. Accepts a Uint8Array or an already-hex string (passed through
+ * after a light validation). Browser- and Node-safe (no Buffer).
+ */
+function toHex(wasm: Uint8Array | string): string {
+  if (typeof wasm === 'string') {
+    const s = wasm.startsWith('0x') ? wasm.slice(2) : wasm;
+    if (s.length % 2 !== 0 || /[^0-9a-fA-F]/.test(s)) {
+      throw new Error('deploy bytecode string must be valid hex');
+    }
+    return s.toLowerCase();
+  }
+  let out = '';
+  for (let i = 0; i < wasm.length; i++) {
+    out += wasm[i].toString(16).padStart(2, '0');
+  }
+  return out;
 }

@@ -69,8 +69,8 @@ export type {
 
 export * from './types/governance';
 
-export { withGovernanceSugar } from './sugar';
-export type { GovernedResult } from './sugar';
+export { withGovernanceSugar, waitForCompletion, InfrixGovernanceError } from './sugar';
+export type { GovernedResult, GovernedOptions } from './sugar';
 
 export {
   SubClient,

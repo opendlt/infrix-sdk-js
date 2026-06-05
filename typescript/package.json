@@ -18,10 +18,18 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node --test \"dist/surface.test.js\"",
+    "test": "tsc && node --test \"dist/surface.test.js\" \"dist/sugar.test.js\"",
     "prepublishOnly": "npm run build && npm test"
   },
-  "keywords": ["infrix", "governance", "intent", "policy", "accumulate", "wasm", "blockchain"],
+  "keywords": [
+    "infrix",
+    "governance",
+    "intent",
+    "policy",
+    "accumulate",
+    "wasm",
+    "blockchain"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -29,6 +37,7 @@
     "directory": "sdk/typescript"
   },
   "devDependencies": {
+    "@types/node": "^22.19.19",
     "typescript": "^5.4.0"
   }
 }
