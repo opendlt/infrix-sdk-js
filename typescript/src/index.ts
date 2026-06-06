@@ -72,6 +72,14 @@ export * from './types/governance';
 export { withGovernanceSugar, waitForCompletion, InfrixGovernanceError } from './sugar';
 export type { GovernedResult, GovernedOptions } from './sugar';
 
+export { withGoldenApp } from './golden/escrow';
+export type {
+  EscrowCreateParams,
+  EscrowHandle,
+  EscrowReleaseParams,
+  PortableProof,
+} from './golden/escrow';
+
 export {
   SubClient,
   IntentSubClient,

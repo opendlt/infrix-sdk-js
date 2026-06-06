@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node --test \"dist/surface.test.js\" \"dist/sugar.test.js\"",
+    "test": "tsc && node --test \"dist/surface.test.js\" \"dist/sugar.test.js\" \"dist/golden/escrow.test.js\"",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
