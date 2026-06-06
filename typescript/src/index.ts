@@ -80,6 +80,21 @@ export type {
   PortableProof,
 } from './golden/escrow';
 
+// platform-review-3 Epic 7: high-level developer flows + local proof
+// verification + create-infrix-app templates.
+export { withProofs, withReadiness, withWitnesses, withHostedDevnet } from './flows';
+export type {
+  SubstrateRow,
+  ReadinessReport,
+  WitnessReceipt,
+  WitnessEvaluation,
+  HostedDevnet,
+} from './flows';
+export { verifyLocalProof, hasReplayCapsule } from './proofs/verifyLocal';
+export type { VerifyRequire, ProofVerifyResult } from './proofs/verifyLocal';
+export { TEMPLATES, listTemplates, getTemplate, scaffoldFiles } from './templates/index';
+export type { AppTemplate } from './templates/index';
+
 export {
   SubClient,
   IntentSubClient,

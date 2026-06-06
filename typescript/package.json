@@ -16,9 +16,12 @@
     "access": "public",
     "provenance": true
   },
+  "bin": {
+    "create-infrix-app": "dist/templates/cli.js"
+  },
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node --test \"dist/surface.test.js\" \"dist/sugar.test.js\" \"dist/golden/escrow.test.js\"",
+    "test": "tsc && node --test \"dist/surface.test.js\" \"dist/sugar.test.js\" \"dist/golden/escrow.test.js\" \"dist/proofs/verifyLocal.test.js\" \"dist/flows.test.js\" \"dist/templates/templates.test.js\"",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
