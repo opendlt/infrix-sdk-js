@@ -185,6 +185,29 @@ import {
   EIP712SubClient,
 } from './sub-clients';
 
+// ---- Onboarding telemetry (adoption-12) ----
+
+/** A single SDK telemetry event passed to a developer-provided callback. */
+export interface SdkTelemetryEvent {
+  source?: 'sdk';
+  event: string;
+  method?: string;
+  durationMs?: number;
+  result: 'success' | 'failure';
+  errorCode?: string;
+}
+
+/** Optional developer telemetry hook. The SDK never reports to the network on
+ *  its own — it only invokes this callback. */
+export interface SdkTelemetry {
+  onEvent(event: SdkTelemetryEvent): void;
+}
+
+/** Options for {@link InfrixClient}. */
+export interface InfrixClientOptions {
+  telemetry?: SdkTelemetry;
+}
+
 // ---- RPC Error ----
 
 export class InfrixRPCError extends Error {
@@ -257,12 +280,25 @@ export class InfrixClient {
   readonly contracts: ContractSubClient;
 
   private restBase: string;
+  private telemetry?: SdkTelemetry;
   private defaultDisclosure: {
     actor?: string;
     purpose?: string;
     workflowInstance?: string;
     identity?: string;
   } = {};
+
+  // emit calls the developer-provided telemetry callback, if any. The SDK does
+  // NO default network reporting (adoption-12) — it only invokes the callback
+  // the developer supplied, and never throws if that callback throws.
+  private emit(event: SdkTelemetryEvent): void {
+    if (!this.telemetry || typeof this.telemetry.onEvent !== 'function') return;
+    try {
+      this.telemetry.onEvent({ source: 'sdk', ...event });
+    } catch {
+      /* a developer callback must never break an SDK call */
+    }
+  }
 
   /**
    * Set the default Gap 12 disclosure context that every RPC call
@@ -291,11 +327,12 @@ export class InfrixClient {
    * Create a client connected to an Infrix devnet.
    * @param baseUrl The base URL of the devnet server, e.g. "http://localhost:8080"
    */
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, options?: InfrixClientOptions) {
     const base = baseUrl.replace(/\/+$/, '');
     this.rpcUrl = `${base}/rpc`;
     this.wsUrl = base.replace(/^http/, 'ws') + '/ws';
     this.restBase = base;
+    this.telemetry = options?.telemetry;
 
     const rpcFn = this.rpc.bind(this);
     const restFn = this.rest.bind(this);
@@ -342,9 +379,13 @@ export class InfrixClient {
     const json = await res.json();
     if (json.error) {
       const translated = parseUserError(json.error);
+      const errorCode =
+        translated?.code ?? (typeof json.error.code === 'string' ? json.error.code : undefined);
+      this.emit({ event: 'rpc.call', method, result: 'failure', errorCode });
       if (translated) throw translated;
       throw new InfrixRPCError(json.error.code, json.error.message);
     }
+    this.emit({ event: 'rpc.call', method, result: 'success' });
     return json.result as T;
   }
 
