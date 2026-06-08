@@ -740,5 +740,8 @@ export class MissionClient {
   }
 }
 
+// adoption-06 — the canonical proof receipt surface.
+export * from './proofReceipt';
+
 // Default export for convenience.
 export default InfrixClient;
