@@ -1,0 +1,19 @@
+{
+  "name": "@infrix/packages",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Happy-path Infrix SDK packages (adoption-10) — one import per adoption outcome.",
+  "license": "MIT",
+  "workspaces": [
+    "golden-escrow",
+    "metamask",
+    "proof-receipt",
+    "nexus-embed",
+    "cinema-embed"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "check:supply-chain": "node scripts/supply-chain.mjs"
+  }
+}

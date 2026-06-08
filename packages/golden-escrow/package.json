@@ -1,0 +1,44 @@
+{
+  "name": "@infrix/golden-escrow",
+  "version": "0.1.0",
+  "description": "Build the golden verifiable-escrow flow with one import: create, govern, and prove in a single call.",
+  "type": "module",
+  "license": "MIT",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/check.mjs",
+    "pretest": "npm run build --prefix ../proof-receipt",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "@infrix/proof-receipt": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@infrix/client": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@infrix/client": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "infrix",
+    "accumulate",
+    "escrow",
+    "governance",
+    "proof"
+  ],
+  "sideEffects": false
+}

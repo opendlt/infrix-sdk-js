@@ -1,0 +1,40 @@
+{
+  "name": "@infrix/metamask",
+  "version": "0.1.0",
+  "description": "Submit a governed Infrix intent from MetaMask with one import: connect, sign typed data, and verify against an Accumulate key page.",
+  "type": "module",
+  "license": "MIT",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/check.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "peerDependencies": {
+    "@infrix/client": "^0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@infrix/client": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "infrix",
+    "accumulate",
+    "metamask",
+    "eip712",
+    "wallet"
+  ],
+  "sideEffects": false
+}
