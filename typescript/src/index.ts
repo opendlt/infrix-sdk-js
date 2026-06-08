@@ -158,6 +158,14 @@ export {
 // ---- Direct imports for internal use ----
 
 import type { DevnetEvent } from './types/contract';
+import { parseUserError } from './userError';
+
+export {
+  InfrixUserError,
+  parseUserError,
+  isStableErrorCode,
+} from './userError';
+export type { UserErrorPayload, UserErrorFix } from './userError';
 
 import {
   IntentSubClient,
@@ -333,6 +341,8 @@ export class InfrixClient {
     });
     const json = await res.json();
     if (json.error) {
+      const translated = parseUserError(json.error);
+      if (translated) throw translated;
       throw new InfrixRPCError(json.error.code, json.error.message);
     }
     return json.result as T;
@@ -367,6 +377,11 @@ export class InfrixClient {
     const res = await fetch(url, init);
     const json = await res.json();
     if (json && json.error) {
+      // v4 errors carry a stable string code (adoption-08) — surface the typed,
+      // actionable InfrixUserError so callers get the same code+fixes the CLI
+      // shows. Fall back to InfrixRPCError for legacy numeric-coded errors.
+      const translated = parseUserError(json.error);
+      if (translated) throw translated;
       const code = typeof json.error.code === 'number' ? json.error.code : -32603;
       const msg = typeof json.error.message === 'string' ? json.error.message : 'rest error';
       throw new InfrixRPCError(code, msg);
