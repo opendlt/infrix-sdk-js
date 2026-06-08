@@ -27,6 +27,23 @@ function makeFake(): { client: InfrixClient; calls: FakeCalls } {
     evidenceGet: [],
     exportPortable: [],
   };
+  const outcomeFor = (id: string) => ({
+    id: `out-${id}`,
+    planId: `plan-${id}`,
+    completedAt: '2026-01-01T00:00:00Z',
+    blockHeight: 7,
+    overallStatus: 'completed',
+    stepOutcomes: [],
+    totalGasUsed: 21,
+    totalGasPlanned: 21,
+    gasDrift: 0,
+    approvalEvidence: [{ stageId: 's1', identity: 'acc://officer.acme', role: 'approver', planHash: 'ab', signedAt: '2026-01-01T00:00:00Z' }],
+    outcomeHash: 'deadbeef',
+    planHashVerified: true,
+    evidenceBundleId: `ev-${id}`,
+    anchorId: `anc-${id}`,
+    finality: 'l0_anchored_final',
+  });
   const fake = {
     escrows: {
       create: async (params: unknown) => {
@@ -37,6 +54,10 @@ function makeFake(): { client: InfrixClient; calls: FakeCalls } {
         calls.escrowRelease.push({ id, opts });
         return { intentId: 'intent-release-1', status: 'released' };
       },
+    },
+    intents: {
+      get: async (intentId: string) => ({ id: intentId, status: 'completed', planId: `plan-${intentId}`, outcomeId: `out-${intentId}` }),
+      outcome: async (intentId: string) => outcomeFor(intentId),
     },
     evidence: {
       get: async (intentId: string) => {
@@ -64,6 +85,16 @@ test('golden escrow create/release/export speaks escrow, not spine', async () =>
   // Create: the caller speaks buyer/seller/amount — no Intent/Plan/Goal.
   const handle = await app.escrow.create({ buyer: 'acc://buyer.acme', seller: 'acc://seller.acme', amount: 1000 });
   assert.equal(handle.escrowId, 'escrow-1');
+  // The handle carries REAL spine artifacts (hydrated), not just escrow/intent id.
+  assert.equal(handle.intentId, 'intent-1');
+  assert.equal(handle.planId, 'plan-intent-1');
+  assert.equal(handle.outcomeId, 'out-intent-1');
+  assert.equal(handle.evidenceId, 'ev-intent-1');
+  assert.equal(handle.anchorId, 'anc-intent-1');
+  assert.equal(handle.finality, 'l0_anchored_final');
+  assert.equal(handle.gasAvailable, true);
+  assert.equal(handle.gasUsed, 21);
+  assert.equal(handle.approvals?.count, 1);
 
   // Under the hood the spine escrow sub-client was driven with the mapped
   // depositor/beneficiary.

@@ -72,6 +72,48 @@ test('withWitnesses counts distinct witnesses that reproduced', () => {
   assert.equal(ev.thresholdMet(3), false);
 });
 
+test('withWitnesses.verifyQuorum reports operator diversity, stale + unauthorized, mode', () => {
+  const c = withWitnesses(fakeClient(replayablePkg));
+  const now = 1_000_000;
+  const pkg = {
+    witnessReceipts: [
+      { witnessIdentity: 'acc://w1.acme', replayResult: 'reproduced', timestamp: now - 10 },
+      { witnessIdentity: 'acc://w2.acme', replayResult: 'reproduced', timestamp: now - 10 },
+      { witnessIdentity: 'acc://w3.acme', replayResult: 'reproduced', timestamp: now - 100000 }, // stale
+      { witnessIdentity: 'acc://evil.acme', replayResult: 'reproduced', timestamp: now - 10 },    // unregistered
+      { witnessIdentity: 'acc://w4.acme', replayResult: 'diverged', timestamp: now - 10 },        // not reproduced
+    ],
+  };
+  const registry = {
+    'acc://w1.acme': 'operator-A',
+    'acc://w2.acme': 'operator-B',
+    'acc://w3.acme': 'operator-A',
+  };
+  const q = c.witnesses.verifyQuorum(pkg, registry, {
+    threshold: 2,
+    operatorThreshold: 2,
+    maxAgeSeconds: 3600,
+    nowUnix: now,
+  });
+  assert.equal(q.mode, 'structural');
+  assert.equal(q.count, 2); // w1, w2 (w3 stale, evil unregistered, w4 diverged)
+  assert.equal(q.distinctIdentities, 2);
+  assert.equal(q.distinctOperators, 2); // operator-A, operator-B
+  assert.equal(q.thresholdMet, true);
+  assert.equal(q.operatorDiversityMet, true);
+  assert.equal(q.staleReceipts, 1);
+  assert.equal(q.unauthorizedReceipts, 1);
+});
+
+test('withProofs exposes verifyOffline (unambiguous) alongside verifyLocal', async () => {
+  const c = withProofs(fakeClient(replayablePkg));
+  const proof = await c.proofs.export({ intentId: 'int-1' });
+  const off = c.proofs.verifyOffline(proof);
+  assert.equal(typeof off.verified, 'boolean');
+  assert.equal(typeof c.proofs.verifyWithCLI, 'function');
+  assert.equal(typeof c.proofs.verifyLiveL0, 'function');
+});
+
 test('withHostedDevnet exposes endpoint + L0 metadata', () => {
   const c = withHostedDevnet(fakeClient(replayablePkg), { l0: 'kermit' });
   assert.equal(c.hostedDevnet.l0, 'kermit');

@@ -17,6 +17,8 @@
  * ```
  */
 import type { InfrixClient } from '../index';
+import { normalizeSubmittedIntent } from '../results';
+import type { GovernedResult, ResultCompletenessOptions, SubmittedLike } from '../results';
 
 /** Parameters to open a governed escrow. No spine vocabulary required. */
 export interface EscrowCreateParams {
@@ -27,13 +29,14 @@ export interface EscrowCreateParams {
   asset?: string;
 }
 
-/** A handle to an opened escrow. */
-export interface EscrowHandle {
+/**
+ * A handle to an opened escrow. It carries the escrow id AND the full set of
+ * real spine artifacts (intent/plan/outcome/evidence/anchor/finality/gas) — the
+ * day-one flow never requires the caller to reason about them, but they are not
+ * faked or blanked: every field is the real hydrated value.
+ */
+export interface EscrowHandle extends GovernedResult {
   escrowId: string;
-  /** The underlying governed intent id (for proof export); the day-one
-   * flow never requires the caller to reason about it. */
-  intentId: string;
-  status: string;
 }
 
 /** Parameters to release a governed escrow. */
@@ -61,7 +64,7 @@ export function withGoldenApp(client: InfrixClient) {
        * that requires a regulated release (role approval or credential).
        * Routes through the governed settlement/escrow spine.
        */
-      async create(params: EscrowCreateParams): Promise<EscrowHandle> {
+      async create(params: EscrowCreateParams, opts?: ResultCompletenessOptions): Promise<EscrowHandle> {
         const r = await client.escrows.create({
           depositor: params.buyer,
           beneficiary: params.seller,
@@ -71,20 +74,29 @@ export function withGoldenApp(client: InfrixClient) {
             { type: 'approval', params: {}, satisfied: false },
           ],
         });
-        return { escrowId: r.escrowId, intentId: r.intentId, status: r.status };
+        // Golden-app default: hydrate the real outcome (no blank/partial state).
+        const governed = await normalizeSubmittedIntent(client, r as unknown as SubmittedLike, {
+          requireOutcome: true,
+          throwOnIncomplete: true,
+          ...opts,
+        });
+        return { ...governed, escrowId: r.escrowId };
       },
 
       /**
        * Release a held escrow to the seller. The regulated-release policy
-       * is enforced by the spine; the caller only says "release".
+       * is enforced by the spine; the caller only says "release". Returns the
+       * fully-hydrated governed result for the release intent.
        */
       async release(
-        params: EscrowReleaseParams
-      ): Promise<{ intentId: string; status: string }> {
-        return client.escrows.release(
+        params: EscrowReleaseParams,
+        opts?: ResultCompletenessOptions,
+      ): Promise<GovernedResult> {
+        const r = await client.escrows.release(
           params.escrowId,
-          params.identity ? { identity: params.identity } : undefined
+          params.identity ? { identity: params.identity } : undefined,
         );
+        return normalizeSubmittedIntent(client, r as unknown as SubmittedLike, { requireOutcome: true, ...opts });
       },
     },
 

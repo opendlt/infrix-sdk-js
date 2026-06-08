@@ -72,6 +72,23 @@ export * from './types/governance';
 export { withGovernanceSugar, waitForCompletion, InfrixGovernanceError } from './sugar';
 export type { GovernedResult, GovernedOptions } from './sugar';
 
+// Priority 02: the shared governed-result normalizer — every composite helper
+// hydrates real spine artifacts through this, never blank/fake/partial state.
+export {
+  normalizeSubmittedIntent,
+  waitForGovernedResult,
+  hydrateGovernedResult,
+  hydrateOutcomeArtifacts,
+  assertCompleteGovernedResult,
+  IncompleteGovernedResultError,
+} from './results';
+export type {
+  ResultCompletenessOptions,
+  SubmittedLike,
+  ApprovalSummary,
+  AssuranceSummary,
+} from './results';
+
 export { withGoldenApp } from './golden/escrow';
 export type {
   EscrowCreateParams,
@@ -88,10 +105,34 @@ export type {
   ReadinessReport,
   WitnessReceipt,
   WitnessEvaluation,
+  WitnessQuorumResult,
+  WitnessQuorumOptions,
+  CliVerifyResult,
   HostedDevnet,
 } from './flows';
 export { verifyLocalProof, hasReplayCapsule } from './proofs/verifyLocal';
 export type { VerifyRequire, ProofVerifyResult } from './proofs/verifyLocal';
+
+// Priority 01: consumer-grade MetaMask -> Accumulate governed-intent path
+// (recovers the secp256k1 public key; no manual publicKey input).
+export { withMetaMask, MetaMaskApi } from './metamask';
+export type { MetaMaskGoal, MetaMaskSubmitParams, MetaMaskGovernedResult } from './metamask';
+export {
+  MetaMaskError,
+  MetaMaskProviderMissing,
+  MetaMaskUserRejected,
+  MetaMaskPublicKeyRecoveryFailed,
+  MetaMaskAddressMismatch,
+  MetaMaskKeyPageNotVerified,
+  MetaMaskIntentRejected,
+  MetaMaskProofUnavailable,
+  MetaMaskChallengeInvalid,
+  buildChallenge,
+  parseChallenge,
+  recoverPublicKey,
+  recoverAndVerify,
+} from './metamask';
+export type { RecoveredKey, ChallengeParams, MetaMaskErrorCode } from './metamask';
 export { TEMPLATES, listTemplates, getTemplate, scaffoldFiles } from './templates/index';
 export type { AppTemplate } from './templates/index';
 

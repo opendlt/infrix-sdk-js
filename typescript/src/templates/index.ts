@@ -117,41 +117,87 @@ export function scaffoldFiles(templateId: string, appName: string): Record<strin
 
 // --- template bodies (kept terse; each is a runnable starting point) ---
 
+// Every template demonstrates the same honest pattern: a high-level call that
+// awaits a FULLY HYDRATED result (real spine artifacts, no blanks/fake gas),
+// exports a proof, verifies it offline, and prints the assurance level.
+
+/** Shared logger snippet that prints a hydrated GovernedResult honestly. */
+const printResult = `function printGoverned(label, r) {
+  console.log(label, {
+    intentId: r.intentId, planId: r.planSkipped ? '(no plan stage)' : r.planId,
+    outcomeId: r.outcomeId, evidenceId: r.evidenceId, anchorId: r.anchorId,
+    finality: r.finality, gas: r.gasAvailable ? r.gasUsed : 'unavailable',
+    approvals: r.approvals?.count ?? 0,
+    proof: r.proofAvailable ? 'exported' : (r.proofUnavailableReason ?? 'not requested'),
+    assurance: r.assurance?.tier ?? r.finality,
+  });
+}`;
+
 const escrowIndex = `import { InfrixClient, withGoldenApp, withProofs } from '@infrix/client';
 
+${printResult}
+
 const client = withProofs(withGoldenApp(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080')));
-const { escrowId, intentId } = await client.escrow.create({ buyer: 'acc://buyer.acme', seller: 'acc://seller.acme', amount: 1000 });
-await client.escrow.release({ escrowId });
-const proof = await client.proofs.export({ intentId, profile: 'public_production' });
-console.log('proof exported; verify with: infrix verify proof.json --l0 kermit --require L4/G2 --require-replay');
-const verdict = client.proofs.verifyLocal(proof, { require: 'L3/G2', replay: true });
-console.log('local verdict:', verdict);
+// High-level call -> fully hydrated result (real intent/plan/outcome/evidence/anchor).
+const handle = await client.escrow.create({ buyer: 'acc://buyer.acme', seller: 'acc://seller.acme', amount: 1000 });
+printGoverned('escrow created:', handle);
+console.log('escrowId:', handle.escrowId);
+await client.escrow.release({ escrowId: handle.escrowId });
+// Export + verify OFFLINE + show assurance.
+const proof = await client.proofs.export({ intentId: handle.intentId, profile: 'public_production' });
+const verdict = client.proofs.verifyOffline(proof, { require: 'L3/G2', replay: true });
+console.log('assurance tier:', verdict.tier, 'verified(offline):', verdict.verified);
+console.log('full live verification: infrix verify proof.json --l0 kermit --require L4/G2 --require-replay');
 `;
 
-const approvalIndex = `import { InfrixClient } from '@infrix/client';
+const approvalIndex = `import { InfrixClient, withGovernanceSugar } from '@infrix/client';
 
-const client = new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080');
-const res = await client.intents.submit({ type: 'SUBMIT_GOVERNED', customParams: { action: 'approve-budget' } });
-console.log('submitted governed intent:', res.intentId);
+${printResult}
+
+const governed = withGovernanceSugar(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080'));
+// Await a fully hydrated result; export + offline-verify the proof in one call.
+const r = await governed.submitAndWait(
+  { type: 'SUBMIT_GOVERNED', customParams: { action: 'approve-budget' } },
+  { exportProof: true, verifyProofLocal: true },
+);
+printGoverned('governed approval:', r);
 `;
 
-const credentialIndex = `import { InfrixClient } from '@infrix/client';
+const credentialIndex = `import { InfrixClient, withGovernanceSugar } from '@infrix/client';
 
-const client = new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080');
-const catalog = await client.predicates.catalog();
-console.log('available credential predicates:', catalog);
+${printResult}
+
+const governed = withGovernanceSugar(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080'));
+// Credential-gated release as a governed object, fully hydrated + proven.
+const r = await governed.createObject(
+  'credential_release',
+  { holder: 'acc://alice.acme', credential: 'kyc-tier-2' },
+  { exportProof: true, verifyProofLocal: true },
+);
+printGoverned('credential-gated release:', r);
 `;
 
-const bridgeIndex = `import { InfrixClient } from '@infrix/client';
+const bridgeIndex = `import { InfrixClient, withGovernanceSugar } from '@infrix/client';
 
-const client = new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080');
-const res = await client.settlements.create({ legs: [{ chain: 'sepolia', amount: 1 }] });
-console.log('cross-chain settlement leg created:', res);
+${printResult}
+
+const governed = withGovernanceSugar(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080'));
+// Cross-chain settlement leg through the governed spine -> hydrated result.
+const r = await governed.singleLegSettlement(
+  'acc://alice.acme/tokens', 'acc://bob.acme/tokens', 1,
+  { asset: 'ACME', exportProof: true, verifyProofLocal: true },
+);
+printGoverned('bridge settlement:', r);
 `;
 
-const confidentialIndex = `import { InfrixClient } from '@infrix/client';
+const confidentialIndex = `import { InfrixClient, withGovernanceSugar } from '@infrix/client';
 
-const client = new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080');
-const res = await client.intents.submit({ type: 'SUBMIT_GOVERNED', customParams: { confidential: true, action: 'approve' } });
-console.log('confidential governed intent:', res.intentId);
+${printResult}
+
+const governed = withGovernanceSugar(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080'));
+const r = await governed.submitAndWait(
+  { type: 'SUBMIT_GOVERNED', customParams: { confidential: true, action: 'approve' } },
+  { exportProof: true, verifyProofLocal: true },
+);
+printGoverned('confidential governed intent:', r);
 `;

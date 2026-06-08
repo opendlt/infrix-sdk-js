@@ -34,6 +34,7 @@ export type {
   WalletOptions,
   RecoveryRequest,
   SponsorConfig,
+  WalletAmountResult,
 } from './wallet';
 
 // Key store

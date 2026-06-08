@@ -32,13 +32,30 @@ test('every template scaffolds a package.json + index.js + README', () => {
   }
 });
 
-test('the golden-escrow template can create an escrow, export, and verify a proof', () => {
+test('the golden-escrow template creates, exports, verifies offline, and shows assurance', () => {
   const files = scaffoldFiles('golden-escrow', 'escrow-app');
   const idx = files['index.js'];
   assert.ok(idx.includes('withGoldenApp'), 'uses the golden-app facade');
   assert.ok(idx.includes('escrow.create'), 'creates an escrow');
   assert.ok(idx.includes('proofs.export'), 'exports a proof');
-  assert.ok(idx.includes('verifyLocal'), 'verifies the proof');
+  assert.ok(idx.includes('verifyOffline'), 'verifies the proof offline');
+  assert.ok(idx.includes('assurance tier'), 'shows the assurance level');
+});
+
+test('every template demonstrates a fully-hydrated result + proof + assurance', () => {
+  for (const t of TEMPLATES) {
+    const idx = scaffoldFiles(t.id, 'app')['index.js'];
+    // A high-level call awaited to a hydrated result (printGoverned prints the
+    // real spine artifacts), with proof export + offline verification/assurance.
+    assert.ok(idx.includes('printGoverned') || idx.includes('verifyOffline'),
+      `${t.id} should await + print a hydrated governed result`);
+    assert.ok(idx.includes('exportProof') || idx.includes('proofs.export'),
+      `${t.id} should export a proof`);
+    assert.ok(idx.includes('assurance') || idx.includes('verifyOffline'),
+      `${t.id} should surface the assurance level`);
+    // No template may present a fake gas zero or blank id.
+    assert.ok(!/gasUsed:\s*0\b/.test(idx), `${t.id} must not hard-code gasUsed: 0`);
+  }
 });
 
 test('unknown template id is rejected', () => {

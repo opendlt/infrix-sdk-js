@@ -59,6 +59,20 @@ export interface RecoveryRequest {
   status: string;
 }
 
+/**
+ * A wallet amount (balance/credits) with provenance + verification state, so a
+ * caller can distinguish a real zero from an unknown (failed) query.
+ */
+export interface WalletAmountResult {
+  amount: bigint;
+  /** Where the amount came from. */
+  source: 'node' | 'l0' | 'cache';
+  /** True only when the amount was actually read from the source. */
+  verified: boolean;
+  /** When verified is false, why the amount is unavailable. */
+  unavailableReason?: string;
+}
+
 /** Sponsorship configuration. */
 export interface SponsorConfig {
   contracts?: string[];
@@ -88,29 +102,93 @@ export class InfrixWallet {
 
   // ---- Account Info ----
 
-  /** Get the wallet's token balance (via explorer.status or L0 query). */
-  async balance(): Promise<bigint> {
-    if (!this.rpcUrl) {
-      console.warn('InfrixWallet: no rpcUrl configured — returning 0 balance');
-      return 0n;
-    }
-
-    try {
-      const result = await this.rpc('account.balance', { url: this.adi });
-      const raw = result.balance;
-      if (typeof raw === 'string') return BigInt(raw);
-      if (typeof raw === 'number') return BigInt(raw);
-      if (typeof raw === 'bigint') return raw;
-      return 0n;
-    } catch {
-      // Node unreachable or account not yet on-chain — return zero.
-      return 0n;
-    }
+  /**
+   * Query the wallet's token balance, distinguishing a REAL zero from an
+   * unknown (failed/unconfigured) query. Never silently reports zero on
+   * failure — `verified` is false and `unavailableReason` says why.
+   */
+  async balanceStatus(): Promise<WalletAmountResult> {
+    return this.amountStatus('account.balance', 'balance');
   }
 
-  /** Get the wallet's credit balance. */
+  /**
+   * Query the wallet's credit balance with the same honesty contract as
+   * {@link balanceStatus}. Never returns a hard-coded zero.
+   */
+  async creditsStatus(): Promise<WalletAmountResult> {
+    return this.amountStatus('account.credits', 'credits', 'creditBalance');
+  }
+
+  /**
+   * Get the wallet's token balance. Throws if the balance cannot be verified
+   * (node unreachable, account not on-chain, or method unsupported) — it never
+   * silently returns zero on a failed query. Use {@link tryBalance} for
+   * non-throwing behaviour, or {@link balanceStatus} for the full state.
+   */
+  async balance(): Promise<bigint> {
+    const s = await this.balanceStatus();
+    if (!s.verified) {
+      throw new Error(`InfrixWallet: balance unavailable for ${this.adi}: ${s.unavailableReason}`);
+    }
+    return s.amount;
+  }
+
+  /** Non-throwing balance: returns the verified amount, or null if unavailable. */
+  async tryBalance(): Promise<bigint | null> {
+    const s = await this.balanceStatus();
+    return s.verified ? s.amount : null;
+  }
+
+  /**
+   * Get the wallet's credit balance from a real source. Throws if it cannot be
+   * verified — it never returns a hard-coded or silent zero.
+   */
   async credits(): Promise<bigint> {
-    return BigInt(0);
+    const s = await this.creditsStatus();
+    if (!s.verified) {
+      throw new Error(`InfrixWallet: credits unavailable for ${this.adi}: ${s.unavailableReason}`);
+    }
+    return s.amount;
+  }
+
+  /** Non-throwing credits: returns the verified amount, or null if unavailable. */
+  async tryCredits(): Promise<bigint | null> {
+    const s = await this.creditsStatus();
+    return s.verified ? s.amount : null;
+  }
+
+  /**
+   * Shared amount query: calls the node method, parses the first present field,
+   * and reports verified/unavailable HONESTLY (no silent zero). `fields` are
+   * tried in order on the response.
+   */
+  private async amountStatus(method: string, ...fields: string[]): Promise<WalletAmountResult> {
+    if (!this.rpcUrl) {
+      return { amount: 0n, source: 'node', verified: false, unavailableReason: 'no rpcUrl configured' };
+    }
+    let result: Record<string, unknown>;
+    try {
+      result = await this.rpc(method, { url: this.adi });
+    } catch (e) {
+      return {
+        amount: 0n,
+        source: 'node',
+        verified: false,
+        unavailableReason: e instanceof Error ? e.message : String(e),
+      };
+    }
+    for (const f of fields) {
+      const amount = toBigIntOrNull(result[f]);
+      if (amount !== null) {
+        return { amount, source: 'node', verified: true };
+      }
+    }
+    return {
+      amount: 0n,
+      source: 'node',
+      verified: false,
+      unavailableReason: `node response for ${method} had no ${fields.join('/')} field`,
+    };
   }
 
   // ---- Key Management ----
@@ -377,6 +455,18 @@ export class InfrixWallet {
     if (json.error) throw new Error(json.error.message);
     return json.result as Record<string, unknown>;
   }
+}
+
+/** Parse a node-returned amount field into a bigint, or null if absent/invalid. */
+function toBigIntOrNull(raw: unknown): bigint | null {
+  try {
+    if (typeof raw === 'bigint') return raw;
+    if (typeof raw === 'number' && Number.isFinite(raw)) return BigInt(Math.trunc(raw));
+    if (typeof raw === 'string' && raw.trim() !== '') return BigInt(raw);
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function approvalSignaturePayload(targetId: string, planHash: string, identity: string): string {
