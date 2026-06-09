@@ -48,7 +48,7 @@ test('ACTION_IDS matches the Go registry fixture (no drift)', () => {
   const fixtureIds = fixture.actions.map((a) => a.id).sort();
   const sdkIds = [...ACTION_IDS].sort();
   assert.deepEqual(sdkIds, fixtureIds, 'SDK ACTION_IDS must match the registry');
-  assert.equal(ACTION_IDS.length, 20, 'nextux-01 ships at least 20 actions');
+  assert.equal(ACTION_IDS.length, 26, 'nextux-01 + nextux-02 actions');
 });
 
 test('every manifest has a schema and required fields (types generate cleanly)', () => {
@@ -76,7 +76,7 @@ test('listActions parses the registry over the wire', async () => {
   const fixture = loadFixture();
   const client = mockClient({ 'GET /agent/actions': () => fixture });
   const actions = await client.listActions();
-  assert.equal(actions.length, 20);
+  assert.equal(actions.length, 26);
   assert.ok(actions.find((a) => a.id === 'proof.verify'));
 });
 

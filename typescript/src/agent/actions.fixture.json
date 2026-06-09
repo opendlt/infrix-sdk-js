@@ -1158,6 +1158,327 @@
       ]
     },
     {
+      "id": "scenario.create",
+      "title": "Draft a scenario from a template",
+      "description": "Return a customizable scenario draft from a template id.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "template"
+      ],
+      "outputs": [
+        "scenario"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which template to draft.",
+        "properties": {
+          "template": {
+            "type": "string",
+            "description": "Template id, e.g. regulated-escrow."
+          }
+        },
+        "required": [
+          "template"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The scenario draft.",
+        "properties": {
+          "scenario": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "scenario.exportStory",
+      "title": "Export a scenario proof story",
+      "description": "Pack a completed run's proof story into a single self-contained, shareable bundle.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "outDir"
+      ],
+      "outputs": [
+        "shareBundle"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The run output directory to pack.",
+        "properties": {
+          "outDir": {
+            "type": "string",
+            "description": "A directory produced by scenario.run."
+          }
+        },
+        "required": [
+          "outDir"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Share bundle.",
+        "properties": {
+          "shareBundle": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "scenario.listTemplates",
+      "title": "List scenario templates",
+      "description": "List the built-in scenario templates an agent can build from.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "templates"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Templates.",
+        "properties": {
+          "templates": {
+            "type": "array",
+            "description": "templates",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "scenario.run",
+      "title": "Run a scenario",
+      "description": "Run a scenario through the canonical governed flow and emit a verifiable proof story.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "scenario",
+        "template",
+        "mode"
+      ],
+      "outputs": [
+        "story",
+        "assurance",
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Scenario to run (either an inline scenario or a template id).",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "local or kermit.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "scenario": {
+            "type": "object",
+            "description": "An inline scenario definition."
+          },
+          "template": {
+            "type": "string",
+            "description": "Alternatively, a template id to run."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Run result.",
+        "properties": {
+          "story": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID",
+        "L0_ENDPOINT_UNREACHABLE"
+      ],
+      "authoritySummary": "Runs the canonical governed flow with no keys (local) or a bootstrapped Kermit identity. Never mainnet.",
+      "expectedProofLevel": "L3 offline (local); L4/G2 (kermit)",
+      "failureModes": [
+        "invalid scenario",
+        "kermit live wiring unavailable",
+        "verification failed (reported honestly)"
+      ],
+      "rollbackOrCleanup": "artifacts live in an agent scratch dir; nothing on-chain in local mode"
+    },
+    {
+      "id": "scenario.validate",
+      "title": "Validate a scenario",
+      "description": "Validate a scenario draft (actors, policy, steps, proof, no mainnet).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "scenario"
+      ],
+      "outputs": [
+        "ok"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The scenario to validate.",
+        "properties": {
+          "scenario": {
+            "type": "object",
+            "description": "A scenario definition."
+          }
+        },
+        "required": [
+          "scenario"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Validation result.",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "valid"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "scenario.verifyStory",
+      "title": "Verify a scenario proof story",
+      "description": "Independently verify a proof story (checksums, proof, replay, Cinema binding, honesty).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "outDir",
+        "storyPath",
+        "l0Endpoint"
+      ],
+      "outputs": [
+        "report"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The story to verify (a run dir or a story path).",
+        "properties": {
+          "l0Endpoint": {
+            "type": "string",
+            "description": "L0 endpoint to confirm an L4 claim."
+          },
+          "outDir": {
+            "type": "string",
+            "description": "A run output directory (verifies its story)."
+          },
+          "storyPath": {
+            "type": "string",
+            "description": "A direct path to story.infrixstory.json."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Verify report.",
+        "properties": {
+          "report": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "wallet.connect.metamask",
       "title": "Describe MetaMask connection",
       "description": "Return how a human connects MetaMask and signs — the agent never receives keys.",

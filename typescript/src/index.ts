@@ -806,5 +806,9 @@ export { InfrixAgentClient } from './agent/client';
 export type { InfrixAgentClientOptions, RunOptions, FetchLike } from './agent/client';
 export * as agent from './agent';
 
+// nextux-02 — scenario builder + proof-story verifier, under the `scenario`
+// namespace to avoid type-name clashes.
+export * as scenario from './scenario';
+
 // Default export for convenience.
 export default InfrixClient;

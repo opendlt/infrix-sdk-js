@@ -43,6 +43,13 @@ export const ACTION_IDS = [
   'workflow.execute',
   'workflow.exportProof',
   'wallet.connect.metamask',
+  // nextux-02 — Scenario Builder actions.
+  'scenario.listTemplates',
+  'scenario.create',
+  'scenario.validate',
+  'scenario.run',
+  'scenario.exportStory',
+  'scenario.verifyStory',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
