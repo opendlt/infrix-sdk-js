@@ -646,6 +646,290 @@
       ]
     },
     {
+      "id": "identity.explainSignature",
+      "title": "Explain a signature",
+      "description": "Explain, in plain language, exactly what a signature request will do (action, network, authority, funds, disclosure, agent-initiated, proof, irreversible effects).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "request"
+      ],
+      "optionalInputs": [
+        "expert"
+      ],
+      "outputs": [
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The signature request to explain.",
+        "properties": {
+          "expert": {
+            "type": "boolean",
+            "description": "Include the raw EIP-712 detail."
+          },
+          "request": {
+            "type": "object",
+            "description": "A signature request (goalType, signer, network, ...)."
+          }
+        },
+        "required": [
+          "request"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The explanation.",
+        "properties": {
+          "explanation": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "identity.listPermissions",
+      "title": "List permissions",
+      "description": "List the capabilities currently granted (session scopes + grants), in one plain shape.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "permissions"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Permissions.",
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "description": "permissions",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "identity.requestSession",
+      "title": "Request a scoped agent session",
+      "description": "Request a capability-scoped agent session. A scope is mandatory and the human must approve; a mainnet session must be explicitly authorized.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "authority_change",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "capabilities"
+      ],
+      "optionalInputs": [
+        "network",
+        "ttlSeconds",
+        "allowSigning",
+        "callerIdentity",
+        "allowMainnet"
+      ],
+      "outputs": [
+        "session",
+        "warnings"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The scoped-session request.",
+        "properties": {
+          "allowMainnet": {
+            "type": "boolean",
+            "description": "explicitly authorize a mainnet session."
+          },
+          "allowSigning": {
+            "type": "boolean",
+            "description": "allow this session to sign."
+          },
+          "callerIdentity": {
+            "type": "string",
+            "description": "caller identity label."
+          },
+          "capabilities": {
+            "type": "array",
+            "description": "the allowed action ids (at least one)",
+            "items": {
+              "type": "string",
+              "description": "action id"
+            }
+          },
+          "network": {
+            "type": "string",
+            "description": "session network (local|kermit|mainnet)."
+          },
+          "ttlSeconds": {
+            "type": "integer",
+            "description": "session TTL in seconds."
+          }
+        },
+        "required": [
+          "capabilities"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The created session.",
+        "properties": {
+          "session": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID",
+        "AGENT_CAPABILITY_DENIED"
+      ],
+      "authoritySummary": "Creates a capability-scoped agent session the agent can act within. A scope is mandatory; the human approves; mainnet is never the default.",
+      "expectedProofLevel": "n/a (a scoped capability grant, not a proof)",
+      "failureModes": [
+        "no capability scope (refused)",
+        "implicit mainnet authority (refused)"
+      ],
+      "rollbackOrCleanup": "revoke the session with identity.revokeSession"
+    },
+    {
+      "id": "identity.revokeSession",
+      "title": "Revoke an agent session",
+      "description": "Revoke a previously-granted agent session by id.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "sessionId"
+      ],
+      "outputs": [
+        "revoked"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which session to revoke.",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "the session id."
+          }
+        },
+        "required": [
+          "sessionId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Revoke result.",
+        "properties": {
+          "revoked": {
+            "type": "boolean",
+            "description": "revoked"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Revokes an agent session so it can no longer act.",
+      "expectedProofLevel": "n/a",
+      "failureModes": [
+        "unknown session"
+      ],
+      "rollbackOrCleanup": "request a fresh scoped session with identity.requestSession"
+    },
+    {
+      "id": "identity.status",
+      "title": "Show identity status",
+      "description": "Return the aggregated identity control-center view (wallet, sessions, permissions, warnings). Never includes a private key.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "status"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Identity status.",
+        "properties": {
+          "status": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "inbox.comment",
       "title": "Comment on a proof inbox item",
       "description": "Add a review comment to an item. A comment never alters the underlying proof.",

@@ -69,6 +69,12 @@ export const ACTION_IDS = [
   'inbox.comment',
   'inbox.prepareDecision',
   'inbox.signDecision',
+  // nextux-08 — Wallet & Identity Control Center actions.
+  'identity.status',
+  'identity.explainSignature',
+  'identity.listPermissions',
+  'identity.requestSession',
+  'identity.revokeSession',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

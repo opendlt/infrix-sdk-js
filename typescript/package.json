@@ -21,7 +21,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsc && node --test \"dist/surface.test.js\" \"dist/sugar.test.js\" \"dist/results.test.js\" \"dist/golden/escrow.test.js\" \"dist/proofs/verifyLocal.test.js\" \"dist/flows.test.js\" \"dist/templates/templates.test.js\" \"dist/metamask/recoverPublicKey.test.js\" \"dist/metamask/withMetaMask.test.js\" \"dist/proofReceipt.test.js\" \"dist/userError.test.js\" \"dist/telemetry.test.js\" \"dist/agent/agent.test.js\" \"dist/scenario/scenario.test.js\" \"dist/ux/ux.test.js\" \"dist/tasks/tasks.test.js\" \"dist/remediation/remediation.test.js\" \"dist/inbox/inbox.test.js\"",
+    "test": "tsc && node --test \"dist/surface.test.js\" \"dist/sugar.test.js\" \"dist/results.test.js\" \"dist/golden/escrow.test.js\" \"dist/proofs/verifyLocal.test.js\" \"dist/flows.test.js\" \"dist/templates/templates.test.js\" \"dist/metamask/recoverPublicKey.test.js\" \"dist/metamask/withMetaMask.test.js\" \"dist/proofReceipt.test.js\" \"dist/userError.test.js\" \"dist/telemetry.test.js\" \"dist/agent/agent.test.js\" \"dist/scenario/scenario.test.js\" \"dist/ux/ux.test.js\" \"dist/tasks/tasks.test.js\" \"dist/remediation/remediation.test.js\" \"dist/inbox/inbox.test.js\" \"dist/identity/identity.test.js\"",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [

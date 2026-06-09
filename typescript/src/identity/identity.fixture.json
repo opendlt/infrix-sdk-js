@@ -1,0 +1,42 @@
+{
+  "connect": {
+    "address": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+    "challenge": "Infrix MetaMask public-key binding\ndomain: infrix.test\nsigner: acc://alice.acme/book/1\naddress: 0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a\nnonce: 0123456789abcdef0123456789abcdef\nissuedAt: 2026-06-09T00:00:00Z\nexpiresAt: 2026-06-09T00:05:00Z\npurpose: recover-public-key-for-accumulate-eip712",
+    "signature": "0xbc1df7a28c1de2dd51df7c3e4474687b76c4984c623ef591530e41d532f27ae3659fe574255ab385c30b65b20fcc6313c4da8cc5bdbf3f5f0db962c3d350705a1c"
+  },
+  "explanation": {
+    "action": "Release 100 ACME from escrow to acc://bob.acme",
+    "network": "Kermit",
+    "identityTouched": "acc://alice.acme",
+    "requiredKeyPage": "acc://alice.acme/book/1 (version 1)",
+    "fundsOrCreditsMove": true,
+    "movesDetail": "out: 100 ACME",
+    "dataDisclosed": false,
+    "agentInitiated": true,
+    "expectedProof": "L4 proof anchored to Kermit",
+    "irreversibleEffects": [
+      "writes a real transaction to Kermit (cannot be un-written)",
+      "moves value — once anchored it cannot be reversed"
+    ],
+    "warnings": [
+      "an AI agent initiated this request — confirm you intended it",
+      "this moves funds/credits on a live network"
+    ],
+    "plain": "You are about to sign: Release 100 ACME from escrow to acc://bob.acme on Kermit.\nIt acts as acc://alice.acme using key page acc://alice.acme/book/1 (version 1).\nIt MOVES funds/credits (out: 100 ACME).\nAn AI agent initiated this request.\nExpected proof: L4 proof anchored to Kermit.\nIrreversible effects: writes a real transaction to Kermit (cannot be un-written); moves value — once anchored it cannot be reversed."
+  },
+  "signatureRequest": {
+    "action": "Release 100 ACME from escrow to acc://bob.acme",
+    "goalType": "SEND_TOKENS",
+    "sourceAssets": [
+      {
+        "asset": "ACME",
+        "amount": 100
+      }
+    ],
+    "signer": "acc://alice.acme/book/1",
+    "signerVersion": 1,
+    "network": "Kermit",
+    "memo": "regulated escrow release",
+    "agentInitiated": true
+  }
+}

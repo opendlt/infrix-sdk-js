@@ -818,5 +818,10 @@ export * as workbench from './workbench';
 // verifier, and a typed client, under the `inbox` namespace.
 export * as inbox from './inbox';
 
+// nextux-08 — Wallet & Identity Control Center: a cross-language signature
+// explainer, scoped-session validation, MetaMask connect, and a typed client,
+// under the `identity` namespace.
+export * as identity from './identity';
+
 // Default export for convenience.
 export default InfrixClient;
