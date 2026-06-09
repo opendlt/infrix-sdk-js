@@ -799,5 +799,12 @@ export class MissionClient {
 // adoption-06 — the canonical proof receipt surface.
 export * from './proofReceipt';
 
+// nextux-01 — the Agent Action Protocol client. Exposed both as a top-level
+// named export and under the `agent` namespace (the latter avoids any
+// type-name clashes with the governance surface).
+export { InfrixAgentClient } from './agent/client';
+export type { InfrixAgentClientOptions, RunOptions, FetchLike } from './agent/client';
+export * as agent from './agent';
+
 // Default export for convenience.
 export default InfrixClient;

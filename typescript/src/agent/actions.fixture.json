@@ -1,0 +1,1390 @@
+{
+  "actions": [
+    {
+      "id": "cinema.replay.open",
+      "title": "Open a Cinema replay",
+      "description": "Build a Cinema replay URL for a workflow so a human can watch what executed.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "baseUrl",
+        "intentId"
+      ],
+      "outputs": [
+        "url"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Cinema target.",
+        "properties": {
+          "baseUrl": {
+            "type": "string",
+            "description": "Nexus base URL (default http://localhost:8080)."
+          },
+          "intentId": {
+            "type": "string",
+            "description": "The intent/workflow id to replay."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "A Cinema URL.",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Openable URL."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "demo.start",
+      "title": "Start the one-command demo",
+      "description": "Run the golden governed escrow demo flow, export a portable proof, and verify it.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "mode",
+        "outDir",
+        "port",
+        "endpoint"
+      ],
+      "outputs": [
+        "receipt",
+        "assurance",
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Demo options.",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Kermit-mode L0 endpoint (network name or URL)."
+          },
+          "mode": {
+            "type": "string",
+            "description": "local (deterministic, offline) or kermit (live testnet).",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "outDir": {
+            "type": "string",
+            "description": "Where to write demo artifacts. Defaults to an agent scratch dir."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The demo receipt and artifacts.",
+        "properties": {
+          "receipt": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "SETUP_PORT_IN_USE",
+        "L0_ENDPOINT_UNREACHABLE"
+      ],
+      "authoritySummary": "Runs locally with no keys (local mode) or bootstraps a funded Kermit identity (kermit mode). Never touches mainnet.",
+      "expectedProofLevel": "L3 offline (local mode); L4/G2 live (kermit mode)",
+      "failureModes": [
+        "port already in use (local server)",
+        "Kermit endpoint unreachable",
+        "live L0 bootstrap failed"
+      ],
+      "rollbackOrCleanup": "infrix demo stop (or agent action demo.stop) clears local demo state"
+    },
+    {
+      "id": "demo.stop",
+      "title": "Stop the demo",
+      "description": "Stop a running local demo and clear its state.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "outDir"
+      ],
+      "outputs": [
+        "summary"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Stop options.",
+        "properties": {
+          "outDir": {
+            "type": "string",
+            "description": "The demo out dir to stop. Defaults to the standard demo dir."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Stop result.",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "What was stopped."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Stops a local process and removes local demo state files. No network, no keys.",
+      "expectedProofLevel": "n/a",
+      "failureModes": [
+        "no demo running (no-op)"
+      ],
+      "rollbackOrCleanup": "none needed; stopping is itself the cleanup"
+    },
+    {
+      "id": "doctor.run",
+      "title": "Run environment diagnostics",
+      "description": "Run infrix doctor checks (toolchain, build, services, L0, profiles) for a persona.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "persona",
+        "l0Endpoint"
+      ],
+      "outputs": [
+        "report"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Diagnostic options.",
+        "properties": {
+          "l0Endpoint": {
+            "type": "string",
+            "description": "Optional L0 endpoint to probe."
+          },
+          "persona": {
+            "type": "string",
+            "description": "Which persona to check for.",
+            "enum": [
+              "dapp",
+              "operator",
+              "auditor",
+              "metamask"
+            ]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The doctor report.",
+        "properties": {
+          "report": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "examples.run",
+      "title": "Run a curated example",
+      "description": "Run a supported curated example in-process and verify its proof.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "id"
+      ],
+      "optionalInputs": [
+        "mode"
+      ],
+      "outputs": [
+        "assurance",
+        "receipt"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which example to run.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The curated example id (e.g. golden-escrow)."
+          },
+          "mode": {
+            "type": "string",
+            "description": "local or kermit.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Run result.",
+        "properties": {
+          "assurance": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Runs the example's governed flow locally (no keys) or live on Kermit. Never mainnet.",
+      "expectedProofLevel": "L3 offline (local); L4/G2 (kermit)",
+      "failureModes": [
+        "unknown example id",
+        "example not runnable in-process",
+        "verification failed"
+      ],
+      "rollbackOrCleanup": "produced artifacts live in an agent scratch dir; nothing on-chain in local mode"
+    },
+    {
+      "id": "examples.search",
+      "title": "Search the curated example gallery",
+      "description": "Find curated examples by text, tier, or persona, with their prerequisites.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "query",
+        "tier",
+        "persona"
+      ],
+      "outputs": [
+        "examples"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Search filters.",
+        "properties": {
+          "persona": {
+            "type": "string",
+            "description": "Filter by persona (dapp/operator/auditor)."
+          },
+          "query": {
+            "type": "string",
+            "description": "Free-text match against id/title/proves."
+          },
+          "tier": {
+            "type": "string",
+            "description": "Filter by tier id."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Matching examples.",
+        "properties": {
+          "examples": {
+            "type": "array",
+            "description": "hits",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "metamask.acceptance.package",
+      "title": "Package MetaMask acceptance receipt",
+      "description": "Turn a captured MetaMask acceptance run's metadata into a fail-closed proof receipt.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "infrixCommit",
+        "acceptanceMode",
+        "result"
+      ],
+      "optionalInputs": [
+        "assuranceLevel",
+        "typedDataSigned",
+        "proofVerified",
+        "l0Endpoint",
+        "nodeEndpoint",
+        "provider"
+      ],
+      "outputs": [
+        "receipt",
+        "assurance",
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Captured MetaMask acceptance metadata.",
+        "properties": {
+          "acceptanceMode": {
+            "type": "string",
+            "description": "offline or live.",
+            "enum": [
+              "offline",
+              "live"
+            ]
+          },
+          "assuranceLevel": {
+            "type": "string",
+            "description": "Achieved level, e.g. L4/G2 (live) or offline."
+          },
+          "infrixCommit": {
+            "type": "string",
+            "description": "The Infrix commit the run was captured against."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "L0 endpoint used (live runs)."
+          },
+          "nodeEndpoint": {
+            "type": "string",
+            "description": "Node endpoint used."
+          },
+          "proofVerified": {
+            "type": "boolean",
+            "description": "Whether the governed proof verified."
+          },
+          "provider": {
+            "type": "string",
+            "description": "Wallet provider (e.g. MetaMask)."
+          },
+          "result": {
+            "type": "string",
+            "description": "Run outcome.",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "BLOCKED"
+            ]
+          },
+          "typedDataSigned": {
+            "type": "boolean",
+            "description": "Whether a real EIP-712 typed-data signature was produced."
+          }
+        },
+        "required": [
+          "acceptanceMode",
+          "infrixCommit",
+          "result"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Acceptance receipt.",
+        "properties": {
+          "receipt": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "PROOF_LEVEL_OVERCLAIMED",
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Produces a local receipt artifact from an operator's already-captured run. No keys, no network, no on-chain effect.",
+      "expectedProofLevel": "L4/G2 for a live PASS with verified proof; PARTIAL (offline EIP-712) otherwise — never overclaims",
+      "failureModes": [
+        "metadata overclaims its level (rejected by the fail-closed validator)"
+      ],
+      "rollbackOrCleanup": "the receipt is a local file; delete it to discard"
+    },
+    {
+      "id": "metamask.acceptance.verify",
+      "title": "Verify MetaMask acceptance receipt",
+      "description": "Verify a MetaMask acceptance receipt and confirm it does not overclaim.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "receipt"
+      ],
+      "outputs": [
+        "assurance",
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "An acceptance receipt to verify.",
+        "properties": {
+          "receipt": {
+            "type": "object",
+            "description": "A MetaMask acceptance proof receipt."
+          }
+        },
+        "required": [
+          "receipt"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Verdict.",
+        "properties": {
+          "assurance": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "PROOF_MALFORMED",
+        "PROOF_LEVEL_OVERCLAIMED"
+      ]
+    },
+    {
+      "id": "nexus.open",
+      "title": "Open a Nexus view",
+      "description": "Build a Nexus URL for a governance view so a human can inspect it.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "baseUrl",
+        "view",
+        "id"
+      ],
+      "outputs": [
+        "url"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Nexus target.",
+        "properties": {
+          "baseUrl": {
+            "type": "string",
+            "description": "Nexus base URL (default http://localhost:8080)."
+          },
+          "id": {
+            "type": "string",
+            "description": "Optional id/subpath for the view."
+          },
+          "view": {
+            "type": "string",
+            "description": "Route name (e.g. spine, prove, govern, agent)."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "A Nexus URL.",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Openable URL."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "proof.receipt.create",
+      "title": "Create proof receipt",
+      "description": "Verify a bundle and emit the canonical, fail-closed proof receipt artifact.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "bundle"
+      ],
+      "optionalInputs": [
+        "l0Endpoint",
+        "bundlePath"
+      ],
+      "outputs": [
+        "receipt",
+        "assurance"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "A portable evidence package to turn into a receipt.",
+        "properties": {
+          "bundle": {
+            "type": "object",
+            "description": "The portable evidence package."
+          },
+          "bundlePath": {
+            "type": "string",
+            "description": "Alternative: a path to the bundle JSON on disk."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "Optional L0 endpoint for live confirmation."
+          }
+        },
+        "required": [
+          "bundle"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The canonical proof receipt.",
+        "properties": {
+          "receipt": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "PROOF_MALFORMED",
+        "PROOF_LEVEL_OVERCLAIMED"
+      ]
+    },
+    {
+      "id": "proof.receipt.explain",
+      "title": "Explain proof receipt",
+      "description": "Explain a proof receipt in user language and confirm it does not overclaim.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "receipt"
+      ],
+      "outputs": [
+        "explanation",
+        "assurance"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "A proof receipt to explain.",
+        "properties": {
+          "receipt": {
+            "type": "object",
+            "description": "A canonical proof receipt object."
+          }
+        },
+        "required": [
+          "receipt"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "A user-language explanation.",
+        "properties": {
+          "assurance": {
+            "type": "object"
+          },
+          "explanation": {
+            "type": "string",
+            "description": "Plain-English explanation."
+          }
+        }
+      },
+      "errors": [
+        "PROOF_MALFORMED",
+        "PROOF_LEVEL_OVERCLAIMED"
+      ]
+    },
+    {
+      "id": "proof.verify",
+      "title": "Verify proof bundle",
+      "description": "Verify a portable Infrix proof without trusting the producing node.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "bundle"
+      ],
+      "optionalInputs": [
+        "l0Endpoint",
+        "requiredLevel",
+        "bundlePath"
+      ],
+      "outputs": [
+        "assurance",
+        "receipt",
+        "verifierTranscript"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "A portable evidence package and optional L0/level constraints.",
+        "properties": {
+          "bundle": {
+            "type": "object",
+            "description": "The portable evidence package to verify."
+          },
+          "bundlePath": {
+            "type": "string",
+            "description": "Alternative: a path to the bundle JSON on disk."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "Optional Accumulate L0 endpoint (network name or URL) for live L4 confirmation."
+          },
+          "requiredLevel": {
+            "type": "string",
+            "description": "Optional required assurance level, e.g. L4/G2."
+          }
+        },
+        "required": [
+          "bundle"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The verification verdict.",
+        "properties": {
+          "assurance": {
+            "type": "object"
+          },
+          "receipt": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "PROOF_MALFORMED",
+        "PROOF_L0_UNAVAILABLE",
+        "PROOF_LEVEL_OVERCLAIMED",
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "readiness.check",
+      "title": "Check node substrate readiness",
+      "description": "Query a node's substrate readiness dashboard and optionally evaluate a deployment profile.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "endpoint",
+        "profile"
+      ],
+      "outputs": [
+        "report"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Readiness options.",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Node v4 API base URL (default http://localhost:8080)."
+          },
+          "profile": {
+            "type": "string",
+            "description": "Optional deployment profile to evaluate against."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The readiness report.",
+        "properties": {
+          "report": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "L0_ENDPOINT_UNREACHABLE",
+        "PROFILE_REQUIREMENT_FAILED"
+      ]
+    },
+    {
+      "id": "release.evidence.make",
+      "title": "Make release evidence",
+      "description": "Generate a signed, L0-anchored release evidence package for the current commit.",
+      "mutatesState": true,
+      "networkWrites": true,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "testnet_write",
+      "profiles": [
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "repoDir",
+        "network",
+        "l0Endpoint"
+      ],
+      "optionalInputs": [
+        "profile",
+        "outRoot",
+        "pkgName",
+        "commit",
+        "witnesses",
+        "signerClass",
+        "signerKey",
+        "signerCmd",
+        "approvedFingerprint"
+      ],
+      "outputs": [
+        "receipt",
+        "report",
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Release generation options.",
+        "properties": {
+          "approvedFingerprint": {
+            "type": "string",
+            "description": "Pre-approved signer fingerprint."
+          },
+          "commit": {
+            "type": "string",
+            "description": "Explicit commit (defaults to HEAD)."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "L0 endpoint to anchor the evidence root on."
+          },
+          "network": {
+            "type": "string",
+            "description": "Network to anchor on (testnet only pre-launch)."
+          },
+          "outRoot": {
+            "type": "string",
+            "description": "Output root for the package."
+          },
+          "pkgName": {
+            "type": "string",
+            "description": "Package name."
+          },
+          "profile": {
+            "type": "string",
+            "description": "Deployment profile to attest."
+          },
+          "repoDir": {
+            "type": "string",
+            "description": "Repository root to package from."
+          },
+          "signerClass": {
+            "type": "string",
+            "description": "Signer class.",
+            "enum": [
+              "local-dev",
+              "pkcs11",
+              "kms",
+              "mpc"
+            ]
+          },
+          "signerCmd": {
+            "type": "string",
+            "description": "Managed signer command."
+          },
+          "signerKey": {
+            "type": "string",
+            "description": "Signer key (seed file for local-dev, base64 pubkey for managed)."
+          },
+          "witnesses": {
+            "type": "integer",
+            "description": "Number of independent witnesses to gather."
+          }
+        },
+        "required": [
+          "l0Endpoint",
+          "network",
+          "repoDir"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Generation result.",
+        "properties": {
+          "report": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID",
+        "L0_ENDPOINT_UNREACHABLE"
+      ],
+      "authoritySummary": "Signs the evidence root with the operator-custody signer and anchors it on the named testnet L0. Never mainnet.",
+      "expectedProofLevel": "L4/G2 (anchored, signed evidence)",
+      "failureModes": [
+        "signer custody not configured",
+        "L0 endpoint unreachable",
+        "commit not clean"
+      ],
+      "rollbackOrCleanup": "the package lives in outRoot; an unpublished package can be deleted; the L0 anchor is immutable"
+    },
+    {
+      "id": "release.evidence.publish",
+      "title": "Publish release evidence",
+      "description": "Publish a verified, signed release evidence tarball to a write-once destination.",
+      "mutatesState": true,
+      "networkWrites": true,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "release_publish",
+      "profiles": [
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "tarball",
+        "target",
+        "destination"
+      ],
+      "optionalInputs": [
+        "l0Endpoint",
+        "approvedFingerprint",
+        "claimNetwork",
+        "signerClass",
+        "signerKey",
+        "signerCmd",
+        "verifyAfterUpload"
+      ],
+      "outputs": [
+        "publicationReceipt",
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Publish options.",
+        "properties": {
+          "approvedFingerprint": {
+            "type": "string",
+            "description": "Expected signer fingerprint."
+          },
+          "claimNetwork": {
+            "type": "string",
+            "description": "Network the evidence may claim."
+          },
+          "destination": {
+            "type": "string",
+            "description": "Destination location."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "L0 endpoint to re-confirm the anchor."
+          },
+          "signerClass": {
+            "type": "string",
+            "description": "Signer class.",
+            "enum": [
+              "local-dev",
+              "pkcs11",
+              "kms",
+              "mpc"
+            ]
+          },
+          "signerCmd": {
+            "type": "string",
+            "description": "Managed signer command."
+          },
+          "signerKey": {
+            "type": "string",
+            "description": "Signer key."
+          },
+          "tarball": {
+            "type": "string",
+            "description": "The verified evidence tarball to publish."
+          },
+          "target": {
+            "type": "string",
+            "description": "Publish target.",
+            "enum": [
+              "file",
+              "command",
+              "s3-object-lock",
+              "github-release",
+              "ipfs"
+            ]
+          },
+          "verifyAfterUpload": {
+            "type": "boolean",
+            "description": "Re-fetch and verify after upload."
+          }
+        },
+        "required": [
+          "destination",
+          "tarball",
+          "target"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Publication receipt.",
+        "properties": {
+          "publicationReceipt": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_PUBLISH_UNVERIFIED",
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Publishes only AFTER re-verifying the evidence; signs the publication receipt with the operator-custody signer.",
+      "expectedProofLevel": "L4/G2 (the published evidence's own level)",
+      "failureModes": [
+        "evidence fails re-verification (publish refused)",
+        "destination not writable",
+        "signer not configured"
+      ],
+      "rollbackOrCleanup": "write-once destinations cannot be rolled back; that is the point — verify first"
+    },
+    {
+      "id": "release.evidence.verify",
+      "title": "Verify release evidence",
+      "description": "Verify a signed, L0-anchored release evidence package without trusting the publisher.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "path"
+      ],
+      "optionalInputs": [
+        "l0Endpoint",
+        "expectedCommit",
+        "approvedFingerprint",
+        "claimNetwork"
+      ],
+      "outputs": [
+        "assurance",
+        "receipt",
+        "report"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The evidence package to verify.",
+        "properties": {
+          "approvedFingerprint": {
+            "type": "string",
+            "description": "The expected signer fingerprint."
+          },
+          "claimNetwork": {
+            "type": "string",
+            "description": "The network the evidence may claim."
+          },
+          "expectedCommit": {
+            "type": "string",
+            "description": "The exact git commit the evidence must prove."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "L0 endpoint for live anchor confirmation."
+          },
+          "path": {
+            "type": "string",
+            "description": "Path to the evidence dir or tarball."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Verification verdict.",
+        "properties": {
+          "report": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "PROOF_MALFORMED",
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "wallet.connect.metamask",
+      "title": "Describe MetaMask connection",
+      "description": "Return how a human connects MetaMask and signs — the agent never receives keys.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "keyPageUrl"
+      ],
+      "outputs": [
+        "connection"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Connection context.",
+        "properties": {
+          "keyPageUrl": {
+            "type": "string",
+            "description": "Optional Accumulate key-page URL to bind the wallet key to."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Connection descriptor.",
+        "properties": {
+          "connection": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "METAMASK_PROVIDER_MISSING"
+      ]
+    },
+    {
+      "id": "workflow.execute",
+      "title": "Execute a governed workflow",
+      "description": "Run the golden governed escrow workflow end-to-end and export a verifiable proof.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "mode"
+      ],
+      "outputs": [
+        "assurance",
+        "receipt",
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Execution options.",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "local (offline) or kermit (live).",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Execution result.",
+        "properties": {
+          "assurance": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "L0_ENDPOINT_UNREACHABLE"
+      ],
+      "authoritySummary": "Runs the governed flow with no keys (local) or a bootstrapped Kermit identity (kermit). Never mainnet.",
+      "expectedProofLevel": "L3 offline (local); L4/G2 (kermit)",
+      "failureModes": [
+        "verification failed",
+        "Kermit live wiring unavailable"
+      ],
+      "rollbackOrCleanup": "local runs touch nothing on-chain; the proof bundle lives in an agent scratch dir"
+    },
+    {
+      "id": "workflow.exportProof",
+      "title": "Export a workflow proof",
+      "description": "Export a portable proof bundle to a file and confirm it verifies offline.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "bundle"
+      ],
+      "optionalInputs": [
+        "outPath",
+        "bundlePath"
+      ],
+      "outputs": [
+        "artifacts",
+        "assurance"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The proof to export.",
+        "properties": {
+          "bundle": {
+            "type": "object",
+            "description": "The portable evidence package."
+          },
+          "bundlePath": {
+            "type": "string",
+            "description": "Alternative: a path to the bundle JSON on disk."
+          },
+          "outPath": {
+            "type": "string",
+            "description": "Where to write the exported bundle. Defaults to an agent scratch dir."
+          }
+        },
+        "required": [
+          "bundle"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Export result.",
+        "properties": {
+          "artifacts": {
+            "type": "array",
+            "description": "files",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "PROOF_MALFORMED"
+      ]
+    },
+    {
+      "id": "workflow.plan",
+      "title": "Plan a governed workflow",
+      "description": "Return the plain-English plan for a governed Infrix workflow (the canonical spine).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "goal",
+        "mode"
+      ],
+      "outputs": [
+        "plan"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Workflow planning context.",
+        "properties": {
+          "goal": {
+            "type": "string",
+            "description": "A plain-English goal (e.g. 'run a governed escrow and prove it')."
+          },
+          "mode": {
+            "type": "string",
+            "description": "local or kermit.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The workflow plan.",
+        "properties": {
+          "plan": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    }
+  ]
+}
