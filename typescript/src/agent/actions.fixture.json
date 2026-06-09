@@ -646,6 +646,503 @@
       ]
     },
     {
+      "id": "inbox.comment",
+      "title": "Comment on a proof inbox item",
+      "description": "Add a review comment to an item. A comment never alters the underlying proof.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "itemId",
+        "body"
+      ],
+      "optionalInputs": [
+        "author"
+      ],
+      "outputs": [
+        "comment"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The comment.",
+        "properties": {
+          "author": {
+            "type": "string",
+            "description": "Comment author."
+          },
+          "body": {
+            "type": "string",
+            "description": "The comment text."
+          },
+          "itemId": {
+            "type": "string",
+            "description": "The inbox item id."
+          }
+        },
+        "required": [
+          "body",
+          "itemId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The added comment.",
+        "properties": {
+          "comment": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Appends a review comment to a local inbox item; never touches the artifact bytes or the artifact hash.",
+      "expectedProofLevel": "n/a (review note, not a proof)",
+      "failureModes": [
+        "empty comment",
+        "unknown item"
+      ],
+      "rollbackOrCleanup": "comments are append-only; archive the item to retire it"
+    },
+    {
+      "id": "inbox.import",
+      "title": "Import a proof artifact into the inbox",
+      "description": "Import an artifact (proof story, receipt, release evidence, remediation receipt, task run, or scenario draft), independently verify it, and create an inbox item.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "artifact",
+        "artifactPath",
+        "kind",
+        "sender",
+        "recipient",
+        "ask",
+        "l0Endpoint"
+      ],
+      "outputs": [
+        "item"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The artifact to import.",
+        "properties": {
+          "artifact": {
+            "type": "object",
+            "description": "An inline self-contained artifact (e.g. a proof-story share bundle)."
+          },
+          "artifactPath": {
+            "type": "string",
+            "description": "Alternatively, a filesystem path to the artifact."
+          },
+          "ask": {
+            "type": "string",
+            "description": "What the recipient is asked to approve."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Artifact kind override (auto-detected when empty)."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "L0 endpoint to confirm an L4 claim."
+          },
+          "recipient": {
+            "type": "string",
+            "description": "Recipient identity."
+          },
+          "sender": {
+            "type": "string",
+            "description": "Sender identity."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The created item.",
+        "properties": {
+          "item": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Writes a local inbox item + an immutable copy of the artifact bytes; verifies independently (trusts no node). Never writes the network.",
+      "expectedProofLevel": "the artifact's own verified level (never raised by import)",
+      "failureModes": [
+        "unrecognized artifact kind",
+        "artifact failed verification (reported honestly)"
+      ],
+      "rollbackOrCleanup": "the item + artifact copy live under the agent inbox store; archive it to retire it"
+    },
+    {
+      "id": "inbox.list",
+      "title": "List proof inbox items",
+      "description": "List the redaction-safe summaries of items in the proof inbox.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "archived"
+      ],
+      "outputs": [
+        "items"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which lane to list.",
+        "properties": {
+          "archived": {
+            "type": "boolean",
+            "description": "List the archived (audit) lane instead of the active one."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Inbox items.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "items",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "inbox.prepareDecision",
+      "title": "Prepare a decision for signing",
+      "description": "Build the canonical, UNSIGNED decision body + hash an authorized signer must sign. An agent prepares; it cannot sign unless its session was granted signing authority.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "itemId",
+        "type"
+      ],
+      "optionalInputs": [
+        "reason",
+        "delegateTo",
+        "signedBy"
+      ],
+      "outputs": [
+        "decisionBody",
+        "bodyHash",
+        "artifactHash"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The proposed decision.",
+        "properties": {
+          "delegateTo": {
+            "type": "string",
+            "description": "For delegate: who to delegate to."
+          },
+          "itemId": {
+            "type": "string",
+            "description": "The inbox item id."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Optional reason."
+          },
+          "signedBy": {
+            "type": "string",
+            "description": "The intended signer's identity label."
+          },
+          "type": {
+            "type": "string",
+            "description": "Decision type.",
+            "enum": [
+              "approve",
+              "reject",
+              "request_changes",
+              "acknowledge",
+              "delegate",
+              "archive"
+            ]
+          }
+        },
+        "required": [
+          "itemId",
+          "type"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The unsigned decision body.",
+        "properties": {
+          "artifactHash": {
+            "type": "string",
+            "description": "hash"
+          },
+          "bodyHash": {
+            "type": "string",
+            "description": "hash"
+          },
+          "decisionBody": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "inbox.signDecision",
+      "title": "Sign a decision on a proof inbox item",
+      "description": "Sign and record a decision (approve/reject/etc.) bound to the item's exact artifact hash. Requires a session explicitly granted signing authority.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "authority_change",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": true,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "itemId",
+        "type"
+      ],
+      "optionalInputs": [
+        "reason",
+        "delegateTo",
+        "signer"
+      ],
+      "outputs": [
+        "decision",
+        "receipt"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The decision to sign.",
+        "properties": {
+          "delegateTo": {
+            "type": "string",
+            "description": "For delegate: who to delegate to."
+          },
+          "itemId": {
+            "type": "string",
+            "description": "The inbox item id."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Optional reason."
+          },
+          "signer": {
+            "type": "string",
+            "description": "Signer identity label (a dev key is derived from it)."
+          },
+          "type": {
+            "type": "string",
+            "description": "Decision type.",
+            "enum": [
+              "approve",
+              "reject",
+              "request_changes",
+              "acknowledge",
+              "delegate",
+              "archive"
+            ]
+          }
+        },
+        "required": [
+          "itemId",
+          "type"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The signed decision + receipt.",
+        "properties": {
+          "decision": {
+            "type": "object"
+          },
+          "receipt": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID",
+        "AGENT_SIGNING_DENIED"
+      ],
+      "authoritySummary": "Mints an Ed25519 decision bound to the exact verified artifact hash. The agent may sign ONLY when its session was granted signing authority; an approve is refused unless the verifier passed.",
+      "expectedProofLevel": "n/a (a signed review decision, bound to the artifact's verified level)",
+      "failureModes": [
+        "session not granted signing authority (AGENT_SIGNING_DENIED)",
+        "approve on an unverified item (refused)",
+        "artifact-hash mismatch (refused)"
+      ],
+      "rollbackOrCleanup": "decisions are append-only; archive the item to retire it"
+    },
+    {
+      "id": "inbox.summarize",
+      "title": "Summarize a proof inbox item",
+      "description": "Return the redaction-safe shared summary of an item (no private payload).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "itemId"
+      ],
+      "outputs": [
+        "summary"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which item to summarize.",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "description": "The inbox item id."
+          }
+        },
+        "required": [
+          "itemId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Shared summary.",
+        "properties": {
+          "summary": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "inbox.verify",
+      "title": "Verify a proof inbox item",
+      "description": "Independently re-verify an item's artifact and update its honest verification verdict.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "itemId"
+      ],
+      "optionalInputs": [
+        "l0Endpoint"
+      ],
+      "outputs": [
+        "verification"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which item to verify.",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "description": "The inbox item id."
+          },
+          "l0Endpoint": {
+            "type": "string",
+            "description": "L0 endpoint to confirm an L4 claim."
+          }
+        },
+        "required": [
+          "itemId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Verification verdict.",
+        "properties": {
+          "verification": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "metamask.acceptance.package",
       "title": "Package MetaMask acceptance receipt",
       "description": "Turn a captured MetaMask acceptance run's metadata into a fail-closed proof receipt.",

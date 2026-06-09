@@ -1,0 +1,99 @@
+{
+  "decision": {
+    "type": "approve",
+    "itemId": "inbox_fixturedecision1",
+    "artifactHash": "sha256:bb523249f943b4c9568f627a0939663fd928ea481f01a45ada1d85f10c874e7b",
+    "reason": "looks correct",
+    "signedBy": "local-dev",
+    "signerKeyId": "3f274ee78adb16de2571f47dc5c460c51b9251ca94719580dde5cc3b8e3ba147",
+    "publicKey": "NEYlrbhLbcXiY8zA+SCBaPszw3LLN8vs4kBMp8/qtnA=",
+    "createdAt": "2026-06-09T00:00:00Z",
+    "bodyHash": "sha256:d52ca210ad267e7ca387cb6b5ffe6e9c7049ca841b2d3de51b24c326c892c589",
+    "signature": "oexdfAqf6pzMtA2/laLqIk9ao2DTPBchsetJhgO/7TQ5k1Lm6J5XCU14gRnJfBpVcybf0XX78vRwBxwVLAcIAg=="
+  },
+  "item": {
+    "version": 1,
+    "id": "inbox_fixturedecision1",
+    "title": "Regulated escrow release",
+    "kind": "proof_story",
+    "artifactHash": "sha256:bb523249f943b4c9568f627a0939663fd928ea481f01a45ada1d85f10c874e7b",
+    "artifactFile": "story.infrixstory.bundle.json",
+    "sender": "alice@example.com",
+    "recipient": "auditor@example.com",
+    "createdAt": "2026-06-09T00:00:00Z",
+    "askedToApprove": "release the regulated escrow",
+    "verification": {
+      "status": "verified",
+      "proofLevel": "L3",
+      "governanceLevel": "G2",
+      "trustsNode": false,
+      "l0Verified": false,
+      "replayVerified": false,
+      "verifiedAt": "2026-06-09T00:00:00Z",
+      "verifier": "scenario.VerifyStory"
+    },
+    "decisions": [
+      {
+        "type": "approve",
+        "itemId": "inbox_fixturedecision1",
+        "artifactHash": "sha256:bb523249f943b4c9568f627a0939663fd928ea481f01a45ada1d85f10c874e7b",
+        "reason": "looks correct",
+        "signedBy": "local-dev",
+        "signerKeyId": "3f274ee78adb16de2571f47dc5c460c51b9251ca94719580dde5cc3b8e3ba147",
+        "publicKey": "NEYlrbhLbcXiY8zA+SCBaPszw3LLN8vs4kBMp8/qtnA=",
+        "createdAt": "2026-06-09T00:00:00Z",
+        "bodyHash": "sha256:d52ca210ad267e7ca387cb6b5ffe6e9c7049ca841b2d3de51b24c326c892c589",
+        "signature": "oexdfAqf6pzMtA2/laLqIk9ao2DTPBchsetJhgO/7TQ5k1Lm6J5XCU14gRnJfBpVcybf0XX78vRwBxwVLAcIAg=="
+      }
+    ],
+    "comments": [],
+    "archived": false
+  },
+  "receipt": {
+    "version": 1,
+    "itemId": "inbox_fixturedecision1",
+    "itemTitle": "Regulated escrow release",
+    "kind": "proof_story",
+    "artifactHash": "sha256:bb523249f943b4c9568f627a0939663fd928ea481f01a45ada1d85f10c874e7b",
+    "verification": {
+      "status": "verified",
+      "proofLevel": "L3",
+      "governanceLevel": "G2",
+      "trustsNode": false,
+      "l0Verified": false,
+      "replayVerified": false,
+      "verifiedAt": "2026-06-09T00:00:00Z",
+      "verifier": "scenario.VerifyStory"
+    },
+    "decision": {
+      "type": "approve",
+      "itemId": "inbox_fixturedecision1",
+      "artifactHash": "sha256:bb523249f943b4c9568f627a0939663fd928ea481f01a45ada1d85f10c874e7b",
+      "reason": "looks correct",
+      "signedBy": "local-dev",
+      "signerKeyId": "3f274ee78adb16de2571f47dc5c460c51b9251ca94719580dde5cc3b8e3ba147",
+      "publicKey": "NEYlrbhLbcXiY8zA+SCBaPszw3LLN8vs4kBMp8/qtnA=",
+      "createdAt": "2026-06-09T00:00:00Z",
+      "bodyHash": "sha256:d52ca210ad267e7ca387cb6b5ffe6e9c7049ca841b2d3de51b24c326c892c589",
+      "signature": "oexdfAqf6pzMtA2/laLqIk9ao2DTPBchsetJhgO/7TQ5k1Lm6J5XCU14gRnJfBpVcybf0XX78vRwBxwVLAcIAg=="
+    },
+    "issuedAt": "2026-06-09T00:00:00Z"
+  },
+  "summary": {
+    "id": "inbox_fixturedecision1",
+    "title": "Regulated escrow release",
+    "kind": "proof_story",
+    "artifactHash": "sha256:bb523249f943b4c9568f627a0939663fd928ea481f01a45ada1d85f10c874e7b",
+    "sender": "alice@example.com",
+    "recipient": "auditor@example.com",
+    "createdAt": "2026-06-09T00:00:00Z",
+    "askedToApprove": "release the regulated escrow",
+    "status": "verified",
+    "proofLevel": "L3",
+    "governanceLevel": "G2",
+    "trustsNode": false,
+    "l0Verified": false,
+    "commentCount": 0,
+    "decisionCount": 1
+  }
+}

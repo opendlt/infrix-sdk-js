@@ -61,6 +61,14 @@ export const ACTION_IDS = [
   'workbench.dryRun',
   'workbench.run',
   'workbench.explain',
+  // nextux-07 — Proof Inbox + Collaboration actions.
+  'inbox.list',
+  'inbox.summarize',
+  'inbox.verify',
+  'inbox.import',
+  'inbox.comment',
+  'inbox.prepareDecision',
+  'inbox.signDecision',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

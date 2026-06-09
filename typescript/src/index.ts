@@ -814,5 +814,9 @@ export * as scenario from './scenario';
 // namespace to avoid type-name clashes.
 export * as workbench from './workbench';
 
+// nextux-07 — Proof Inbox + Collaboration: types, an offline decision/receipt
+// verifier, and a typed client, under the `inbox` namespace.
+export * as inbox from './inbox';
+
 // Default export for convenience.
 export default InfrixClient;
