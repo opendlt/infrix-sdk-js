@@ -1,6 +1,285 @@
 {
   "actions": [
     {
+      "id": "autopilot.apply",
+      "title": "Apply a repair plan",
+      "description": "Apply a repair plan's auto-safe config fixes after an explicit, plan-hash-bound approval, then verify.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "plan"
+      ],
+      "outputs": [
+        "receipt"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The plan to apply.",
+        "properties": {
+          "plan": {
+            "type": "object",
+            "description": "A sealed repair plan (from autopilot.plan)."
+          }
+        },
+        "required": [
+          "plan"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The remediation receipt.",
+        "properties": {
+          "receipt": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Applies ONLY auto-safe, config-only fixes the policy allows (no demotion, no gate weakening, no mainnet, no secrets). The approval is bound to the plan hash.",
+      "expectedProofLevel": "n/a (config remediation, not a proof)",
+      "failureModes": [
+        "plan hash mismatch",
+        "policy refusal",
+        "approval missing"
+      ],
+      "rollbackOrCleanup": "the previous config is saved to \u003cconfig\u003e.bak; the receipt records the before/after state hashes"
+    },
+    {
+      "id": "autopilot.diagnose",
+      "title": "Diagnose a config",
+      "description": "Diagnose a node config against a deployment profile and propose typed fixes (read-only).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "config"
+      ],
+      "optionalInputs": [
+        "profile"
+      ],
+      "outputs": [
+        "plan"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to diagnose.",
+        "properties": {
+          "config": {
+            "type": "string",
+            "description": "Path to the node config to diagnose."
+          },
+          "profile": {
+            "type": "string",
+            "description": "Target deployment profile (default public_production)."
+          }
+        },
+        "required": [
+          "config"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The repair plan.",
+        "properties": {
+          "plan": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "autopilot.plan",
+      "title": "Produce a repair plan",
+      "description": "Produce a sealed, plan-hash-bound repair plan for a config + profile (read-only).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "config"
+      ],
+      "optionalInputs": [
+        "profile"
+      ],
+      "outputs": [
+        "plan"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to plan.",
+        "properties": {
+          "config": {
+            "type": "string",
+            "description": "Path to the node config."
+          },
+          "profile": {
+            "type": "string",
+            "description": "Target deployment profile (default public_production)."
+          }
+        },
+        "required": [
+          "config"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The sealed repair plan.",
+        "properties": {
+          "plan": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "autopilot.receipt",
+      "title": "Explain a remediation receipt",
+      "description": "Summarize a remediation receipt (what changed, before/after, manual actions remaining).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "receipt"
+      ],
+      "outputs": [
+        "summary"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The receipt to explain.",
+        "properties": {
+          "receipt": {
+            "type": "object",
+            "description": "A remediation receipt object."
+          }
+        },
+        "required": [
+          "receipt"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "A plain summary.",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "Plain-English summary."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "autopilot.verify",
+      "title": "Verify a config",
+      "description": "Re-validate a plan's config against its profile (read-only).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "config",
+        "profile"
+      ],
+      "outputs": [
+        "report"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to verify.",
+        "properties": {
+          "config": {
+            "type": "string",
+            "description": "Path to the node config."
+          },
+          "profile": {
+            "type": "string",
+            "description": "Target deployment profile."
+          }
+        },
+        "required": [
+          "config",
+          "profile"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The validation report.",
+        "properties": {
+          "report": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "cinema.replay.open",
       "title": "Open a Cinema replay",
       "description": "Build a Cinema replay URL for a workflow so a human can watch what executed.",

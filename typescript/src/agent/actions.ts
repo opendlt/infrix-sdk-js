@@ -50,6 +50,11 @@ export const ACTION_IDS = [
   'scenario.run',
   'scenario.exportStory',
   'scenario.verifyStory',
+  'autopilot.diagnose',
+  'autopilot.plan',
+  'autopilot.apply',
+  'autopilot.verify',
+  'autopilot.receipt',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
