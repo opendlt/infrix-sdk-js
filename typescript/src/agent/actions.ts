@@ -55,6 +55,12 @@ export const ACTION_IDS = [
   'autopilot.apply',
   'autopilot.verify',
   'autopilot.receipt',
+  // nextux-06 — Intent Copilot Workbench actions.
+  'workbench.ask',
+  'workbench.plan',
+  'workbench.dryRun',
+  'workbench.run',
+  'workbench.explain',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

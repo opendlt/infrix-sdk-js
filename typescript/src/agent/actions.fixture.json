@@ -1805,6 +1805,347 @@
       ]
     },
     {
+      "id": "workbench.ask",
+      "title": "Ask the workbench (intent → plan)",
+      "description": "Describe an outcome in plain language; get a grounded, typed plan (candidates, missing inputs, required authority, expected proof level, safety). Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "request"
+      ],
+      "optionalInputs": [
+        "network",
+        "inputs"
+      ],
+      "outputs": [
+        "plan"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What you want to prove or do.",
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "description": "Known inputs to pre-fill."
+          },
+          "network": {
+            "type": "string",
+            "description": "Target network (local|kermit). Never mainnet by default.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "description": "The outcome, in plain language."
+          }
+        },
+        "required": [
+          "request"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The plan.",
+        "properties": {
+          "plan": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "workbench.dryRun",
+      "title": "Dry-run a planned request",
+      "description": "Plan a request and preview exactly what running it would do, by delegating to the selected surface's real dry-run. Never mutates.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "request"
+      ],
+      "optionalInputs": [
+        "network",
+        "inputs"
+      ],
+      "outputs": [
+        "dryRun"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to dry-run.",
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "description": "Known inputs to pre-fill."
+          },
+          "network": {
+            "type": "string",
+            "description": "Target network (local|kermit).",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "description": "The outcome, in plain language."
+          }
+        },
+        "required": [
+          "request"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The dry-run preview.",
+        "properties": {
+          "dryRun": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "workbench.explain",
+      "title": "Explain a planned request",
+      "description": "Explain in plain language what Infrix would do for a request: the chosen capability, why, the network, required inputs, authority, safety, and expected proof. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "request"
+      ],
+      "optionalInputs": [
+        "network",
+        "inputs"
+      ],
+      "outputs": [
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to explain.",
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "description": "Known inputs."
+          },
+          "network": {
+            "type": "string",
+            "description": "Target network (local|kermit).",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "description": "The outcome, in plain language."
+          }
+        },
+        "required": [
+          "request"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The explanation.",
+        "properties": {
+          "explanation": {
+            "type": "string",
+            "description": "Plain-language explanation."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "workbench.plan",
+      "title": "Plan a request",
+      "description": "Produce the typed, hash-bound plan for a request (candidates, selection, inputs, network, safety). Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "request"
+      ],
+      "optionalInputs": [
+        "network",
+        "inputs"
+      ],
+      "outputs": [
+        "plan"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to plan.",
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "description": "Known inputs to pre-fill."
+          },
+          "network": {
+            "type": "string",
+            "description": "Target network (local|kermit).",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "description": "The outcome, in plain language."
+          }
+        },
+        "required": [
+          "request"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The plan.",
+        "properties": {
+          "plan": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "workbench.run",
+      "title": "Run a planned request",
+      "description": "Plan a request, dry-run it, and (after an input-bound approval) execute it through the existing gated surface, returning the verifier's proof receipt.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "request"
+      ],
+      "optionalInputs": [
+        "network",
+        "inputs"
+      ],
+      "outputs": [
+        "result",
+        "receipt"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to run.",
+        "properties": {
+          "inputs": {
+            "type": "object",
+            "description": "Known inputs."
+          },
+          "network": {
+            "type": "string",
+            "description": "Target network (local|kermit).",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "description": "The outcome, in plain language."
+          }
+        },
+        "required": [
+          "request"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The run result + receipt.",
+        "properties": {
+          "result": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Plans only from grounded registry capabilities; runs the selected one through its existing safety gate after a plan-hash-bound approval. Never executes model output directly, never writes mainnet, never skips verification.",
+      "expectedProofLevel": "comes from the verifier (L3 offline / L4 live), never asserted by the workbench",
+      "failureModes": [
+        "hard refusal (mainnet/skip-verify/overclaim/etc.)",
+        "no grounded match",
+        "missing inputs",
+        "approval missing or not bound to the plan",
+        "underlying verification failed (reported honestly)"
+      ],
+      "rollbackOrCleanup": "local runs touch only an agent scratch dir; nothing on-chain in local mode. The run is recorded in a sealed, redacted transcript."
+    },
+    {
       "id": "workflow.execute",
       "title": "Execute a governed workflow",
       "description": "Run the golden governed escrow workflow end-to-end and export a verifiable proof.",

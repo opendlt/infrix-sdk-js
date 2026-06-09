@@ -810,5 +810,9 @@ export * as agent from './agent';
 // namespace to avoid type-name clashes.
 export * as scenario from './scenario';
 
+// nextux-06 — Intent Copilot Workbench plan reader, under the `workbench`
+// namespace to avoid type-name clashes.
+export * as workbench from './workbench';
+
 // Default export for convenience.
 export default InfrixClient;
