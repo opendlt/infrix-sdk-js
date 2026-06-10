@@ -105,6 +105,11 @@ export const ACTION_IDS = [
   'room.act',
   'room.summarize',
   'room.exportProof',
+  // nextux-15 — Migration & Comparison Lab actions (all read-only).
+  'compare.pattern',
+  'compare.report',
+  'compare.scaffold',
+  'compare.explainTradeoffs',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

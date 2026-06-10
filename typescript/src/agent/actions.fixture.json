@@ -503,6 +503,272 @@
       ]
     },
     {
+      "id": "compare.explainTradeoffs",
+      "title": "Explain a pattern's tradeoffs",
+      "description": "Explain in plain language what changes when moving a pattern to Infrix, citing ONLY the report's own fields — trust, UX, proof, cost, what-remains-hard, and the sourced claims. It invents no external facts and uses no hype. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "pattern"
+      ],
+      "optionalInputs": [
+        "noCompetitorClaims"
+      ],
+      "outputs": [
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to explain.",
+        "properties": {
+          "noCompetitorClaims": {
+            "type": "boolean",
+            "description": "When true, explain against an abstract pattern only."
+          },
+          "pattern": {
+            "type": "string",
+            "description": "A pattern id.",
+            "enum": [
+              "audit-log",
+              "cross-chain-bridge",
+              "dao-approval",
+              "ethereum-multisig",
+              "private-disclosure",
+              "release-attestation",
+              "token-escrow",
+              "web2-approval-workflow"
+            ]
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The explanation.",
+        "properties": {
+          "explanation": {
+            "type": "string",
+            "description": "Plain-language tradeoff explanation."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "compare.pattern",
+      "title": "Look up a comparison pattern",
+      "description": "Return a familiar blockchain/Web2 pattern (e.g. ethereum-multisig) with its common implementation, trust assumptions, user steps, failure modes, Infrix equivalent, proof output, and what remains hard. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "pattern"
+      ],
+      "outputs": [
+        "pattern"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which pattern.",
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "description": "A pattern id.",
+            "enum": [
+              "audit-log",
+              "cross-chain-bridge",
+              "dao-approval",
+              "ethereum-multisig",
+              "private-disclosure",
+              "release-attestation",
+              "token-escrow",
+              "web2-approval-workflow"
+            ]
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The pattern.",
+        "properties": {
+          "pattern": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "compare.report",
+      "title": "Build a comparison report",
+      "description": "Build the honest, sourced comparison report for a pattern: trust, UX, and proof comparisons, a cost estimate (no invented numbers), a migration plan, and claims (every external claim sourced/dated or marked assumption). Disable competitor claims to compare against an abstract pattern only. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "pattern"
+      ],
+      "optionalInputs": [
+        "noCompetitorClaims"
+      ],
+      "outputs": [
+        "report"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to report.",
+        "properties": {
+          "noCompetitorClaims": {
+            "type": "boolean",
+            "description": "When true, drop competitor claims and compare against an abstract pattern only."
+          },
+          "pattern": {
+            "type": "string",
+            "description": "A pattern id.",
+            "enum": [
+              "audit-log",
+              "cross-chain-bridge",
+              "dao-approval",
+              "ethereum-multisig",
+              "private-disclosure",
+              "release-attestation",
+              "token-escrow",
+              "web2-approval-workflow"
+            ]
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The report.",
+        "properties": {
+          "report": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "compare.scaffold",
+      "title": "Scaffold an Infrix migration",
+      "description": "Generate runnable Infrix artifacts for a pattern: a validated task template, a validated scenario definition, a TypeScript SDK starter that routes through governance (dry-run + approval, never mainnet), an honest proof-receipt expectation, and Cinema labels. Generates inline; writes nothing and deploys nothing. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "pattern"
+      ],
+      "optionalInputs": [
+        "network"
+      ],
+      "outputs": [
+        "scaffold"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to scaffold.",
+        "properties": {
+          "network": {
+            "type": "string",
+            "description": "local (default) or kermit. Never mainnet.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "pattern": {
+            "type": "string",
+            "description": "A pattern id.",
+            "enum": [
+              "audit-log",
+              "cross-chain-bridge",
+              "dao-approval",
+              "ethereum-multisig",
+              "private-disclosure",
+              "release-attestation",
+              "token-escrow",
+              "web2-approval-workflow"
+            ]
+          }
+        },
+        "required": [
+          "pattern"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The scaffold.",
+        "properties": {
+          "scaffold": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "demo.start",
       "title": "Start the one-command demo",
       "description": "Run the golden governed escrow demo flow, export a portable proof, and verify it.",

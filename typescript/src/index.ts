@@ -848,5 +848,11 @@ export * as tutor from './tutor';
 // namespace.
 export * as rooms from './rooms';
 
+// nextux-15 — Migration & Comparison Lab: report and scaffold types + honest
+// helpers (every external claim is sourced/dated or an assumption; a scaffold's
+// SDK routes through governance and never targets mainnet), under the `compare`
+// namespace.
+export * as compare from './compare';
+
 // Default export for convenience.
 export default InfrixClient;
