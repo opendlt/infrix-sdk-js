@@ -832,5 +832,10 @@ export * as companion from './companion';
 // types + honest helpers, under the `quests` namespace.
 export * as quests from './quests';
 
+// nextux-12 — Visual Workflow Studio: flow, simulation, and export types +
+// honest helpers (a simulation is never a live proof), under the `studio`
+// namespace.
+export * as studio from './studio';
+
 // Default export for convenience.
 export default InfrixClient;

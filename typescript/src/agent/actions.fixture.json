@@ -2946,6 +2946,276 @@
       ]
     },
     {
+      "id": "studio.createFlow",
+      "title": "Draft a workflow",
+      "description": "Return a valid starter flow (a regulated escrow by default) titled from a goal. The draft is grounded in real actions and caps proof honestly; it is a draft to inspect and simulate, not a run. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "goal",
+        "network"
+      ],
+      "outputs": [
+        "flow"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to draft.",
+        "properties": {
+          "goal": {
+            "type": "string",
+            "description": "Plain-language goal / title for the flow."
+          },
+          "network": {
+            "type": "string",
+            "description": "local (default) or kermit. Never mainnet.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The draft flow.",
+        "properties": {
+          "flow": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "studio.explain",
+      "title": "Explain a workflow",
+      "description": "Explain in plain language what a flow does, who must approve, what it discloses, its honest proof-level cap, and its trust boundary. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "flow"
+      ],
+      "outputs": [
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The flow to explain.",
+        "properties": {
+          "flow": {
+            "type": "object",
+            "description": "A studio flow (.infrixflow.json) as an object."
+          }
+        },
+        "required": [
+          "flow"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The explanation.",
+        "properties": {
+          "explanation": {
+            "type": "string",
+            "description": "Plain-language explanation."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "studio.export",
+      "title": "Export a workflow",
+      "description": "Compile a flow into an existing verified primitive — a scenario, a task template, an SDK snippet, an agent plan, or markdown. The flow is validated first (no export without validation); the result carries a validation report, a safety report, the verifier command, and docs links. Generated code never skips approval or dry-run. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "flow",
+        "as"
+      ],
+      "outputs": [
+        "export"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to export.",
+        "properties": {
+          "as": {
+            "type": "string",
+            "description": "The export format.",
+            "enum": [
+              "scenario",
+              "task",
+              "sdk-ts",
+              "agent-plan",
+              "markdown"
+            ]
+          },
+          "flow": {
+            "type": "object",
+            "description": "A studio flow (.infrixflow.json) as an object."
+          }
+        },
+        "required": [
+          "as",
+          "flow"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The export result.",
+        "properties": {
+          "export": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "studio.simulate",
+      "title": "Simulate a workflow",
+      "description": "Preview a flow read-only: the path taken, required approvals, possible failures, expected artifacts, the honest proof-level cap, the trust boundary, and missing inputs. A simulation is never a live proof and mutates nothing. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "flow"
+      ],
+      "outputs": [
+        "simulation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The flow to simulate.",
+        "properties": {
+          "flow": {
+            "type": "object",
+            "description": "A studio flow (.infrixflow.json) as an object."
+          }
+        },
+        "required": [
+          "flow"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The simulation.",
+        "properties": {
+          "simulation": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "studio.validate",
+      "title": "Validate a workflow",
+      "description": "Validate a flow against the studio's non-negotiable rules and ground every workflow action against the real action registry. Returns a structured validation report. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "flow"
+      ],
+      "outputs": [
+        "validation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The flow to validate.",
+        "properties": {
+          "flow": {
+            "type": "object",
+            "description": "A studio flow (.infrixflow.json) as an object."
+          }
+        },
+        "required": [
+          "flow"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The validation report.",
+        "properties": {
+          "validation": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "wallet.connect.metamask",
       "title": "Describe MetaMask connection",
       "description": "Return how a human connects MetaMask and signs — the agent never receives keys.",

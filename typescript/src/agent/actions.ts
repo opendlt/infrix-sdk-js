@@ -88,6 +88,12 @@ export const ACTION_IDS = [
   'quest.status',
   'quest.next',
   'quest.explain',
+  // nextux-12 — Visual Workflow Studio actions (all read-only).
+  'studio.createFlow',
+  'studio.validate',
+  'studio.simulate',
+  'studio.export',
+  'studio.explain',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
