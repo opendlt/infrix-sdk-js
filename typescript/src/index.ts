@@ -837,5 +837,10 @@ export * as quests from './quests';
 // namespace.
 export * as studio from './studio';
 
+// nextux-13 — Conversational Proof Tutor: explanation, lesson, and quiz types +
+// honest helpers (never claims L4 unless the verifier supports it; audience
+// changes wording only), under the `tutor` namespace.
+export * as tutor from './tutor';
+
 // Default export for convenience.
 export default InfrixClient;

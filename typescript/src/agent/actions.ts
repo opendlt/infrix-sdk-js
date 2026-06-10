@@ -94,6 +94,11 @@ export const ACTION_IDS = [
   'studio.simulate',
   'studio.export',
   'studio.explain',
+  // nextux-13 — Conversational Proof Tutor actions (all read-only).
+  'tutor.explain',
+  'tutor.debug',
+  'tutor.teach',
+  'tutor.quiz',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

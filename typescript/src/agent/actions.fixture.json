@@ -3216,6 +3216,243 @@
       ]
     },
     {
+      "id": "tutor.debug",
+      "title": "Debug an Infrix error or failed proof",
+      "description": "Explain why something failed: a translated error code/object or a failed proof/verifier report. Returns the plain meaning, what it means for assurance, and grounded fixes. Never shows a green status for a failure and never advises bypassing a gate. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "error"
+      ],
+      "optionalInputs": [
+        "audience"
+      ],
+      "outputs": [
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The error or failed artifact to debug.",
+        "properties": {
+          "audience": {
+            "type": "string",
+            "description": "Audience: changes wording + next actions only.",
+            "enum": [
+              "builder",
+              "operator",
+              "auditor",
+              "business",
+              "agent",
+              "expert"
+            ]
+          },
+          "error": {
+            "type": "object",
+            "description": "An error object ({code, message}) or a failed proof/verifier artifact."
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The grounded explanation.",
+        "properties": {
+          "explanation": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "tutor.explain",
+      "title": "Explain an Infrix artifact",
+      "description": "Explain a parsed Infrix artifact (proof, receipt, verifier report, signature, task, workflow, inbox item) in plain language: a summary, what it can and cannot claim, the honest status, and grounded next actions. Never claims L4 unless the verifier output supports it; never invents a proof claim. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "artifact"
+      ],
+      "optionalInputs": [
+        "audience"
+      ],
+      "outputs": [
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The artifact to explain.",
+        "properties": {
+          "artifact": {
+            "type": "object",
+            "description": "A parsed Infrix artifact as an object (proof receipt, story, verifier report, inbox item, workbench/remediation plan, signature request, or error)."
+          },
+          "audience": {
+            "type": "string",
+            "description": "Audience: changes wording + next actions only, never the facts.",
+            "enum": [
+              "builder",
+              "operator",
+              "auditor",
+              "business",
+              "agent",
+              "expert"
+            ]
+          }
+        },
+        "required": [
+          "artifact"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The grounded explanation.",
+        "properties": {
+          "explanation": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "tutor.quiz",
+      "title": "Quiz on an Infrix concept",
+      "description": "Return a grounded quiz question for a topic, or grade an answer when a choice index is supplied. The correct answer and explanation come from the lesson, never an invented fact. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "topic"
+      ],
+      "optionalInputs": [
+        "choice"
+      ],
+      "outputs": [
+        "quiz"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The quiz request.",
+        "properties": {
+          "choice": {
+            "type": "integer",
+            "description": "Optional 0-based choice index to grade. Omit to just fetch the question."
+          },
+          "topic": {
+            "type": "string",
+            "description": "A lesson topic or alias to quiz on."
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The quiz question or graded result.",
+        "properties": {
+          "quiz": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "tutor.teach",
+      "title": "Teach an Infrix concept",
+      "description": "Return a grounded lesson for a topic (e.g. L3-vs-L4, proof-receipt, node-not-trusted, accumulate-l0, replay, witness-quorum, metamask-signing): a short explanation, a tiny example, a try-it command, and a quiz question. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "topic"
+      ],
+      "outputs": [
+        "lesson"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "The topic to teach.",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "A lesson topic or alias (e.g. \"L4\", \"proof-receipt\")."
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The lesson.",
+        "properties": {
+          "lesson": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "wallet.connect.metamask",
       "title": "Describe MetaMask connection",
       "description": "Return how a human connects MetaMask and signs — the agent never receives keys.",
