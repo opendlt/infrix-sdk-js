@@ -333,6 +333,176 @@
       ]
     },
     {
+      "id": "companion.context",
+      "title": "Get safe workspace context",
+      "description": "Return the workspace branch + git state, the recent artifacts (metadata only), the suggestions, and the read-only actions allowed — no file contents, no secrets.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "context"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Workspace context.",
+        "properties": {
+          "context": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "companion.open",
+      "title": "Resolve a companion route to open",
+      "description": "Return a sanitized Nexus hash route to open in the companion dashboard. It opens nothing and runs no command — it only resolves a safe UI route.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "optionalInputs": [
+        "route"
+      ],
+      "outputs": [
+        "route"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which route to open.",
+        "properties": {
+          "route": {
+            "type": "string",
+            "description": "A Nexus hash route, e.g. #/companion or #/execute."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Resolved route.",
+        "properties": {
+          "route": {
+            "type": "string",
+            "description": "route"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "companion.recentArtifacts",
+      "title": "List recent workspace artifacts",
+      "description": "Return the indexed workspace artifacts (path/kind/hash/times/declared level/verification status) — safe metadata only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Artifacts.",
+        "properties": {
+          "artifacts": {
+            "type": "array",
+            "description": "artifacts",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "companion.suggestNext",
+      "title": "Suggest the next best action",
+      "description": "Return the companion's next-best-action suggestions (reason, command, risk level, whether approval is needed, docs).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "suggestions"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "Suggestions.",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "description": "suggestions",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "demo.start",
       "title": "Start the one-command demo",
       "description": "Run the golden governed escrow demo flow, export a portable proof, and verify it.",

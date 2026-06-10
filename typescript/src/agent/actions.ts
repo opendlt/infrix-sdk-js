@@ -77,6 +77,11 @@ export const ACTION_IDS = [
   'identity.revokeSession',
   // nextux-09 — Embedded Verification Widget Kit action.
   'widgets.generateEmbed',
+  // nextux-10 — Zero-Context Local Companion actions.
+  'companion.context',
+  'companion.recentArtifacts',
+  'companion.suggestNext',
+  'companion.open',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

@@ -823,5 +823,10 @@ export * as inbox from './inbox';
 // under the `identity` namespace.
 export * as identity from './identity';
 
+// nextux-10 — Zero-Context Local Companion: honest context helpers + a typed
+// client over the localhost-only companion server, under the `companion`
+// namespace.
+export * as companion from './companion';
+
 // Default export for convenience.
 export default InfrixClient;
