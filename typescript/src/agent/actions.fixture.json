@@ -2014,6 +2014,243 @@
       ]
     },
     {
+      "id": "quest.explain",
+      "title": "Explain a quest",
+      "description": "Explain in plain language what a quest teaches, the real actions it orchestrates, and exactly what verification it requires to be marked complete. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "questId"
+      ],
+      "outputs": [
+        "explanation"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which quest to explain.",
+        "properties": {
+          "questId": {
+            "type": "string",
+            "description": "The quest id, e.g. first-proof."
+          }
+        },
+        "required": [
+          "questId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The explanation.",
+        "properties": {
+          "explanation": {
+            "type": "string",
+            "description": "Plain-language explanation."
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "quest.list",
+      "title": "List the learning quests",
+      "description": "Return the quest catalog: each quest's title, plain promise, persona, estimated time, prerequisites, the missions it runs, and the next recommended quest. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "quests"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The quest catalog.",
+        "properties": {
+          "quests": {
+            "type": "array",
+            "description": "quests",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "quest.next",
+      "title": "Recommend the next quest",
+      "description": "Return the next recommended quest (the first incomplete quest whose prerequisites are met) and why. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "next"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The next quest.",
+        "properties": {
+          "next": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "quest.start",
+      "title": "Run a learning quest",
+      "description": "Run a quest's missions by orchestrating the real Infrix surfaces (demo/verify/workbench/inbox/identity), then record an honest progress receipt for each mission the verifier accepts. Local mode only writes a local scratch dir and never spends mainnet; it can never mark a quest complete unless the verifier accepts the real artifacts.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "questId"
+      ],
+      "optionalInputs": [
+        "mode"
+      ],
+      "outputs": [
+        "run"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which quest to run.",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "local (default) or kermit. Never mainnet.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "questId": {
+            "type": "string",
+            "description": "The quest id, e.g. first-proof."
+          }
+        },
+        "required": [
+          "questId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The quest run result.",
+        "properties": {
+          "run": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Orchestrates only the existing gated surfaces; completion is decided by the quest verifier from real artifacts, never asserted by the agent. Never writes mainnet.",
+      "expectedProofLevel": "comes from the verifier (L3 local / L4 only with live L0 on Kermit), never asserted by the quest",
+      "failureModes": [
+        "unknown quest id",
+        "Kermit mode without live L0 wiring",
+        "a mission whose verification did not pass (reported honestly, not marked complete)"
+      ],
+      "rollbackOrCleanup": "writes only a local scratch dir under .infrix/quest; `infrix quest reset` removes it. Nothing on-chain in local mode."
+    },
+    {
+      "id": "quest.status",
+      "title": "Show quest progress",
+      "description": "Return the progress trail: which quests are complete, which are locked by prerequisites, and the recommended next quest. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "outputs": [
+        "status"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "No input."
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The progress trail.",
+        "properties": {
+          "status": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "readiness.check",
       "title": "Check node substrate readiness",
       "description": "Query a node's substrate readiness dashboard and optionally evaluate a deployment profile.",

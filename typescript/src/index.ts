@@ -828,5 +828,9 @@ export * as identity from './identity';
 // namespace.
 export * as companion from './companion';
 
+// nextux-11 — Proof Quest Mode: catalog, progress-trail, and progress-receipt
+// types + honest helpers, under the `quests` namespace.
+export * as quests from './quests';
+
 // Default export for convenience.
 export default InfrixClient;

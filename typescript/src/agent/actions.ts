@@ -82,6 +82,12 @@ export const ACTION_IDS = [
   'companion.recentArtifacts',
   'companion.suggestNext',
   'companion.open',
+  // nextux-11 — Proof Quest Mode actions.
+  'quest.list',
+  'quest.start',
+  'quest.status',
+  'quest.next',
+  'quest.explain',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
