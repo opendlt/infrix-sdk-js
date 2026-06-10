@@ -2625,6 +2625,410 @@
       ]
     },
     {
+      "id": "room.act",
+      "title": "Act in a demo room",
+      "description": "Perform a role-gated action in a room: a scenario action (deliver/disclose/witness/review/summarize), an approve/reject, or a comment. A participant can never act outside its role, a viewer can never approve, and an AI agent can never approve without a delegated signing session. Writes local room state.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "room",
+        "participant",
+        "action"
+      ],
+      "optionalInputs": [
+        "detail",
+        "decision",
+        "subject",
+        "body"
+      ],
+      "outputs": [
+        "event"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to do.",
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "The action.",
+            "enum": [
+              "room.comment",
+              "room.approve",
+              "room.act",
+              "room.disclose",
+              "room.witness",
+              "room.review",
+              "room.summarize"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "description": "The comment body (for room.comment)."
+          },
+          "decision": {
+            "type": "string",
+            "description": "approve | reject (for room.approve)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Free-text detail for a scenario action."
+          },
+          "participant": {
+            "type": "string",
+            "description": "The acting participant's id."
+          },
+          "room": {
+            "type": "string",
+            "description": "Path to the room's room.json."
+          },
+          "subject": {
+            "type": "string",
+            "description": "What is being approved (for room.approve)."
+          }
+        },
+        "required": [
+          "action",
+          "participant",
+          "room"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The recorded outcome.",
+        "properties": {
+          "event": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Records a role-gated action. An approval by a signing role produces an artifact-bound Ed25519 decision; an agent needs a delegation to approve.",
+      "expectedProofLevel": "n/a (an action records to the room log; the proof comes from the scenario run).",
+      "failureModes": [
+        "role cannot perform the action",
+        "viewer cannot approve",
+        "agent cannot approve without delegation"
+      ],
+      "rollbackOrCleanup": "Actions are appended to the room event log; re-save a prior room.json to revert."
+    },
+    {
+      "id": "room.create",
+      "title": "Create a demo room",
+      "description": "Create a multiplayer demo room from a scenario template and run it through the canonical governed flow, producing real, independently verifiable proof under \u003cout\u003e/run. Never on mainnet (no mainnet mode). Writes local room state.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "scenario",
+        "out"
+      ],
+      "optionalInputs": [
+        "mode",
+        "endpoint",
+        "story"
+      ],
+      "outputs": [
+        "room",
+        "path"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What room to create.",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Kermit L0 endpoint (kermit mode only)."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Room mode.",
+            "enum": [
+              "local",
+              "kermit",
+              "watch-only",
+              "replay-only"
+            ]
+          },
+          "out": {
+            "type": "string",
+            "description": "Output directory for the room and its run artifacts."
+          },
+          "scenario": {
+            "type": "string",
+            "description": "The scenario template id (e.g. regulated-escrow)."
+          },
+          "story": {
+            "type": "string",
+            "description": "Existing story path (watch-only / replay-only modes)."
+          }
+        },
+        "required": [
+          "out",
+          "scenario"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The created room.",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The room.json path."
+          },
+          "room": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Writes local room state and runs a governed scenario; no signing authority is granted to the agent.",
+      "expectedProofLevel": "L3 local (L4 only on a live Kermit run); the verifier decides the final level.",
+      "failureModes": [
+        "unknown scenario",
+        "kermit mode without a live provider",
+        "mainnet refused"
+      ],
+      "rollbackOrCleanup": "Delete the room's output directory."
+    },
+    {
+      "id": "room.exportProof",
+      "title": "Export a room's proof",
+      "description": "Re-verify the room's produced proof story with the canonical verifier and emit a fail-closed proof receipt whose assurance is exactly the verifier's verdict — never the room's claim. Binds the shared replay to the event log and records the signed approvals. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "room"
+      ],
+      "optionalInputs": [
+        "endpoint"
+      ],
+      "outputs": [
+        "export"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which room.",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Optional live L0 endpoint to confirm an L4 claim."
+          },
+          "room": {
+            "type": "string",
+            "description": "Path to the room's room.json."
+          }
+        },
+        "required": [
+          "room"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The proof export.",
+        "properties": {
+          "export": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "room.join",
+      "title": "Join a demo room",
+      "description": "Join a room as a role (buyer, seller, regulator, witness, auditor, ai_assistant, or viewer). An agent may join any role, but joining never grants signing authority — an explicit delegated session is required to ever approve. Writes local room state.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "room",
+        "name"
+      ],
+      "optionalInputs": [
+        "role",
+        "isAgent",
+        "delegation"
+      ],
+      "outputs": [
+        "participant"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "How to join.",
+        "properties": {
+          "delegation": {
+            "type": "object",
+            "description": "An explicit delegated signing session (required for an agent to ever approve).",
+            "properties": {
+              "allowSigning": {
+                "type": "boolean",
+                "description": "Whether the delegation grants signing authority."
+              },
+              "scope": {
+                "type": "string",
+                "description": "The role/identity the delegation authorizes."
+              },
+              "sessionId": {
+                "type": "string",
+                "description": "The delegated session id."
+              }
+            }
+          },
+          "isAgent": {
+            "type": "boolean",
+            "description": "True when the participant is an AI agent."
+          },
+          "name": {
+            "type": "string",
+            "description": "The participant's display name."
+          },
+          "role": {
+            "type": "string",
+            "description": "The role to join as.",
+            "enum": [
+              "buyer",
+              "seller",
+              "regulator",
+              "witness",
+              "auditor",
+              "ai_assistant",
+              "viewer"
+            ]
+          },
+          "room": {
+            "type": "string",
+            "description": "Path to the room's room.json."
+          }
+        },
+        "required": [
+          "name",
+          "room"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The participant.",
+        "properties": {
+          "participant": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Adds a participant to a room. No signing authority is granted by joining; an agent must carry a delegation to approve.",
+      "expectedProofLevel": "n/a (a join produces no proof).",
+      "failureModes": [
+        "unknown room",
+        "unknown role",
+        "non-viewer role in an observe-only room"
+      ],
+      "rollbackOrCleanup": "Roles and joins are recorded as events; re-save a prior room.json to revert."
+    },
+    {
+      "id": "room.summarize",
+      "title": "Summarize a demo room",
+      "description": "Return the friendly, read-only state of a room: participants and their roles, required approvals and what is still pending, the current state label, and the honest proof posture. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "room"
+      ],
+      "outputs": [
+        "summary"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which room.",
+        "properties": {
+          "room": {
+            "type": "string",
+            "description": "Path to the room's room.json."
+          }
+        },
+        "required": [
+          "room"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The room summary.",
+        "properties": {
+          "summary": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "scenario.create",
       "title": "Draft a scenario from a template",
       "description": "Return a customizable scenario draft from a template id.",

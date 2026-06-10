@@ -99,6 +99,12 @@ export const ACTION_IDS = [
   'tutor.debug',
   'tutor.teach',
   'tutor.quiz',
+  // nextux-14 — Multiplayer Demo Room actions (create/join/act mutate; summarize/exportProof read-only).
+  'room.create',
+  'room.join',
+  'room.act',
+  'room.summarize',
+  'room.exportProof',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

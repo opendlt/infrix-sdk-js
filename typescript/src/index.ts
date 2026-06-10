@@ -842,5 +842,11 @@ export * as studio from './studio';
 // changes wording only), under the `tutor` namespace.
 export * as tutor from './tutor';
 
+// nextux-14 — Multiplayer Demo Rooms: role, event, replay, and room-summary
+// types + honest helpers (a viewer never approves, an agent never approves
+// without delegation, the proof never exceeds the verifier), under the `rooms`
+// namespace.
+export * as rooms from './rooms';
+
 // Default export for convenience.
 export default InfrixClient;
