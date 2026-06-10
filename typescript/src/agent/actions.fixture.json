@@ -2586,6 +2586,76 @@
       ]
     },
     {
+      "id": "widgets.generateEmbed",
+      "title": "Generate an Infrix widget embed",
+      "description": "Generate the install command, component code, required props, security notes, and a test snippet for embedding an Infrix verification widget (React or Web Component).",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "component"
+      ],
+      "optionalInputs": [
+        "framework"
+      ],
+      "outputs": [
+        "embed"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "Which widget to embed.",
+        "properties": {
+          "component": {
+            "type": "string",
+            "description": "The widget component.",
+            "enum": [
+              "InfrixCinemaReplay",
+              "InfrixErrorResolution",
+              "InfrixProofReceipt",
+              "InfrixProofStory",
+              "InfrixTaskCard",
+              "InfrixTrustBoundary",
+              "InfrixVerifyButton"
+            ]
+          },
+          "framework": {
+            "type": "string",
+            "description": "Target framework.",
+            "enum": [
+              "react",
+              "webcomponent"
+            ]
+          }
+        },
+        "required": [
+          "component"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The generated embed.",
+        "properties": {
+          "embed": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "workbench.ask",
       "title": "Ask the workbench (intent → plan)",
       "description": "Describe an outcome in plain language; get a grounded, typed plan (candidates, missing inputs, required authority, expected proof level, safety). Read-only.",

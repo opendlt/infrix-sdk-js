@@ -14,7 +14,7 @@ import { execSync } from 'node:child_process';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 
-const PACKAGES = ['golden-escrow', 'metamask', 'proof-receipt', 'nexus-embed', 'cinema-embed'];
+const PACKAGES = ['golden-escrow', 'metamask', 'proof-receipt', 'nexus-embed', 'cinema-embed', 'widgets', 'widgets-webcomponent'];
 
 // Per-package published-size budgets (bytes). cinema-embed vendors the whole
 // Cinema core, so it is allowed a larger budget.
@@ -24,6 +24,10 @@ const BUDGET = {
   'proof-receipt': 256 * 1024,
   'nexus-embed': 256 * 1024,
   'cinema-embed': 1024 * 1024,
+  // The React kit ships compiled components + the vendored verifier closure;
+  // the Web Component build vendors the same verifier closure.
+  'widgets': 512 * 1024,
+  'widgets-webcomponent': 512 * 1024,
 };
 
 const problems = [];
@@ -89,4 +93,4 @@ if (problems.length) {
   for (const p of problems) console.error('  - ' + p);
   process.exit(1);
 }
-console.log('\nsupply-chain check passed: 5 packages, all MIT, all within size budget.');
+console.log(`\nsupply-chain check passed: ${PACKAGES.length} packages, all MIT, all within size budget.`);

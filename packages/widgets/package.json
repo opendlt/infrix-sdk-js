@@ -1,0 +1,64 @@
+{
+  "name": "@infrix/widgets",
+  "version": "0.1.0",
+  "description": "Embed Infrix proof verification, receipts, Cinema replay, task cards, and trust-boundary explanations in your app — verified in-browser, with no node trust by default.",
+  "type": "module",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./verifier": {
+      "types": "./dist/verifier.d.ts",
+      "default": "./dist/verifier.js"
+    },
+    "./styles": {
+      "types": "./dist/styles.d.ts",
+      "default": "./dist/styles.js"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "files": [
+    "dist/",
+    "styles.css",
+    "README.md"
+  ],
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "build": "node scripts/vendor.mjs && tsc && node scripts/emit-css.mjs",
+    "pretest": "node scripts/vendor.mjs && tsc -p tsconfig.test.json",
+    "test": "node --test \"test-dist/test/*.test.js\"",
+    "prepack": "node scripts/vendor.mjs && tsc && node scripts/emit-css.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": false },
+    "react-dom": { "optional": false }
+  },
+  "devDependencies": {
+    "@types/node": "20.17.6",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.6.3"
+  },
+  "keywords": [
+    "infrix",
+    "accumulate",
+    "proof",
+    "verification",
+    "react",
+    "widgets",
+    "embed"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ]
+}

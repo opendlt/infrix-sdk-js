@@ -75,6 +75,8 @@ export const ACTION_IDS = [
   'identity.listPermissions',
   'identity.requestSession',
   'identity.revokeSession',
+  // nextux-09 — Embedded Verification Widget Kit action.
+  'widgets.generateEmbed',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

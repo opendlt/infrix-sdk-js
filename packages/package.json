@@ -9,7 +9,9 @@
     "metamask",
     "proof-receipt",
     "nexus-embed",
-    "cinema-embed"
+    "cinema-embed",
+    "widgets",
+    "widgets-webcomponent"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

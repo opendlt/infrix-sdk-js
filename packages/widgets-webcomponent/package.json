@@ -1,0 +1,47 @@
+{
+  "name": "@infrix/widgets-webcomponent",
+  "version": "0.1.0",
+  "description": "Framework-neutral Web Components for embedding Infrix proof verification — verified in-browser, no node trust, no React required.",
+  "type": "module",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./infrix-widgets.js": "./dist/infrix-widgets.js"
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build:dep": "npm run build --prefix ../widgets",
+    "build": "npm run build:dep && tsc && node scripts/bundle.mjs",
+    "pretest": "npm run build:dep && tsc -p tsconfig.test.json",
+    "test": "node --test \"test-dist/test/*.test.js\"",
+    "prepack": "npm run build:dep && tsc && node scripts/bundle.mjs"
+  },
+  "dependencies": {
+    "@infrix/widgets": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.6",
+    "esbuild": "0.24.0",
+    "typescript": "5.6.3"
+  },
+  "keywords": [
+    "infrix",
+    "accumulate",
+    "proof",
+    "verification",
+    "web-components",
+    "custom-elements"
+  ],
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/infrix-widgets.js"
+  ]
+}
