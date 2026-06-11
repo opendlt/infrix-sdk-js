@@ -110,6 +110,13 @@ export const ACTION_IDS = [
   'compare.report',
   'compare.scaffold',
   'compare.explainTradeoffs',
+  // nextux-16 — Prompt-to-Proof App Studio actions (ask/build/verify/share
+  // read-only; run mutates local workspace state and requires approval).
+  'app.ask',
+  'app.build',
+  'app.run',
+  'app.verify',
+  'app.share',
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];

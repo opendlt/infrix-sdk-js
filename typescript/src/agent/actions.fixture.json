@@ -1,6 +1,332 @@
 {
   "actions": [
     {
+      "id": "app.ask",
+      "title": "Describe a verifiable app",
+      "description": "Ground a plain-language prompt into a typed plan and a governed workflow, and preview what Infrix would build — the steps, the expected outputs, and the honest assurance ceiling. Read-only: it writes nothing, runs nothing, and refuses rather than invent a capability it cannot ground.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "prompt"
+      ],
+      "optionalInputs": [
+        "network"
+      ],
+      "outputs": [
+        "preview"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to build.",
+        "properties": {
+          "network": {
+            "type": "string",
+            "description": "local (default) or kermit. Never mainnet.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Plain-language description of the verifiable app you want."
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The preview.",
+        "properties": {
+          "preview": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "app.build",
+      "title": "Generate a verifiable app's artifacts",
+      "description": "Ground a prompt and generate the full artifact set INLINE — the scenario, the task template, the TypeScript SDK driver, the agent-plan, and the markdown summary — each carrying its own validation + safety report. Read-only: nothing is written to disk and nothing targets mainnet.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "prompt"
+      ],
+      "optionalInputs": [
+        "network"
+      ],
+      "outputs": [
+        "artifacts"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to build.",
+        "properties": {
+          "network": {
+            "type": "string",
+            "description": "local (default) or kermit. Never mainnet.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Plain-language description of the verifiable app you want."
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The generated artifacts.",
+        "properties": {
+          "artifacts": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "app.run",
+      "title": "Build and prove a verifiable app",
+      "description": "Ground a prompt into a named workspace, generate every artifact, and run the workflow through the canonical governed flow to produce a real, independently verifiable proof under .infrixapp/\u003cname\u003e. Local runs reach L3/G2; L4 needs a live Kermit run (a funded testnet ADI). Never mainnet. Writes local workspace state.",
+      "mutatesState": true,
+      "networkWrites": false,
+      "requiresApproval": true,
+      "dryRunSupported": true,
+      "riskLevel": "local_write",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "name",
+        "prompt"
+      ],
+      "optionalInputs": [
+        "network",
+        "mode",
+        "endpoint"
+      ],
+      "outputs": [
+        "workspace",
+        "run",
+        "assurance"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What app to build and prove.",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Kermit L0 endpoint (kermit mode only)."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Run mode override.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "The workspace name (a verifiable-app identity, e.g. regulated-escrow)."
+          },
+          "network": {
+            "type": "string",
+            "description": "local (default) or kermit. Never mainnet.",
+            "enum": [
+              "local",
+              "kermit"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Plain-language description of the verifiable app you want."
+          }
+        },
+        "required": [
+          "name",
+          "prompt"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The built and proved app.",
+        "properties": {
+          "assurance": {
+            "type": "object"
+          },
+          "run": {
+            "type": "object"
+          },
+          "workspace": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ],
+      "authoritySummary": "Writes local workspace state and runs a governed scenario; no signing authority is granted to the agent.",
+      "expectedProofLevel": "L3 local; L4 only on a live Kermit run (the verifier decides the final level).",
+      "failureModes": [
+        "refused prompt (ungroundable or unsafe)",
+        "kermit mode without a live provider",
+        "mainnet refused"
+      ],
+      "rollbackOrCleanup": "Delete the workspace directory under .infrixapp/\u003cname\u003e."
+    },
+    {
+      "id": "app.share",
+      "title": "Share a verifiable app's proof",
+      "description": "Pack the workspace's latest run into a self-contained, offline-verifiable portable proof bundle (the story plus every manifested artifact, inline) and return it. The bundle carries no private key. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "name"
+      ],
+      "outputs": [
+        "bundle"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to share.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The workspace name."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The portable proof bundle.",
+        "properties": {
+          "bundle": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
+      "id": "app.verify",
+      "title": "Verify a verifiable app",
+      "description": "Re-verify a workspace's latest run WITHOUT trusting the node: re-read the sealed story from disk and recompute the verdict with the canonical verifier. Pass an l0 endpoint to confirm a live L0 (L4) claim; without one the verdict honestly caps below L4. Read-only.",
+      "mutatesState": false,
+      "networkWrites": false,
+      "requiresApproval": false,
+      "dryRunSupported": true,
+      "riskLevel": "read_only",
+      "profiles": [
+        "local",
+        "kermit",
+        "public_production"
+      ],
+      "authority": {
+        "requiresSigner": false,
+        "requiresL0KeyPage": false
+      },
+      "requiredInputs": [
+        "name"
+      ],
+      "optionalInputs": [
+        "endpoint"
+      ],
+      "outputs": [
+        "verdict"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "description": "What to verify.",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "Optional live L0 endpoint to confirm an L4 claim."
+          },
+          "name": {
+            "type": "string",
+            "description": "The workspace name."
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "The verifier's verdict.",
+        "properties": {
+          "verdict": {
+            "type": "object"
+          }
+        }
+      },
+      "errors": [
+        "AGENT_INPUT_INVALID"
+      ]
+    },
+    {
       "id": "autopilot.apply",
       "title": "Apply a repair plan",
       "description": "Apply a repair plan's auto-safe config fixes after an explicit, plan-hash-bound approval, then verify.",

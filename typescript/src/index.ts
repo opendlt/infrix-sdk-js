@@ -854,5 +854,11 @@ export * as rooms from './rooms';
 // namespace.
 export * as compare from './compare';
 
+// nextux-16 — Prompt-to-Proof App Studio: the single golden front door. Workspace,
+// run, assurance, and resume types + honest guards (assurance always from the
+// verifier, the node never trusted, local proof never L4, never mainnet), under
+// the `app` namespace.
+export * as app from './app';
+
 // Default export for convenience.
 export default InfrixClient;
