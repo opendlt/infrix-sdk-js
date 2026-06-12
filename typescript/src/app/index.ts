@@ -7,6 +7,8 @@
  */
 
 export { assuranceIsFromVerifier, localRunIsHonest, resumeIsHonest } from './app.js';
+export { fromPrompt, HeroApp, HeroRun, HeroReceipt } from './fromPrompt.js';
+export type { FromPromptOptions } from './fromPrompt.js';
 export type {
   Assurance,
   RunRecord,
