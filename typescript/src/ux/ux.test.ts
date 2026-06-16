@@ -27,13 +27,39 @@ import {
   type AssuranceState,
 } from './index';
 
+function fixturePath(): string {
+  return join(__dirname, '..', '..', 'src', 'ux', 'ux.fixture.json');
+}
+
+function loadRawFixture(): Record<string, unknown> {
+  return JSON.parse(readFileSync(fixturePath(), 'utf8')) as Record<string, unknown>;
+}
+
 function loadFixture(): UxFixture {
-  const p = join(__dirname, '..', '..', 'src', 'ux', 'ux.fixture.json');
-  return JSON.parse(readFileSync(p, 'utf8')) as UxFixture;
+  return loadRawFixture() as unknown as UxFixture;
 }
 
 const fx = loadFixture();
 const reg = createUxRegistry(fx);
+
+// Plan 26: the SDK consumes the SAME Go-generated fixture, which carries
+// provenance metadata the consumer must IGNORE for display.
+test('the generated fixture carries provenance metadata the SDK ignores', () => {
+  const raw = loadRawFixture();
+  assert.equal(raw._generatedBy, 'infrix uxcopy generate');
+  assert.equal(raw._source, 'pkg/uxcopy');
+  assert.equal(raw._schemaVersion, 1);
+  assert.equal(typeof raw._contentSha256, 'string');
+  assert.equal((raw._contentSha256 as string).length, 64);
+
+  // The registry reads the content by name and ignores the underscore metadata:
+  // version is the content version, never the schema/metadata.
+  assert.equal(reg.version, '1');
+  assert.ok(reg.badges().length >= 11, 'badges are exposed from the generated fixture');
+  assert.ok(fx.labels.length > 0 && fx.errors.length > 0 && fx.glossary.length > 0);
+  // No underscore-prefixed metadata leaks into the typed registry surfaces.
+  assert.ok(!('_contentSha256' in (reg.badges()[0] as object)));
+});
 
 const liveL0: AssuranceState = {
   verified: true, cryptographicallyVerified: true, l0Verified: true, replayVerified: true,
