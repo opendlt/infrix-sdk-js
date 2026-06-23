@@ -34,7 +34,7 @@ interface QuestFixture {
 
 function loadFixture(): QuestFixture {
   // The canonical quest fixture shared with Nexus.
-  const p = join(__dirname, '..', '..', '..', '..', 'pkg', 'nexus', 'web', 'testdata', 'quests.fixture.json');
+  const p = join(__dirname, '..', '..', 'testdata', 'quests.fixture.json');
   return JSON.parse(readFileSync(p, 'utf8')) as QuestFixture;
 }
 

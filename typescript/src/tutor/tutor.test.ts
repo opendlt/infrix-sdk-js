@@ -34,7 +34,7 @@ interface TutorFixture {
 }
 
 function loadFixture(): TutorFixture {
-  const p = join(__dirname, '..', '..', '..', '..', 'pkg', 'nexus', 'web', 'testdata', 'tutor.fixture.json');
+  const p = join(__dirname, '..', '..', 'testdata', 'tutor.fixture.json');
   return JSON.parse(readFileSync(p, 'utf8')) as TutorFixture;
 }
 

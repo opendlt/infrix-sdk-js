@@ -22,7 +22,7 @@ import {
 import type { RoomData } from './index';
 
 function loadFixture(): RoomData {
-  const p = join(__dirname, '..', '..', '..', '..', 'pkg', 'nexus', 'web', 'testdata', 'room.fixture.json');
+  const p = join(__dirname, '..', '..', 'testdata', 'room.fixture.json');
   return JSON.parse(readFileSync(p, 'utf8')) as RoomData;
 }
 

@@ -22,7 +22,7 @@ import type { CompanionContext, CompanionFetch } from './index';
 
 function loadFixture(): CompanionContext {
   // The canonical companion context fixture shared with Nexus.
-  const p = join(__dirname, '..', '..', '..', '..', 'pkg', 'nexus', 'web', 'testdata', 'companion.fixture.json');
+  const p = join(__dirname, '..', '..', 'testdata', 'companion.fixture.json');
   return JSON.parse(readFileSync(p, 'utf8')) as CompanionContext;
 }
 

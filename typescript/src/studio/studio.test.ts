@@ -37,7 +37,7 @@ interface StudioFixture {
 }
 
 function loadFixture(): StudioFixture {
-  const p = join(__dirname, '..', '..', '..', '..', 'pkg', 'nexus', 'web', 'testdata', 'studio.fixture.json');
+  const p = join(__dirname, '..', '..', 'testdata', 'studio.fixture.json');
   return JSON.parse(readFileSync(p, 'utf8')) as StudioFixture;
 }
 

@@ -29,7 +29,7 @@ interface CompareFixture {
 }
 
 function loadFixture(): CompareFixture {
-  const p = join(__dirname, '..', '..', '..', '..', 'pkg', 'nexus', 'web', 'testdata', 'compare.fixture.json');
+  const p = join(__dirname, '..', '..', 'testdata', 'compare.fixture.json');
   return JSON.parse(readFileSync(p, 'utf8')) as CompareFixture;
 }
 
