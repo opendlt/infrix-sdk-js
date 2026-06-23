@@ -50,15 +50,21 @@ for (const rel of FILES) {
   fs.writeFileSync(path.join(outDir, path.basename(rel)), HEADER + rewrite(fs.readFileSync(abs, 'utf8')));
 }
 
-// The canonical UX label fixture consumed by uxLabels.js (assurance badges,
-// error cards, glossary, trust-boundary labels) — the SAME fixture Nexus + the
-// SDKs use. Copied VERBATIM (it is JSON: no JS header/import-rewrite).
-const FIXTURE = 'testdata/uxcopy.fixture.json';
-const fixtureAbs = path.join(webRoot, FIXTURE);
-if (!fs.existsSync(fixtureAbs)) {
-  console.error(`vendor: missing label fixture ${FIXTURE} (looked in ${webRoot})`);
-  process.exit(1);
+// Canonical fixtures the SDKs + their tests consume: the UX label fixture
+// (uxLabels.js data), a known-good portable proof, and a sample story bundle.
+// Copied VERBATIM (JSON: no JS header/import-rewrite).
+export const FIXTURES = [
+  'uxcopy.fixture.json',
+  'portable-fixture.valid.json',
+  'sample.infrixstory.bundle.json',
+];
+for (const name of FIXTURES) {
+  const abs = path.join(webRoot, 'testdata', name);
+  if (!fs.existsSync(abs)) {
+    console.error(`vendor: missing fixture testdata/${name} (looked in ${webRoot})`);
+    process.exit(1);
+  }
+  fs.writeFileSync(path.join(outDir, name), fs.readFileSync(abs, 'utf8'));
 }
-fs.writeFileSync(path.join(outDir, 'uxcopy.fixture.json'), fs.readFileSync(fixtureAbs, 'utf8'));
 
-console.log(`@infrix/verify: vendored ${FILES.length} module(s) + the UX label fixture into src/`);
+console.log(`@infrix/verify: vendored ${FILES.length} module(s) + ${FIXTURES.length} fixture(s) into src/`);

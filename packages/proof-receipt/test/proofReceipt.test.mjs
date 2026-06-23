@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { verifyProof, validateReceipt, renderReceipt, renderReceiptText } from '../index.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, '..', '..', '..', '..');
-const fixturePath = path.join(repoRoot, 'pkg', 'nexus', 'web', 'testdata', 'portable-fixture.valid.json');
+// @infrix/verify (workspace sibling, drift-fenced) holds the sample proof.
+const fixturePath = path.join(here, '..', '..', 'verify', 'src', 'portable-fixture.valid.json');
 const bundle = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 
 test('the package imports and exposes its API', () => {

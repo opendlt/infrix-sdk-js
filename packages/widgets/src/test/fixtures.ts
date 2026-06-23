@@ -6,12 +6,14 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const here = dirname(fileURLToPath(import.meta.url)); // dist/test
-// dist/test -> dist -> widgets -> packages -> sdk -> repo root
-const repoRoot = join(here, '..', '..', '..', '..', '..');
+const here = dirname(fileURLToPath(import.meta.url)); // test-dist/test
+// The sample bundle is vendored into @infrix/verify (workspace sibling), itself
+// drift-fenced against pkg/nexus/web — read from there so this runs in the
+// extracted SDK repo too. test-dist/test -> test-dist -> widgets -> packages.
+const verifyFixtures = join(here, '..', '..', '..', 'verify', 'src');
 
 export function loadSampleBundle(): any {
-  const p = join(repoRoot, 'pkg', 'nexus', 'web', 'testdata', 'sample.infrixstory.bundle.json');
+  const p = join(verifyFixtures, 'sample.infrixstory.bundle.json');
   return JSON.parse(readFileSync(p, 'utf8'));
 }
 

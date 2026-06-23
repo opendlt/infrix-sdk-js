@@ -6,13 +6,13 @@
   "license": "MIT",
   "workspaces": [
     "verify",
-    "golden-escrow",
-    "metamask",
     "proof-receipt",
-    "nexus-embed",
-    "cinema-embed",
     "widgets",
-    "widgets-webcomponent"
+    "widgets-webcomponent",
+    "metamask",
+    "golden-escrow",
+    "nexus-embed",
+    "cinema-embed"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",

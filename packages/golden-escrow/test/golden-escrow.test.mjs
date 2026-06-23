@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 import { createEscrowApp } from '../index.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, '..', '..', '..', '..');
+// @infrix/verify (workspace sibling, drift-fenced) holds the sample proof.
 const bundle = JSON.parse(
-  fs.readFileSync(path.join(repoRoot, 'pkg', 'nexus', 'web', 'testdata', 'portable-fixture.valid.json'), 'utf8'),
+  fs.readFileSync(path.join(here, '..', '..', 'verify', 'src', 'portable-fixture.valid.json'), 'utf8'),
 );
 
 // A mock `withGoldenApp`-shaped client: real ids in, real proof bundle out.
