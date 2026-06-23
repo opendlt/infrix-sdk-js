@@ -31,5 +31,8 @@
     "verification",
     "receipt"
   ],
+  "devDependencies": {
+    "@infrix/verify": "^0.1.0"
+  },
   "sideEffects": false
 }
