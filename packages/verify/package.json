@@ -15,7 +15,7 @@
   ],
   "publishConfig": {
     "access": "public",
-    "provenance": true
+    "provenance": false
   },
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
@@ -32,7 +32,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opendlt/infrix-accumen.git",
-    "directory": "sdk/packages/verify"
+    "url": "git+https://github.com/opendlt/infrix-sdk-js.git",
+    "directory": "packages/verify"
   }
 }

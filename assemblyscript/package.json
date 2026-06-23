@@ -2,11 +2,16 @@
   "name": "@infrix/sdk",
   "version": "0.1.0",
   "description": "AssemblyScript SDK for Infrix smart contracts",
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  },
   "author": "Accumulate Network",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AccumulateNetwork/infrix"
+    "url": "git+https://github.com/opendlt/infrix-sdk-js.git",
+    "directory": "assemblyscript"
   },
   "keywords": [
     "accumulate",

@@ -14,7 +14,7 @@
   ],
   "publishConfig": {
     "access": "public",
-    "provenance": true
+    "provenance": false
   },
   "bin": {
     "create-infrix-app": "dist/templates/cli.js"
@@ -37,8 +37,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opendlt/infrix-accumen.git",
-    "directory": "sdk/typescript"
+    "url": "git+https://github.com/opendlt/infrix-sdk-js.git",
+    "directory": "typescript"
   },
   "devDependencies": {
     "@types/node": "^22.19.19",

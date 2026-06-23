@@ -1,9 +1,18 @@
 {
   "name": "@infrix/widgets-webcomponent",
   "version": "0.1.0",
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  },
   "description": "Framework-neutral Web Components for embedding Infrix proof verification — verified in-browser, no node trust, no React required.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opendlt/infrix-sdk-js.git",
+    "directory": "packages/widgets-webcomponent"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
