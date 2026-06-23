@@ -5,6 +5,7 @@
   "description": "Happy-path Infrix SDK packages (adoption-10) — one import per adoption outcome.",
   "license": "MIT",
   "workspaces": [
+    "verify",
     "golden-escrow",
     "metamask",
     "proof-receipt",

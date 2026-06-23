@@ -1,0 +1,38 @@
+{
+  "name": "@infrix/verify",
+  "version": "0.1.0",
+  "description": "Canonical browser-side Infrix proof verifier closure (offline portable-proof verification + receipt) shared by the Infrix SDKs and Nexus.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./proofReceiptView.js": "./src/proofReceiptView.js",
+    "./*": "./src/*"
+  },
+  "files": [
+    "src/",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "build": "node -e \"process.stdout.write('@infrix/verify: vendored JS modules, no build step\\n')\"",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "keywords": [
+    "infrix",
+    "verify",
+    "proof",
+    "offline-verification",
+    "accumulate"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opendlt/infrix-accumen.git",
+    "directory": "sdk/packages/verify"
+  }
+}
