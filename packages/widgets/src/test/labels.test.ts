@@ -16,12 +16,13 @@ import { fileURLToPath } from 'node:url';
 import bundled from '../vendor/uxFixture.js';
 
 const here = dirname(fileURLToPath(import.meta.url)); // test-dist/test
-const repoRoot = join(here, '..', '..', '..', '..', '..');
+// The SDK source of truth for the UX label fixture is @infrix/verify (the
+// workspace sibling), which is itself drift-fenced against pkg/nexus/web. Compare
+// against it so this test runs both in the monorepo and the extracted SDK repo.
+const verifyFixture = join(here, '..', '..', '..', 'verify', 'src', 'uxcopy.fixture.json');
 
-test('the bundled UX label fixture matches the canonical Nexus fixture (no duplicate wording)', () => {
-  const canonical = JSON.parse(
-    readFileSync(join(repoRoot, 'pkg', 'nexus', 'web', 'testdata', 'uxcopy.fixture.json'), 'utf8'),
-  );
+test('the bundled UX label fixture matches the canonical @infrix/verify fixture (no duplicate wording)', () => {
+  const canonical = JSON.parse(readFileSync(verifyFixture, 'utf8'));
   assert.deepEqual(bundled, canonical, 'widgets must consume the canonical UX label fixture verbatim');
 });
 

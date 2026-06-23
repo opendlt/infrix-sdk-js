@@ -42,6 +42,7 @@
     "react-dom": { "optional": false }
   },
   "devDependencies": {
+    "@infrix/verify": "^0.1.0",
     "@types/node": "20.17.6",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",

@@ -39,4 +39,8 @@ test('vendored verifier closure matches the Nexus source of truth', { skip: mono
     const expected = HEADER + rewrite(readFileSync(path.join(webRoot, rel), 'utf8'));
     assert.equal(committed, expected, `src/${base} drifted from pkg/nexus/web/${rel} — run \`npm run vendor\``);
   }
+  // The UX label fixture is copied verbatim (JSON, no header/rewrite).
+  const fixtureCommitted = readFileSync(path.join(srcDir, 'uxcopy.fixture.json'), 'utf8');
+  const fixtureSource = readFileSync(path.join(webRoot, 'testdata', 'uxcopy.fixture.json'), 'utf8');
+  assert.equal(fixtureCommitted, fixtureSource, 'src/uxcopy.fixture.json drifted from pkg/nexus/web/testdata/uxcopy.fixture.json — run `npm run vendor`');
 });

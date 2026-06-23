@@ -49,4 +49,16 @@ for (const rel of FILES) {
   }
   fs.writeFileSync(path.join(outDir, path.basename(rel)), HEADER + rewrite(fs.readFileSync(abs, 'utf8')));
 }
-console.log(`@infrix/verify: vendored ${FILES.length} module(s) into src/`);
+
+// The canonical UX label fixture consumed by uxLabels.js (assurance badges,
+// error cards, glossary, trust-boundary labels) — the SAME fixture Nexus + the
+// SDKs use. Copied VERBATIM (it is JSON: no JS header/import-rewrite).
+const FIXTURE = 'testdata/uxcopy.fixture.json';
+const fixtureAbs = path.join(webRoot, FIXTURE);
+if (!fs.existsSync(fixtureAbs)) {
+  console.error(`vendor: missing label fixture ${FIXTURE} (looked in ${webRoot})`);
+  process.exit(1);
+}
+fs.writeFileSync(path.join(outDir, 'uxcopy.fixture.json'), fs.readFileSync(fixtureAbs, 'utf8'));
+
+console.log(`@infrix/verify: vendored ${FILES.length} module(s) + the UX label fixture into src/`);
