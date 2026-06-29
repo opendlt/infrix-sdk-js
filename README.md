@@ -71,6 +71,28 @@ Be honest with yourself about the boundary before you start:
 The verifier and fixtures are vendored into the packages, so everything in this
 repo builds and tests **standalone**, with no dependency on the Go monorepo.
 
+## Install the CLI
+
+Prebuilt, checksum-verified `infrix` binaries (open-core: the runtime source is
+private; the compiled CLI is public):
+
+```sh
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/opendlt/infrix-cli/main/install.sh | sh
+```
+
+```powershell
+# Windows
+iwr -useb https://raw.githubusercontent.com/opendlt/infrix-cli/main/install.ps1 | iex
+```
+
+```sh
+# Node users, no global install
+npx @infrix/cli version
+```
+
+Then `infrix doctor`. Releases + verification details: [opendlt/infrix-cli](https://github.com/opendlt/infrix-cli).
+
 ## Published packages
 
 | Package | Source | What it is |
