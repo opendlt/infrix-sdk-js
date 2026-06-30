@@ -2,6 +2,10 @@
 
 **The JavaScript / TypeScript / AssemblyScript SDKs for [Infrix](https://github.com/opendlt) — the policy-governed, identity-native execution fabric on Accumulate.**
 
+> **▶ Try it live, no install:** run a governed flow and verify its proof in your
+> browser at **https://play.infrix.opendlt.org**. Public devnet API:
+> **https://devnet.infrix.opendlt.org** (point `@infrix/client` at it).
+
 ## What Infrix is, in one sentence
 
 Infrix turns every state change into a **governed intent** that runs through one
@@ -64,9 +68,9 @@ Be honest with yourself about the boundary before you start:
 
 > Running governed flows yourself needs an Infrix node. Infrix is **open-core**:
 > the SDKs, the offline verifier, and the [schema](https://github.com/opendlt/infrix-schema)
-> are open; the governance runtime / node is the access-gated component. A hosted
-> devnet endpoint is on the way — until then, the intent-submitting paths target a
-> node you run or are granted access to.
+> are open; the governance runtime / node is the access-gated component. A **public
+> devnet endpoint is live at https://devnet.infrix.opendlt.org** — point
+> `@infrix/client` at it (or run your own node).
 
 The verifier and fixtures are vendored into the packages, so everything in this
 repo builds and tests **standalone**, with no dependency on the Go monorepo.
