@@ -1,0 +1,37 @@
+{
+  "name": "@infrix/templates",
+  "version": "0.1.0",
+  "description": "Audited, versioned starter templates for Infrix apps — the OpenZeppelin-style catalog, using the real @infrix/client credential/predicate APIs (no placeholders).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/",
+    "AUDIT.md",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  },
+  "scripts": {
+    "build": "node -e \"process.stdout.write('@infrix/templates: JS modules, no build step\\n')\"",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "keywords": [
+    "infrix",
+    "templates",
+    "scaffold",
+    "verifiable-credentials",
+    "selective-disclosure",
+    "accumulate"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opendlt/infrix-sdk-js.git",
+    "directory": "packages/templates"
+  }
+}
