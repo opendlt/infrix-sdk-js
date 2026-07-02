@@ -6,6 +6,20 @@
 
 import { SubClient } from './base';
 import type { PredicateProver, PredicateProofEnvelope } from './predicates';
+import { InfrixUserError } from '../userError';
+
+// credErr builds a typed, agent-branchable error (stable `code` + a `remedy`
+// fix) instead of an opaque Error, so an agent can act on the failure without
+// parsing a message (DX P4-3).
+function credErr(code: string, message: string, remedy: string): InfrixUserError {
+  return new InfrixUserError({
+    code,
+    title: message,
+    message,
+    fixes: [{ label: remedy, safeToRun: true }],
+    retryable: false,
+  });
+}
 
 /** Canonical Infrix DID method (DX P1-1). */
 export const DID_METHOD_INFRIX = 'infrix';
@@ -100,7 +114,8 @@ export class CredentialSubClient extends SubClient {
   createDID(adiOrWallet: string | { adi: string }): string {
     const raw = typeof adiOrWallet === 'string' ? adiOrWallet : adiOrWallet.adi;
     const trimmed = (raw ?? '').trim();
-    if (!trimmed) throw new Error('createDID: an Accumulate ADI (e.g. "acc://alice.acme") is required');
+    if (!trimmed)
+      throw credErr('INFRIX_INVALID_ADI', 'createDID: an Accumulate ADI is required', 'Pass an ADI like "acc://alice.acme"');
     const accURL = /^acc:\/\//i.test(trimmed) ? trimmed : `acc://${trimmed}`;
     return `did:${DID_METHOD_INFRIX}:${accURL}`;
   }
@@ -142,7 +157,7 @@ export class CredentialSubClient extends SubClient {
     domain?: string;
   }): SelectiveDisclosureRequest {
     if (!params.disclose || params.disclose.length === 0) {
-      throw new Error('presentationRequest: disclose must reveal at least one claim');
+      throw credErr('INFRIX_DISCLOSE_EMPTY', 'presentationRequest: disclose must reveal at least one claim', 'Pass a non-empty disclose array, e.g. ["age_over_21"]');
     }
     return {
       credential: params.credential,
@@ -176,17 +191,20 @@ export class CredentialSubClient extends SubClient {
     spec: DisclosureSpec,
     prover: PredicateProver
   ): Promise<PredicateProofEnvelope> {
-    if (!prover) throw new Error('present: a prover (from @infrix/prover loadProver()) is required');
+    if (!prover)
+      throw credErr('INFRIX_PROVER_MISSING', 'present: a prover is required', 'npm i @infrix/prover; const p = await loadProver(); pass it as the third argument');
     const subject = vc.credentialSubject ?? {};
     const privateInputs = spec.claimInputs.map((name) => {
       const raw = (subject as Record<string, unknown>)[name];
       if (raw === undefined || raw === null) {
-        throw new Error(`present: credential has no claim '${name}' to disclose`);
+        throw credErr('INFRIX_CREDENTIAL_CLAIM_MISSING', `present: credential has no claim '${name}' to disclose`, `Add claim '${name}' to the credential, or remove it from claimInputs`);
       }
       if (typeof raw === 'bigint' || typeof raw === 'number') return raw;
       if (typeof raw === 'string' && /^-?\d+$/.test(raw)) return raw;
-      throw new Error(
-        `present: claim '${name}' (${JSON.stringify(raw)}) is not a numeric value the circuit can consume`
+      throw credErr(
+        'INFRIX_CREDENTIAL_CLAIM_NOT_NUMERIC',
+        `present: claim '${name}' (${JSON.stringify(raw)}) is not a numeric value the circuit can consume`,
+        `Ensure claim '${name}' is an integer (bigint | number | integer string)`
       );
     });
     return prover.prove({

@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { InfrixClient } from './index';
+import { InfrixClient, InfrixUserError } from './index';
 
 type FetchLike = (...args: unknown[]) => Promise<unknown>;
 const realFetch = (globalThis as { fetch?: FetchLike }).fetch;
@@ -68,6 +68,37 @@ test('present extracts the named claim as the private witness and proves (P1-4)'
   assert.deepEqual(captured.publicInputs, [21]);
   // The VC's `age` claim ("25") became the private witness — never sent anywhere else.
   assert.deepEqual(captured.privateInputs, ['25']);
+});
+
+test('errors are typed with a branchable code + remedy (P4-3)', () => {
+  const c = client();
+  const assertTyped = (fn: () => unknown, code: string) => {
+    try {
+      fn();
+      assert.fail(`expected ${code} to throw`);
+    } catch (e) {
+      assert.ok(e instanceof InfrixUserError, `${code}: expected InfrixUserError`);
+      assert.equal((e as InfrixUserError).code, code);
+      assert.ok((e as InfrixUserError).fixes.length > 0 && (e as InfrixUserError).fixes[0].label, `${code}: must carry a remedy`);
+    }
+  };
+  assertTyped(() => c.credentials.createDID(''), 'INFRIX_INVALID_ADI');
+  assertTyped(() => new InfrixClient('bogus-network'), 'INFRIX_UNKNOWN_NETWORK');
+  assertTyped(() => c.credentials.presentationRequest({ credential: 'x', disclose: [] }), 'INFRIX_DISCLOSE_EMPTY');
+});
+
+test('present() throws typed, branchable claim errors (P4-3)', async () => {
+  const c = client();
+  const spec = { predicate: 'threshold_gte', publicInputs: [21], claimInputs: ['age'], holderSigner: new Uint8Array(64) };
+  const prover = { async prove() { return {} as unknown as import('./index').PredicateProofEnvelope; } };
+  await assert.rejects(
+    () => c.credentials.present({ credentialSubject: { age: 'nope' } }, spec, prover),
+    (e: unknown) => e instanceof InfrixUserError && e.code === 'INFRIX_CREDENTIAL_CLAIM_NOT_NUMERIC'
+  );
+  await assert.rejects(
+    () => c.credentials.present({ credentialSubject: {} }, spec, prover),
+    (e: unknown) => e instanceof InfrixUserError && e.code === 'INFRIX_CREDENTIAL_CLAIM_MISSING'
+  );
 });
 
 test('present rejects a missing or non-numeric claim', async () => {

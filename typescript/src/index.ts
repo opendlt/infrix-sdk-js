@@ -180,7 +180,7 @@ export type {
 // ---- Direct imports for internal use ----
 
 import type { DevnetEvent } from './types/contract';
-import { parseUserError } from './userError';
+import { parseUserError, InfrixUserError } from './userError';
 
 export {
   InfrixUserError,
@@ -258,9 +258,20 @@ export function resolveNodeBaseUrl(target: string): string {
   if (/^https?:\/\//i.test(t)) return t;
   const preset = NETWORK_PRESETS[t.toLowerCase()];
   if (preset) return preset;
-  throw new Error(
-    `InfrixClient: unknown network '${target}'. Pass a full http(s):// URL or one of: ${Object.keys(NETWORK_PRESETS).join(', ')}.`
-  );
+  // Typed + agent-branchable (DX P4-3): an agent can catch error.code and retry
+  // with a valid network instead of parsing a message.
+  throw new InfrixUserError({
+    code: 'INFRIX_UNKNOWN_NETWORK',
+    title: `unknown network '${target}'`,
+    message: `InfrixClient: unknown network '${target}'.`,
+    fixes: [
+      {
+        label: `Pass a full http(s):// URL, or one of: ${Object.keys(NETWORK_PRESETS).join(', ')}`,
+        safeToRun: true,
+      },
+    ],
+    retryable: false,
+  });
 }
 
 // ---- RPC Error ----
