@@ -1,0 +1,38 @@
+{
+  "name": "@infrix/prover",
+  "version": "0.1.0",
+  "description": "Lazy-loaded WebAssembly selective-disclosure prover for Infrix — generate ZK predicate proofs in the browser or Node, private witness never leaves the device.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/",
+    "assets/",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  },
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "build": "node scripts/vendor.mjs",
+    "test": "node scripts/vendor.mjs && node --test \"test/*.test.mjs\""
+  },
+  "keywords": [
+    "infrix",
+    "zero-knowledge",
+    "selective-disclosure",
+    "wasm",
+    "groth16",
+    "accumulate"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opendlt/infrix-sdk-js.git",
+    "directory": "packages/prover"
+  }
+}

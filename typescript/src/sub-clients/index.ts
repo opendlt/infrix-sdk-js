@@ -18,6 +18,8 @@ export type {
   PredicateCatalogEntry,
   PredicateProofEnvelope,
   PredicateVerifyResult,
+  PredicateProveRequest,
+  PredicateProver,
 } from './predicates';
 export { CredentialSubClient, DID_METHOD_INFRIX } from './credentials';
 export type {

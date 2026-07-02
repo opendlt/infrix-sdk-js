@@ -167,6 +167,14 @@ export type {
   IssueCredentialParams,
   SelectiveDisclosureRequest,
 } from './sub-clients';
+export type {
+  PredicateCatalog,
+  PredicateCatalogEntry,
+  PredicateProofEnvelope,
+  PredicateVerifyResult,
+  PredicateProveRequest,
+  PredicateProver,
+} from './sub-clients';
 
 // ---- Direct imports for internal use ----
 

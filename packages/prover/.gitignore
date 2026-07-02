@@ -1,0 +1,4 @@
+# The WASM artifact is built (16 MB) from infrix-core, not committed to git.
+# `npm run vendor` populates this from a sibling infrix-core checkout; CI /
+# publish builds it fresh. See scripts/vendor.mjs.
+assets/

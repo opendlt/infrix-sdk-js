@@ -1,4 +1,5 @@
 import { SubClient } from './base';
+import { InfrixUserError } from '../userError';
 
 /**
  * One entry in the ZK predicate catalog — the product surface of
@@ -83,10 +84,76 @@ export interface PredicateVerifyResult {
  * lists the available predicates and verifies submitted proofs; it
  * never sees a private witness.
  */
+/**
+ * Client-side proving input. Big integers accept bigint | number | string;
+ * keys/nonces are Uint8Array. Mirrors the @infrix/prover request shape.
+ */
+export interface PredicateProveRequest {
+  predicate: string;
+  setSize?: number;
+  publicInputs: Array<bigint | number | string>;
+  privateInputs: Array<bigint | number | string>;
+  holderSigner: Uint8Array;
+  holderDID?: string;
+  nullifierKey?: Uint8Array;
+  grantId?: string;
+  purpose?: string;
+  domain?: string;
+  challenge?: Uint8Array;
+  issuedAtBlock?: number;
+}
+
+/**
+ * A prover handle — the object returned by `loadProver()` from the optional
+ * `@infrix/prover` package. Injected into `PredicateSubClient.prove` so the
+ * heavy (~16 MB) WASM prover is never bundled into `@infrix/client`.
+ */
+export interface PredicateProver {
+  prove(request: PredicateProveRequest): Promise<PredicateProofEnvelope>;
+}
+
 export class PredicateSubClient extends SubClient {
   /** List the ZK predicate catalog (product surface). */
   async catalog(): Promise<PredicateCatalog> {
     return this.rest<PredicateCatalog>('GET', '/v4/predicates/catalog');
+  }
+
+  /**
+   * Generate a selective-disclosure proof client-side, then it can be submitted
+   * to {@link verify}. Proof generation runs in the optional `@infrix/prover`
+   * WASM module (not bundled here), so pass a loaded prover:
+   *
+   * ```ts
+   * import { loadProver } from '@infrix/prover';
+   * const prover = await loadProver();
+   * const envelope = await client.predicates.prove({ predicate: 'threshold_gte',
+   *   publicInputs: [18n], privateInputs: [21n], holderSigner }, prover);
+   * await client.predicates.verify(envelope);
+   * ```
+   *
+   * The private witness never leaves the prover; only the public envelope is
+   * returned. Without a prover this throws a typed PROVER_NOT_INSTALLED error
+   * (with the install remedy) rather than failing opaquely.
+   */
+  async prove(request: PredicateProveRequest, prover?: PredicateProver): Promise<PredicateProofEnvelope> {
+    if (!prover) {
+      throw new InfrixUserError({
+        code: 'PROVER_NOT_INSTALLED',
+        title: 'Predicate prover not available',
+        message:
+          'Selective-disclosure proof generation runs client-side in @infrix/prover, which is not bundled with @infrix/client.',
+        impact: 'Without the WASM prover this SDK can verify predicate proofs but cannot generate them.',
+        fixes: [
+          {
+            label: 'Install the prover and pass it',
+            command: 'npm i @infrix/prover   # then: const p = await loadProver(); client.predicates.prove(req, p)',
+            safeToRun: true,
+          },
+        ],
+        retryable: false,
+      });
+    }
+    return prover.prove(request);
   }
 
   /**
