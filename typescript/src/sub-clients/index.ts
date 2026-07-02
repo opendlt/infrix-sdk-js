@@ -26,6 +26,7 @@ export type {
   VerifiableCredential,
   IssueCredentialParams,
   SelectiveDisclosureRequest,
+  DisclosureSpec,
 } from './credentials';
 export { EIP712SubClient } from './eip712';
 export type {

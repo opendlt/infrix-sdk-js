@@ -5,9 +5,42 @@
 // https://opensource.org/licenses/MIT.
 
 import { SubClient } from './base';
+import type { PredicateProver, PredicateProofEnvelope } from './predicates';
 
 /** Canonical Infrix DID method (DX P1-1). */
 export const DID_METHOD_INFRIX = 'infrix';
+
+/**
+ * The explicit claim→predicate binding for {@link CredentialSubClient.present}.
+ *
+ * There is no magic auto-mapping from a credential's claims to a ZK circuit: the
+ * developer DECLARES which predicate to prove, its public inputs, and which named
+ * VC claims become the private witness (`claimInputs`). `present` then reads
+ * those claims from the credential and proves — the private values never leave
+ * the prover. Declaring the binding (rather than guessing it) is what makes this
+ * safe (DX P1-4).
+ */
+export interface DisclosureSpec {
+  /** Predicate to prove, e.g. 'threshold_gte'. */
+  predicate: string;
+  /** Membership set size, when the predicate needs it. */
+  setSize?: number;
+  /** Public inputs (e.g. the threshold to compare against). */
+  publicInputs: Array<bigint | number | string>;
+  /**
+   * Names of the credential's claims to use as the PRIVATE witness, in circuit
+   * order. Each must be a numeric-valued claim (bigint | number | integer
+   * string) the circuit can consume.
+   */
+  claimInputs: string[];
+  /** Holder key proving control (64-byte Go-format Ed25519). */
+  holderSigner: Uint8Array;
+  /** Verifier challenge / nonce, binding the proof. */
+  challenge?: Uint8Array;
+  grantId?: string;
+  purpose?: string;
+  domain?: string;
+}
 
 /** A W3C Verifiable Credential as returned by the node's credential engine. */
 export interface VerifiableCredential {
@@ -117,5 +150,55 @@ export class CredentialSubClient extends SubClient {
       ...(params.challenge ? { challenge: params.challenge } : {}),
       ...(params.domain ? { domain: params.domain } : {}),
     };
+  }
+
+  /**
+   * Selective disclosure of a verifiable credential in one call: read the
+   * private witness from the credential's claims (per {@link DisclosureSpec}),
+   * prove the declared predicate with the injected `@infrix/prover`, and return
+   * the public proof envelope. The private claim values never leave the prover.
+   *
+   * The claim→circuit binding is EXPLICIT (spec.claimInputs names which claims
+   * become the private inputs) — there is no fragile auto-inference from claim
+   * name to circuit (DX P1-4).
+   *
+   * @example
+   *   const envelope = await client.credentials.present(vc, {
+   *     predicate: 'threshold_gte',
+   *     publicInputs: [21],      // prove the age claim is >= 21
+   *     claimInputs: ['age'],    // ...using the VC's `age` claim as the witness
+   *     holderSigner,
+   *   }, prover);
+   *   await client.predicates.verify(envelope);
+   */
+  async present(
+    vc: VerifiableCredential,
+    spec: DisclosureSpec,
+    prover: PredicateProver
+  ): Promise<PredicateProofEnvelope> {
+    if (!prover) throw new Error('present: a prover (from @infrix/prover loadProver()) is required');
+    const subject = vc.credentialSubject ?? {};
+    const privateInputs = spec.claimInputs.map((name) => {
+      const raw = (subject as Record<string, unknown>)[name];
+      if (raw === undefined || raw === null) {
+        throw new Error(`present: credential has no claim '${name}' to disclose`);
+      }
+      if (typeof raw === 'bigint' || typeof raw === 'number') return raw;
+      if (typeof raw === 'string' && /^-?\d+$/.test(raw)) return raw;
+      throw new Error(
+        `present: claim '${name}' (${JSON.stringify(raw)}) is not a numeric value the circuit can consume`
+      );
+    });
+    return prover.prove({
+      predicate: spec.predicate,
+      setSize: spec.setSize,
+      publicInputs: spec.publicInputs,
+      privateInputs,
+      holderSigner: spec.holderSigner,
+      ...(spec.challenge ? { challenge: spec.challenge } : {}),
+      ...(spec.grantId ? { grantId: spec.grantId } : {}),
+      ...(spec.purpose ? { purpose: spec.purpose } : {}),
+      ...(spec.domain ? { domain: spec.domain } : {}),
+    });
   }
 }

@@ -166,6 +166,7 @@ export type {
   VerifiableCredential,
   IssueCredentialParams,
   SelectiveDisclosureRequest,
+  DisclosureSpec,
 } from './sub-clients';
 export type {
   PredicateCatalog,

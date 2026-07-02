@@ -45,6 +45,45 @@ test('presentationRequest requires at least one disclosed claim', () => {
   assert.throws(() => client().credentials.presentationRequest({ credential: 'c', disclose: [] }));
 });
 
+test('present extracts the named claim as the private witness and proves (P1-4)', async () => {
+  const c = client();
+  const vc = {
+    type: ['VerifiableCredential'],
+    issuer: 'did:infrix:acc://issuer.acme',
+    credentialSubject: { id: 'did:infrix:acc://alice.acme', age: '25' },
+  };
+  let captured: { predicate?: string; publicInputs?: unknown[]; privateInputs?: unknown[] } = {};
+  const prover = {
+    async prove(req: { predicate: string; publicInputs: unknown[]; privateInputs: unknown[] }) {
+      captured = req;
+      return { proof: 'ok' } as unknown as import('./index').PredicateProofEnvelope;
+    },
+  };
+  await c.credentials.present(
+    vc,
+    { predicate: 'threshold_gte', publicInputs: [21], claimInputs: ['age'], holderSigner: new Uint8Array(64) },
+    prover
+  );
+  assert.equal(captured.predicate, 'threshold_gte');
+  assert.deepEqual(captured.publicInputs, [21]);
+  // The VC's `age` claim ("25") became the private witness — never sent anywhere else.
+  assert.deepEqual(captured.privateInputs, ['25']);
+});
+
+test('present rejects a missing or non-numeric claim', async () => {
+  const c = client();
+  const prover = { async prove() { return { proof: 'x' } as unknown as import('./index').PredicateProofEnvelope; } };
+  const base = { predicate: 'threshold_gte', publicInputs: [21], holderSigner: new Uint8Array(64) };
+  await assert.rejects(
+    () => c.credentials.present({ credentialSubject: {} }, { ...base, claimInputs: ['age'] }, prover),
+    /has no claim/
+  );
+  await assert.rejects(
+    () => c.credentials.present({ credentialSubject: { age: 'not-a-number' } }, { ...base, claimInputs: ['age'] }, prover),
+    /not a numeric value/
+  );
+});
+
 test('issue calls vc.issue with subjectDid + auto-injected disclosure context', async () => {
   const c = client();
   let captured: { method?: string; params?: Record<string, unknown> } = {};
