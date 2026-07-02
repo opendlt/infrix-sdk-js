@@ -35,8 +35,10 @@ function haveAllAssets() {
 const core = coreDir();
 const distProver = path.join(core, 'dist', 'prover');
 
-// Build the artifact if the monorepo is present but dist/prover is missing.
-if (!fs.existsSync(path.join(distProver, 'infrix-prover.wasm')) && fs.existsSync(path.join(core, 'cmd', 'prover-wasm'))) {
+// When the monorepo source is present, ALWAYS rebuild so the wasm and its
+// manifest (sha256) are co-generated in one run — never a stale, mismatched
+// pair (which would trip the loader's integrity check).
+if (fs.existsSync(path.join(core, 'cmd', 'prover-wasm'))) {
   try {
     console.log(`@infrix/prover: building WASM from ${core} ...`);
     execFileSync('bash', ['scripts/build-prover-wasm.sh'], { cwd: core, stdio: 'inherit' });
