@@ -2,6 +2,10 @@
  * @infrix identity — Wallet & Identity Control Center (nextux-08): a
  * cross-language signature explainer, scoped-session validation, MetaMask
  * challenge connect, and a typed client over the agent action surface.
+ *
+ * NOTE (DX P1-3): this module is **wallet-signing / session UX** — it does NOT
+ * create DIDs or issue verifiable credentials. For DID + VC ergonomics use
+ * `client.credentials` (createDID, issue, issuerDocument, presentationRequest).
  */
 
 export { explainSignature, SignatureUnexplainableError } from './signatures';

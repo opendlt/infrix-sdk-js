@@ -19,6 +19,12 @@ export type {
   PredicateProofEnvelope,
   PredicateVerifyResult,
 } from './predicates';
+export { CredentialSubClient, DID_METHOD_INFRIX } from './credentials';
+export type {
+  VerifiableCredential,
+  IssueCredentialParams,
+  SelectiveDisclosureRequest,
+} from './credentials';
 export { EIP712SubClient } from './eip712';
 export type {
   EIP712IntentRequest,

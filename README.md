@@ -108,6 +108,39 @@ If you forget the disclosure context, the node returns a stable, typed
 frictionless path. To reach a **funded** flow on Kermit, see
 [connect-kermit](https://github.com/opendlt/infrix-core/blob/main/docs/connect-kermit.md).
 
+## DIDs & verifiable credentials
+
+`client.credentials` gives you DID + VC ergonomics. Deriving a DID is **offline**
+(a DID is a deterministic function of the Accumulate ADI); issuing a credential
+calls the node's credential engine and reuses the disclosure context you already
+set on the client:
+
+```js
+// Offline — no node needed:
+const did = client.credentials.createDID('acc://alice.acme');
+// → "did:infrix:acc://alice.acme"
+
+// Issue a verifiable credential (uses the node's vc.issue):
+const vc = await client.credentials.issue({
+  subjectDID: did,
+  credentialTypes: ['KYCCredential'],
+  claims: { tier: '2', country: 'US' },
+});
+
+// Assemble a selective-disclosure request revealing only some claims:
+const request = client.credentials.presentationRequest({
+  credential: vc.id,
+  disclose: ['age_over_21'],
+  challenge: 'verifier-nonce',
+});
+```
+
+Selective-disclosure **proof generation** runs in the data-owner's native prover
+(not in this SDK yet — the in-JS/WASM prover is on the roadmap). **Verification**
+of a proof envelope is available today via `client.predicates.verify(...)`.
+`identity` (the `@infrix/client` `identity` namespace) is wallet-signing/session
+UX, **not** DID/VC — use `client.credentials` for those.
+
 ## Install the CLI
 
 Prebuilt, checksum-verified `infrix` binaries (open-core: the runtime source is

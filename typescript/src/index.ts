@@ -158,7 +158,14 @@ export {
   AnchorSubClient,
   ContractSubClient,
   PredicateSubClient,
+  CredentialSubClient,
+  DID_METHOD_INFRIX,
   EIP712SubClient,
+} from './sub-clients';
+export type {
+  VerifiableCredential,
+  IssueCredentialParams,
+  SelectiveDisclosureRequest,
 } from './sub-clients';
 
 // ---- Direct imports for internal use ----
@@ -188,6 +195,7 @@ import {
   AnchorSubClient,
   ContractSubClient,
   PredicateSubClient,
+  CredentialSubClient,
   EIP712SubClient,
 } from './sub-clients';
 
@@ -305,6 +313,9 @@ export class InfrixClient {
   /** ZK predicate catalog + read-only proof verification (catalog, verify). */
   readonly predicates: PredicateSubClient;
 
+  /** DID + verifiable-credential ergonomics (createDID, issue, issuerDocument, presentationRequest). */
+  readonly credentials: CredentialSubClient;
+
   /** MetaMask EIP-712 intent signing -> Accumulate submission (prepare, submit). */
   readonly eip712: EIP712SubClient;
 
@@ -405,6 +416,7 @@ export class InfrixClient {
     this.disclosures = new DisclosureSubClient(rpcFn, restFn);
     this.anchors = new AnchorSubClient(rpcFn, restFn);
     this.predicates = new PredicateSubClient(rpcFn, restFn);
+    this.credentials = new CredentialSubClient(rpcFn, restFn);
     this.eip712 = new EIP712SubClient(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
