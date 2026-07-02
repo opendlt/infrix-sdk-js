@@ -75,6 +75,39 @@ Be honest with yourself about the boundary before you start:
 The verifier and fixtures are vendored into the packages, so everything in this
 repo builds and tests **standalone**, with no dependency on the Go monorepo.
 
+## Submit a governed intent (needs a node)
+
+Point `@infrix/client` at a network by **name** (`kermit` is the public testnet;
+`local` is `http://localhost:8080`) or a full URL, and set the **disclosure
+context** (`actor` + `purpose`) up front — the node rejects governed calls
+without it, so passing it to the constructor is what makes this run first try:
+
+```sh
+npm install @infrix/client
+```
+
+```js
+// submit.mjs
+import { InfrixClient, withGovernanceSugar } from '@infrix/client';
+
+// 'kermit' resolves to the public devnet node; actor+purpose are the disclosure
+// context every governed call needs.
+const client = new InfrixClient('kermit', {
+  actor: 'acc://alice.acme',
+  purpose: 'demo',
+});
+
+// submitAndWait runs the full spine and returns the outcome + proof references.
+const governed = withGovernanceSugar(client);
+const r = await governed.callContract('acc://mytoken.acme', 'check_balance', []);
+console.log('intent:', r.intentId, 'outcome:', r.outcomeId, 'evidence:', r.evidenceId);
+```
+
+If you forget the disclosure context, the node returns a stable, typed
+`InfrixUserError` you can catch — but setting it in the constructor (above) is the
+frictionless path. To reach a **funded** flow on Kermit, see
+[connect-kermit](https://github.com/opendlt/infrix-core/blob/main/docs/connect-kermit.md).
+
 ## Install the CLI
 
 Prebuilt, checksum-verified `infrix` binaries (open-core: the runtime source is

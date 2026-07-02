@@ -28,7 +28,13 @@
  *
  * @example
  *   import { InfrixClient } from '@infrix/client';
- *   const client = new InfrixClient('http://localhost:8080');
+ *   // Connect by network name ('kermit' | 'testnet' | 'local') or a full URL,
+ *   // and set the disclosure context up front (the node rejects governed calls
+ *   // without an actor + purpose).
+ *   const client = new InfrixClient('kermit', {
+ *     actor: 'acc://alice.acme',
+ *     purpose: 'demo',
+ *   });
  *
  *   // Governance-first: submit a CONTRACT_CALL intent
  *   const result = await client.intents.submit({
@@ -206,6 +212,38 @@ export interface SdkTelemetry {
 /** Options for {@link InfrixClient}. */
 export interface InfrixClientOptions {
   telemetry?: SdkTelemetry;
+  /**
+   * Default Gap 12 disclosure context. The node rejects most governed calls
+   * without an actor + purpose, so set them here at construction time (or later
+   * via {@link InfrixClient.setDisclosureContext}). Supplying them here is
+   * equivalent to calling setDisclosureContext immediately after construction.
+   */
+  actor?: string;
+  purpose?: string;
+  workflowInstance?: string;
+  identity?: string;
+}
+
+/**
+ * Named network presets so callers connect without hard-coding a node URL.
+ * `kermit` is the canonical public testnet; `testnet` is an alias for it. A
+ * value that already starts with http(s):// is used verbatim (P0-2/P0-3).
+ */
+const NETWORK_PRESETS: Record<string, string> = {
+  kermit: 'https://devnet.infrix.opendlt.org',
+  testnet: 'https://devnet.infrix.opendlt.org',
+  local: 'http://localhost:8080',
+};
+
+/** Resolve a network name or URL to a base node URL. */
+export function resolveNodeBaseUrl(target: string): string {
+  const t = (target ?? '').trim();
+  if (/^https?:\/\//i.test(t)) return t;
+  const preset = NETWORK_PRESETS[t.toLowerCase()];
+  if (preset) return preset;
+  throw new Error(
+    `InfrixClient: unknown network '${target}'. Pass a full http(s):// URL or one of: ${Object.keys(NETWORK_PRESETS).join(', ')}.`
+  );
 }
 
 // ---- RPC Error ----
@@ -324,15 +362,31 @@ export class InfrixClient {
   }
 
   /**
-   * Create a client connected to an Infrix devnet.
-   * @param baseUrl The base URL of the devnet server, e.g. "http://localhost:8080"
+   * Create a client connected to an Infrix node.
+   * @param target A network name ('kermit' | 'testnet' | 'local') or a full
+   *   base URL, e.g. "http://localhost:8080". Network names resolve via
+   *   {@link resolveNodeBaseUrl}.
+   * @param options Optional telemetry and default disclosure context. The node
+   *   rejects most governed calls without an actor + purpose, so pass them here
+   *   (or call {@link setDisclosureContext}).
    */
-  constructor(baseUrl: string, options?: InfrixClientOptions) {
-    const base = baseUrl.replace(/\/+$/, '');
+  constructor(target: string, options?: InfrixClientOptions) {
+    const base = resolveNodeBaseUrl(target).replace(/\/+$/, '');
     this.rpcUrl = `${base}/rpc`;
     this.wsUrl = base.replace(/^http/, 'ws') + '/ws';
     this.restBase = base;
     this.telemetry = options?.telemetry;
+
+    // Fold a disclosure context passed at construction into the default so the
+    // first governed call already carries actor/purpose (P0-3).
+    if (options && (options.actor || options.purpose || options.workflowInstance || options.identity)) {
+      this.setDisclosureContext({
+        actor: options.actor,
+        purpose: options.purpose,
+        workflowInstance: options.workflowInstance,
+        identity: options.identity,
+      });
+    }
 
     const rpcFn = this.rpc.bind(this);
     const restFn = this.rest.bind(this);

@@ -338,14 +338,14 @@ export interface HostedDevnet {
 /**
  * withHostedDevnet augments a client with hosted-devnet metadata: the v4
  * endpoint and the Accumulate L0 network the demo anchors to, plus a faucet
- * hint. The happy-path hosted demo reaches L4/G2 against this L0.
+ * hint. The happy-path hosted demo can reach L4 against this L0.
  */
 export function withHostedDevnet(client: InfrixClient, opts: { endpoint?: string; l0?: string } = {}) {
   const l0 = opts.l0 ?? 'kermit';
   return {
     ...client,
     hostedDevnet: {
-      endpoint: opts.endpoint ?? 'http://localhost:8545',
+      endpoint: opts.endpoint ?? 'https://devnet.infrix.opendlt.org',
       l0,
       faucetHint: `infrix faucet acc://<lite-token-account> --endpoint ${l0}`,
     } as HostedDevnet,
