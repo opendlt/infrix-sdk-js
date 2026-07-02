@@ -167,11 +167,18 @@ const credentialIndex = `import { InfrixClient, withGovernanceSugar } from '@inf
 
 ${printResult}
 
-const governed = withGovernanceSugar(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080'));
-// Credential-gated release as a governed object, fully hydrated + proven.
+const client = new InfrixClient('kermit', { actor: process.env.INFRIX_ACTOR ?? 'acc://issuer.acme', purpose: 'credential-gate' });
+// Issue a REAL verifiable credential, then gate a governed release on it.
+const holderDID = client.credentials.createDID('acc://alice.acme');
+const vc = await client.credentials.issue({
+  subjectDID: holderDID,
+  credentialTypes: ['ReleaseEligibility'],
+  claims: { tier: '2' },
+});
+const governed = withGovernanceSugar(client);
 const r = await governed.createObject(
   'credential_release',
-  { holder: 'acc://alice.acme', credential: 'kyc-tier-2' },
+  { holder: holderDID, credential: vc.id },
   { exportProof: true, verifyProofLocal: true },
 );
 printGoverned('credential-gated release:', r);
