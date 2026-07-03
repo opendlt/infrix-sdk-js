@@ -157,6 +157,7 @@ export {
   DisclosureSubClient,
   AnchorSubClient,
   ContractSubClient,
+  EvmSubClient,
   PredicateSubClient,
   CredentialSubClient,
   DID_METHOD_INFRIX,
@@ -203,6 +204,7 @@ import {
   DisclosureSubClient,
   AnchorSubClient,
   ContractSubClient,
+  EvmSubClient,
   PredicateSubClient,
   CredentialSubClient,
   EIP712SubClient,
@@ -348,6 +350,14 @@ export class InfrixClient {
    */
   readonly contracts: ContractSubClient;
 
+  /**
+   * The governed Solidity/EVM deploy door (DX P6-5): `evm.deploy(bytecode)`
+   * and `evm.call(addr, calldata)`. These wrap raw EVM bytecode/calldata as
+   * governed `EVM_DEPLOY` / `EVM_CALL` intents — the supported low-level EVM
+   * door, still routed through the full spine (no raw-transaction bypass).
+   */
+  readonly evm: EvmSubClient;
+
   private restBase: string;
   private telemetry?: SdkTelemetry;
   private defaultDisclosure: {
@@ -441,6 +451,7 @@ export class InfrixClient {
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);
+    this.evm = new EvmSubClient(rpcFn, restFn);
   }
 
   // ---- Low-level RPC ----

@@ -73,6 +73,8 @@ export type IntentGoalType =
   | 'DISCLOSURE_REVOKE'
   | 'CONTRACT_DEPLOY'
   | 'CONTRACT_CALL'
+  | 'EVM_DEPLOY'
+  | 'EVM_CALL'
   | 'SWARM_CREATE'
   | 'SWARM_JOIN'
   | 'SWARM_COORDINATE'
