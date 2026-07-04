@@ -1,0 +1,13 @@
+# Normalize all text to LF and pin LF on checkout so core.autocrlf=true on
+# Windows never rewrites the working tree to CRLF. This keeps generated text
+# assets clean: scripts/emit-css.mjs writes packages/widgets/styles.css with LF,
+# and a CRLF checkout would otherwise show it as perpetually modified after a
+# build/test run. Binary files are auto-detected by text=auto and left untouched.
+* text=auto eol=lf
+
+# Belt-and-suspenders for the generated stylesheet (single source of truth is
+# packages/widgets/src/styles.ts, emitted by scripts/emit-css.mjs).
+packages/widgets/styles.css text eol=lf
+
+# Prover WASM + runtime shim are binary/opaque — never touch their bytes.
+*.wasm binary

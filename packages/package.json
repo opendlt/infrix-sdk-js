@@ -10,7 +10,9 @@
     "widgets",
     "widgets-webcomponent",
     "metamask",
-    "golden-escrow"
+    "golden-escrow",
+    "prover",
+    "templates"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
