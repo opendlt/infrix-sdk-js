@@ -135,9 +135,15 @@ const request = client.credentials.presentationRequest({
 });
 ```
 
-Selective-disclosure **proof generation** runs in the data-owner's native prover
-(not in this SDK yet — the in-JS/WASM prover is on the roadmap). **Verification**
-of a proof envelope is available today via `client.predicates.verify(...)`.
+Selective-disclosure **proof generation** ships in the SDK as the
+[`@infrix/prover`](./packages/prover) package — a WebAssembly build of the same
+gnark/Groth16 predicate prover the node uses, so a data owner can generate proofs
+client-side. The package runs from a committed, integrity-checked WASM asset in a
+published install. In a monorepo checkout where the `infrix-core` source is present,
+it **rebuilds the WASM from source and fails closed** if that rebuild fails (rather
+than silently shipping a stale asset); the committed-asset fallback then requires an
+explicit `INFRIX_PROVER_ALLOW_VENDORED=1` opt-in. **Verification** of a proof
+envelope is available via `client.predicates.verify(...)`.
 `identity` (the `@infrix/client` `identity` namespace) is wallet-signing/session
 UX, **not** DID/VC — use `client.credentials` for those.
 

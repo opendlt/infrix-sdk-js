@@ -29,3 +29,45 @@ jobs:
         working-directory: packages
       - run: npm test
         working-directory: packages
+
+  # Source-present prover rebuild (second-pass audit D2). The `packages` job above
+  # runs source-ABSENT, so @infrix/prover uses committed assets and never exercises
+  # the cross-repo WASM rebuild. This job checks out infrix-core as a sibling, points
+  # @infrix/prover at it via INFRIX_CORE_DIR, and runs the prover workspace test
+  # WITHOUT INFRIX_PROVER_ALLOW_VENDORED — so a broken source-present rebuild fails CI.
+  # The Windows leg guards the D1 failure mode (bash -> WSL cannot see Go); the
+  # rebuild goes through the OS-neutral Node builder (infrix-core/scripts/build-prover-wasm.mjs).
+  #
+  # If infrix-core is private, set the INFRIX_CORE_TOKEN secret to a read-only PAT;
+  # if it is public, the default checkout token is sufficient.
+  prover-source-rebuild:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+        with:
+          path: infrix-sdk-js
+      - name: Checkout infrix-core (sibling, for the prover source)
+        uses: actions/checkout@v4
+        with:
+          repository: opendlt/infrix-core
+          token: ${{ secrets.INFRIX_CORE_TOKEN || github.token }}
+          path: infrix-core
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.7'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install workspaces
+        working-directory: infrix-sdk-js/packages
+        run: npm ci
+      - name: Rebuild @infrix/prover from source (fail-closed, no vendored fallback)
+        working-directory: infrix-sdk-js/packages
+        env:
+          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
+        run: npm test --workspace @infrix/prover

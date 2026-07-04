@@ -48,9 +48,20 @@ const distProver = path.join(core, 'dist', 'prover');
 const sourcePresent = fs.existsSync(path.join(core, 'cmd', 'prover-wasm'));
 const allowVendored = /^(1|true|yes)$/i.test(process.env.INFRIX_PROVER_ALLOW_VENDORED || '');
 if (sourcePresent) {
+  // OS-neutral build path (audit D1): drive the canonical Node builder with the
+  // Node runtime already running this script — never shell to bash, which on a
+  // Windows checkout resolves to WSL and cannot see the Windows Go toolchain.
+  // Fall back to the bash wrapper only for an older core checkout that predates
+  // build-prover-wasm.mjs.
+  const builderMjs = path.join(core, 'scripts', 'build-prover-wasm.mjs');
+  const useNode = fs.existsSync(builderMjs);
   try {
     console.log(`@infrix/prover: building WASM from ${core} ...`);
-    execFileSync('bash', ['scripts/build-prover-wasm.sh'], { cwd: core, stdio: 'inherit' });
+    if (useNode) {
+      execFileSync(process.execPath, ['scripts/build-prover-wasm.mjs'], { cwd: core, stdio: 'inherit' });
+    } else {
+      execFileSync('bash', ['scripts/build-prover-wasm.sh'], { cwd: core, stdio: 'inherit' });
+    }
   } catch (e) {
     if (allowVendored) {
       console.warn(
@@ -62,7 +73,7 @@ if (sourcePresent) {
         `@infrix/prover: WASM rebuild FAILED (${e.message}).\n` +
           '  The infrix-core source is present, so the prover must build from it — ' +
           'silently reusing committed assets could ship a stale, mismatched artifact.\n' +
-          '  Fix the build (ensure a Go toolchain + bash are installed), or, if you ' +
+          '  Fix the build (ensure a Go toolchain is installed and on PATH), or, if you ' +
           'cannot build locally, set INFRIX_PROVER_ALLOW_VENDORED=1 to reuse committed assets.'
       );
       process.exit(1);
