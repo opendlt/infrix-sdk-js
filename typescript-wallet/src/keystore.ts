@@ -90,79 +90,162 @@ export class MemoryKeyStore implements KeyStore {
 }
 
 // ---- Encrypted Key Store Helpers ----
+//
+// Versioned password-based key envelope (audit Z3). New exports derive the AES-256
+// key with PBKDF2-HMAC-SHA-256 over a random 128-bit salt and a high iteration
+// count, so a leaked export cannot be cheaply brute-forced offline and two exports
+// of the same key under the same password produce different ciphertexts. The KDF
+// id, iteration count, and salt travel inside the envelope, so parameters can be
+// migrated in future without breaking older exports.
+//
+// New wire format (all binary):
+//   magic "IWK1" (4) | kdfId (1) | iterations uint32 BE (4) | salt (16) | nonce (12) | ciphertext‖GCM tag
+//
+// Legacy exports (the pre-Z3 0.1.0 format: unsalted sha256('infrix-wallet:'+pw)
+// key, nonce(12)‖ciphertext‖tag(16), no magic) are still ACCEPTED on import for
+// backward compatibility; re-exporting an imported key upgrades it to the new
+// envelope. New code never PRODUCES the legacy format.
+
+const ENVELOPE_MAGIC = [0x49, 0x57, 0x4b, 0x31]; // "IWK1"
+const KDF_PBKDF2_SHA256 = 0x01;
+const PBKDF2_ITERATIONS = 600_000; // OWASP 2023 baseline for PBKDF2-HMAC-SHA-256
+const SALT_LEN = 16;
+const NONCE_LEN = 12;
+const HEADER_LEN = ENVELOPE_MAGIC.length + 1 + 4 + SALT_LEN + NONCE_LEN; // 37
+
+function hasWebSubtle(): boolean {
+  return typeof globalThis.crypto !== 'undefined' && !!globalThis.crypto.subtle;
+}
+
+function hasEnvelopeMagic(buf: Uint8Array): boolean {
+  if (buf.length < HEADER_LEN) return false;
+  for (let i = 0; i < ENVELOPE_MAGIC.length; i++) if (buf[i] !== ENVELOPE_MAGIC[i]) return false;
+  return true;
+}
+
+function randomBytes(n: number): Uint8Array {
+  if (hasWebSubtle() && typeof globalThis.crypto.getRandomValues === 'function') {
+    return globalThis.crypto.getRandomValues(new Uint8Array(n));
+  }
+  const { randomBytes: rb } = require('crypto');
+  return new Uint8Array(rb(n));
+}
+
+function u32be(n: number): Uint8Array {
+  return new Uint8Array([(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff]);
+}
+function readU32be(b: Uint8Array, off: number): number {
+  return ((b[off] << 24) | (b[off + 1] << 16) | (b[off + 2] << 8) | b[off + 3]) >>> 0;
+}
 
 /**
- * Encrypt data with a password using AES-256-GCM.
- * Format: 12-byte nonce || ciphertext || 16-byte auth tag
+ * Encrypt data with a password using AES-256-GCM keyed by PBKDF2-HMAC-SHA-256
+ * with a random salt. Produces the versioned "IWK1" envelope.
  */
 async function encryptWithPassword(data: Uint8Array, password: string): Promise<Uint8Array> {
-  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
-    const keyMaterial = await deriveKeyWeb(password);
-    const nonce = new Uint8Array(12);
-    globalThis.crypto.getRandomValues(nonce);
-    const encrypted = await globalThis.crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
-      keyMaterial,
-      data,
-    );
-    const result = new Uint8Array(12 + encrypted.byteLength);
-    result.set(nonce, 0);
-    result.set(new Uint8Array(encrypted), 12);
-    return result;
-  }
-  // Node.js fallback.
-  return encryptNode(data, password);
+  const salt = randomBytes(SALT_LEN);
+  const nonce = randomBytes(NONCE_LEN);
+  const iterations = PBKDF2_ITERATIONS;
+  const ctTag = await aesGcmEncrypt(data, password, salt, iterations, nonce);
+
+  const out = new Uint8Array(HEADER_LEN + ctTag.length);
+  let o = 0;
+  out.set(ENVELOPE_MAGIC, o); o += ENVELOPE_MAGIC.length;
+  out[o++] = KDF_PBKDF2_SHA256;
+  out.set(u32be(iterations), o); o += 4;
+  out.set(salt, o); o += SALT_LEN;
+  out.set(nonce, o); o += NONCE_LEN;
+  out.set(ctTag, o);
+  return out;
 }
 
 /**
- * Decrypt data encrypted with encryptWithPassword.
+ * Decrypt an "IWK1" envelope, or a legacy unsalted-SHA-256 export (backward compat).
  */
-async function decryptWithPassword(encrypted: Uint8Array, password: string): Promise<Uint8Array> {
-  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
-    const keyMaterial = await deriveKeyWeb(password);
-    const nonce = encrypted.slice(0, 12);
-    const ciphertext = encrypted.slice(12);
-    const decrypted = await globalThis.crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: nonce },
-      keyMaterial,
-      ciphertext,
-    );
-    return new Uint8Array(decrypted);
+async function decryptWithPassword(blob: Uint8Array, password: string): Promise<Uint8Array> {
+  if (hasEnvelopeMagic(blob)) {
+    let o = ENVELOPE_MAGIC.length;
+    const kdf = blob[o++];
+    if (kdf !== KDF_PBKDF2_SHA256) throw new Error(`unsupported key envelope KDF id: ${kdf}`);
+    const iterations = readU32be(blob, o); o += 4;
+    const salt = blob.slice(o, o + SALT_LEN); o += SALT_LEN;
+    const nonce = blob.slice(o, o + NONCE_LEN); o += NONCE_LEN;
+    const ctTag = blob.slice(o);
+    return aesGcmDecrypt(ctTag, password, salt, iterations, nonce);
   }
-  return decryptNode(encrypted, password);
+  return decryptLegacy(blob, password);
 }
 
-async function deriveKeyWeb(password: string): Promise<CryptoKey> {
-  const enc = new TextEncoder();
-  const keyData = await sha256(enc.encode('infrix-wallet:' + password));
-  return globalThis.crypto.subtle.importKey(
-    'raw', keyData, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'],
+// AES-256-GCM with a PBKDF2-derived key. Returns ciphertext‖tag. WebCrypto where
+// available, Node crypto otherwise; the wire format is identical so an export made
+// in one runtime imports in the other (PBKDF2-HMAC-SHA-256 is deterministic).
+async function aesGcmEncrypt(
+  data: Uint8Array, password: string, salt: Uint8Array, iterations: number, nonce: Uint8Array
+): Promise<Uint8Array> {
+  if (hasWebSubtle()) {
+    const key = await deriveAesKeyWeb(password, salt, iterations, ['encrypt']);
+    const enc = await globalThis.crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, key, data);
+    return new Uint8Array(enc);
+  }
+  const crypto = require('crypto');
+  const key = crypto.pbkdf2Sync(Buffer.from(password, 'utf8'), Buffer.from(salt), iterations, 32, 'sha256');
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, Buffer.from(nonce));
+  const ct = Buffer.concat([cipher.update(Buffer.from(data)), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return new Uint8Array(Buffer.concat([ct, tag]));
+}
+
+async function aesGcmDecrypt(
+  ctTag: Uint8Array, password: string, salt: Uint8Array, iterations: number, nonce: Uint8Array
+): Promise<Uint8Array> {
+  if (hasWebSubtle()) {
+    const key = await deriveAesKeyWeb(password, salt, iterations, ['decrypt']);
+    const dec = await globalThis.crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, key, ctTag);
+    return new Uint8Array(dec);
+  }
+  const crypto = require('crypto');
+  const key = crypto.pbkdf2Sync(Buffer.from(password, 'utf8'), Buffer.from(salt), iterations, 32, 'sha256');
+  const tagStart = ctTag.length - 16;
+  const ciphertext = ctTag.slice(0, tagStart);
+  const tag = ctTag.slice(tagStart);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(nonce));
+  decipher.setAuthTag(Buffer.from(tag));
+  return new Uint8Array(Buffer.concat([decipher.update(Buffer.from(ciphertext)), decipher.final()]));
+}
+
+async function deriveAesKeyWeb(
+  password: string, salt: Uint8Array, iterations: number, usages: KeyUsage[]
+): Promise<CryptoKey> {
+  const baseKey = await globalThis.crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), { name: 'PBKDF2' }, false, ['deriveKey'],
+  );
+  return globalThis.crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    usages,
   );
 }
 
-function encryptNode(data: Uint8Array, password: string): Uint8Array {
-  const crypto = require('crypto');
-  const key = crypto.createHash('sha256').update('infrix-wallet:' + password).digest();
-  const nonce = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, nonce);
-  const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  const result = new Uint8Array(12 + encrypted.length + tag.length);
-  result.set(new Uint8Array(nonce), 0);
-  result.set(new Uint8Array(encrypted), 12);
-  result.set(new Uint8Array(tag), 12 + encrypted.length);
-  return result;
-}
-
-function decryptNode(encrypted: Uint8Array, password: string): Uint8Array {
-  const crypto = require('crypto');
-  const key = crypto.createHash('sha256').update('infrix-wallet:' + password).digest();
+// Legacy pre-Z3 format: unsalted key = sha256('infrix-wallet:'+password), layout
+// nonce(12)‖ciphertext‖tag(16). Accepted on import only; never produced.
+async function decryptLegacy(encrypted: Uint8Array, password: string): Promise<Uint8Array> {
   const nonce = encrypted.slice(0, 12);
+  if (hasWebSubtle()) {
+    const keyData = await sha256(new TextEncoder().encode('infrix-wallet:' + password));
+    const key = await globalThis.crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
+    const decrypted = await globalThis.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: nonce }, key, encrypted.slice(12),
+    );
+    return new Uint8Array(decrypted);
+  }
+  const crypto = require('crypto');
+  const key = crypto.createHash('sha256').update('infrix-wallet:' + password).digest();
   const tagStart = encrypted.length - 16;
   const ciphertext = encrypted.slice(12, tagStart);
   const tag = encrypted.slice(tagStart);
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(nonce));
   decipher.setAuthTag(Buffer.from(tag));
-  const decrypted = Buffer.concat([decipher.update(Buffer.from(ciphertext)), decipher.final()]);
-  return new Uint8Array(decrypted);
+  return new Uint8Array(Buffer.concat([decipher.update(Buffer.from(ciphertext)), decipher.final()]));
 }
