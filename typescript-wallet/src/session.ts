@@ -122,22 +122,26 @@ export class SessionManager {
       throw new Error('Session key has no remaining uses');
     }
 
-    // Governance operation checks
+    // Governance operation checks — DEFAULT-DENY (audit Z2). Governance authority
+    // is opt-in: a session must be created with allowIntentSubmit === true (or
+    // allowApproval === true) to perform that operation. An omitted flag denies,
+    // so a scope that never granted governance authority can never exercise it.
     if (operation === 'intent.submit') {
-      if (sk.scope.allowIntentSubmit === false) {
+      if (sk.scope.allowIntentSubmit !== true) {
         throw new Error('Session key not authorized for intent submission');
       }
       const params = typeof functionNameOrParams === 'object' ? functionNameOrParams : undefined;
-      if (sk.scope.allowedGoalTypes?.length && params?.goalType) {
-        if (!sk.scope.allowedGoalTypes.includes(params.goalType as string)) {
-          throw new Error(`Session key not authorized for goal type: ${params.goalType}`);
-        }
-      }
+      // Field-level constraints are enforced when the matching param is present.
+      enforceAllowedValue(sk.scope.allowedGoalTypes, params?.goalType, 'goal type');
+      enforceAllowedValue(sk.scope.allowedObjectTypes, params?.objectType, 'object type');
+      enforceAllowedValue(sk.scope.allowedCapabilities, params?.capability, 'capability');
+      enforceAllowedValue(sk.scope.allowedRoles, params?.role, 'role');
+      enforceGasBudget(sk.scope.maxGasPerIntent, params);
       return;
     }
 
     if (operation === 'approval.submit') {
-      if (sk.scope.allowApproval === false) {
+      if (sk.scope.allowApproval !== true) {
         throw new Error('Session key not authorized for approvals');
       }
       return;
@@ -171,6 +175,32 @@ export class SessionManager {
   }
 }
 
+/**
+ * Enforce a whitelist constraint when the corresponding param is present. If the
+ * scope constrains a field to a non-empty allow-list and the operation supplies a
+ * value for it, that value must be in the list; otherwise the operation is denied.
+ * An absent param cannot be validated and is left to other checks.
+ */
+function enforceAllowedValue(allowed: string[] | undefined, value: unknown, label: string): void {
+  if (allowed && allowed.length > 0 && typeof value === 'string') {
+    if (!allowed.includes(value)) {
+      throw new Error(`Session key not authorized for ${label}: ${value}`);
+    }
+  }
+}
+
+/**
+ * Enforce the per-intent gas budget when the scope sets one and the operation
+ * supplies a gas figure (as `gas` or `gasLimit`).
+ */
+function enforceGasBudget(maxGasPerIntent: number | undefined, params?: Record<string, unknown>): void {
+  if (typeof maxGasPerIntent !== 'number' || maxGasPerIntent <= 0 || !params) return;
+  const raw = params.gas ?? params.gasLimit;
+  if (typeof raw === 'number' && raw > maxGasPerIntent) {
+    throw new Error(`Session key gas ${raw} exceeds per-intent budget ${maxGasPerIntent}`);
+  }
+}
+
 function normalizeScope(scope: SessionScope): SessionScope {
   return {
     contracts: scope.contracts || [],
@@ -182,5 +212,16 @@ function normalizeScope(scope: SessionScope): SessionScope {
         ? new Date(scope.expiresAt)
         : undefined,
     maxUses: scope.maxUses || 0,
+    // Governance permissions are preserved VERBATIM (audit Z2): dropping them here
+    // is what made governance operations fail open — an omitted allowIntentSubmit
+    // became undefined, and the `=== false` check below then let it through. These
+    // fields are now carried unchanged and enforced default-deny at validate time.
+    allowIntentSubmit: scope.allowIntentSubmit,
+    allowApproval: scope.allowApproval,
+    allowedGoalTypes: scope.allowedGoalTypes,
+    maxGasPerIntent: scope.maxGasPerIntent,
+    allowedObjectTypes: scope.allowedObjectTypes,
+    allowedCapabilities: scope.allowedCapabilities,
+    allowedRoles: scope.allowedRoles,
   };
 }
