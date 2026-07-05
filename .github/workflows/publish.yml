@@ -1,24 +1,23 @@
 name: publish
 
-# npm trusted publishing / OIDC (fifth-pass audit G4).
+# npm trusted publishing / OIDC for the FULL @infrix/* npm surface (fifth-pass
+# audit G4; sixth-pass S1–S5).
 #
-# This workflow publishes every @infrix/* SDK package WITHOUT a long-lived npm
-# token: it authenticates to the registry with a short-lived credential minted via
-# GitHub's OIDC (npm "trusted publishing"), and attaches build provenance. That
-# removes standing npm publish authority from the release process — the residual
-# risk the fifth-pass audit flagged when only the token *location* had been moved.
+# Every publishable package — the eight workspace packages under packages/ AND the
+# three standalone packages (@infrix/client, @infrix/wallet, @infrix/sdk) — is
+# published WITHOUT a long-lived npm token: the job authenticates with a
+# short-lived credential minted via GitHub's OIDC (npm "trusted publishing") and
+# attaches build provenance. Publishing is driven by scripts/release-npm.mjs, which
+# enforces a no-write registry preflight and a publish-if-absent plan (see
+# docs/release/npm-publishing.md), so a release can never start blind, never fail on
+# an already-published version, and is safe to re-run.
 #
-# One-time setup (operator, on npmjs.com — cannot be done from here):
-#   For EACH package (@infrix/verify, @infrix/proof-receipt, @infrix/widgets,
-#   @infrix/widgets-webcomponent, @infrix/metamask, @infrix/golden-escrow,
-#   @infrix/prover, @infrix/templates): Package → Settings → Trusted Publisher →
-#   add GitHub Actions with repository `opendlt/infrix-sdk-js` and workflow
-#   `publish.yml`. Until a package is configured, its publish step fails closed
-#   (no token fallback, by design).
+# One-time setup (operator, on npmjs.com — cannot be done from here): for EACH of
+# the eleven packages, Package → Settings → Trusted Publisher → GitHub Actions,
+# repository `opendlt/infrix-sdk-js`, workflow `publish.yml`. Until a package is
+# configured, its publish step fails closed (no token fallback, by design).
 #
-# Requires npm >= 11.5.1 for OIDC trusted publishing; setup-node's bundled npm is
-# older, so npm is upgraded below. `id-token: write` is mandatory for both the OIDC
-# token exchange and provenance attestation.
+# `id-token: write` is mandatory for both the OIDC token exchange and provenance.
 
 on:
   release:
@@ -37,13 +36,15 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      # @infrix/prover builds its WASM from infrix-core; every build/pack/publish
+      # step needs this to point at the sibling checkout below.
+      INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
     steps:
       - name: Checkout SDK
         uses: actions/checkout@v4
         with:
           path: infrix-sdk-js
-      # @infrix/prover builds its WASM assets from the infrix-core source; a publish
-      # without them would ship a broken package (caught by the supply-chain guard).
       - name: Checkout infrix-core (sibling, for the prover assets)
         uses: actions/checkout@v4
         with:
@@ -57,35 +58,64 @@ jobs:
         with:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
-      - name: Upgrade npm to a trusted-publishing-capable version (>= 11.5.1)
+      # Pin the publish toolchain (audit S5). 11.5.1 is the minimum npm with OIDC
+      # trusted publishing and is not the npm bundled with Node 22. Pinning (not
+      # @latest) keeps lifecycle/provenance/JSON semantics stable between releases.
+      - name: Pin npm to a known-good trusted-publishing version
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11.5.1
           npm --version
-      - name: Install workspaces
+      - name: Install workspace packages
         working-directory: infrix-sdk-js/packages
         run: npm ci
-      # Authoritative gate: build every package's REAL published payload and validate
-      # license/pinned-deps/size/required-files before anything can be published.
+      - name: Install standalone packages
+        working-directory: infrix-sdk-js
+        run: |
+          for d in typescript typescript-wallet assemblyscript; do
+            echo "== npm ci $d =="
+            ( cd "$d" && npm ci )
+          done
+      # Authoritative payload gate: build every workspace package's REAL published
+      # payload and validate license/pinned-deps/size/required-files.
       - name: Supply-chain guard (build + validate real payloads)
         working-directory: infrix-sdk-js/packages
-        env:
-          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
         run: npm run check:supply-chain
+      # Behavioral tests before publish (audit S4) — the guard proves payload shape,
+      # not behavior.
+      - name: Test workspace packages
+        working-directory: infrix-sdk-js/packages
+        run: npm test --workspaces --if-present
+      - name: Test standalone packages
+        working-directory: infrix-sdk-js
+        run: |
+          for d in typescript typescript-wallet assemblyscript; do
+            echo "== npm test $d =="
+            ( cd "$d" && npm test )
+          done
+      # No-write registry preflight across all eleven packages (audit S1/S3): fails
+      # closed on any registry error and writes the release manifest.
+      - name: Release preflight (registry plan, no writes)
+        working-directory: infrix-sdk-js
+        run: node scripts/release-npm.mjs --preflight --manifest release-manifest.json
       # Real publish — release events, or a manual dispatch with dry_run unchecked.
-      # Auth is via OIDC trusted publishing (no NODE_AUTH_TOKEN); provenance is
-      # generated because publishConfig.provenance=true in each package manifest.
+      # OIDC trusted publishing (no NODE_AUTH_TOKEN); provenance via each manifest's
+      # publishConfig. Only absent versions are published; a re-run resumes the rest.
       - name: Publish to npm (trusted publishing / OIDC + provenance)
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
-        working-directory: infrix-sdk-js/packages
-        env:
-          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
-        run: npm publish --workspaces --access public
-      # Dry-run — manual dispatch with dry_run checked (the default). Lists exactly
-      # what would ship without touching the registry. Provenance is disabled here
-      # because attestations are only meaningful on a real publish.
+        working-directory: infrix-sdk-js
+        run: node scripts/release-npm.mjs --publish --manifest release-manifest.json
+      # Dry-run — manual dispatch with dry_run checked (the default). Builds and
+      # packs every package without touching the registry.
       - name: Dry-run publish (no registry write)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
-        working-directory: infrix-sdk-js/packages
-        env:
-          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
-        run: npm publish --workspaces --access public --dry-run --provenance=false
+        working-directory: infrix-sdk-js
+        run: node scripts/release-npm.mjs --dry-run --manifest release-manifest.json
+      # Record the exact package set / versions / outcomes as a release artifact
+      # (audit S3), even if a prior step failed.
+      - name: Upload release manifest
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: infrix-sdk-js/release-manifest.json
+          if-no-files-found: ignore
