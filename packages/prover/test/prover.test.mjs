@@ -56,3 +56,22 @@ test('a non-satisfying witness is rejected at proving time', { skip: !hasArtifac
     /prover|constraint|satisf/i
   );
 });
+
+// audit T1: a clean publish must never produce a WASM-less package. Assert the
+// packed tarball actually carries the three prover assets. --ignore-scripts skips
+// prepack (no rebuild) — we only inspect what `files` + on-disk assets would pack.
+test('published tarball includes the WASM assets', { skip: !hasArtifact && 'WASM artifact not vendored' }, async () => {
+  const { execSync } = await import('node:child_process');
+  // execSync (shell) is portable for npm on Windows, where npm is a .cmd that
+  // execFile cannot spawn directly. --ignore-scripts skips prepack (no rebuild):
+  // we only inspect what `files` + on-disk assets would pack.
+  const raw = execSync('npm pack --dry-run --json --ignore-scripts', {
+    cwd: path.join(here, '..'),
+    encoding: 'utf8',
+  });
+  const meta = JSON.parse(raw);
+  const files = (meta[0]?.files || []).map((f) => f.path.replace(/\\/g, '/'));
+  for (const need of ['assets/infrix-prover.wasm', 'assets/manifest.json', 'assets/wasm_exec.js']) {
+    assert.ok(files.includes(need), `pack must include ${need}; packed: ${files.join(', ')}`);
+  }
+});

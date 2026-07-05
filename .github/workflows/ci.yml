@@ -71,3 +71,37 @@ jobs:
         env:
           INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
         run: npm test --workspace @infrix/prover
+
+  # Supply-chain guard (third-pass audit T2). Validates the REAL published tarball
+  # of every workspace package (license, pinned deps, non-empty payload, size
+  # budget, and required generated files such as the @infrix/prover WASM assets).
+  # It needs infrix-core so @infrix/prover can build its assets — a package that
+  # would publish without them is a supply-chain finding, not a skip. Same
+  # INFRIX_CORE_TOKEN note as prover-source-rebuild.
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+        with:
+          path: infrix-sdk-js
+      - name: Checkout infrix-core (sibling, for the prover assets)
+        uses: actions/checkout@v4
+        with:
+          repository: opendlt/infrix-core
+          token: ${{ secrets.INFRIX_CORE_TOKEN || github.token }}
+          path: infrix-core
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.7'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install workspaces
+        working-directory: infrix-sdk-js/packages
+        run: npm ci
+      - name: Supply-chain check (all workspace packages)
+        working-directory: infrix-sdk-js/packages
+        env:
+          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
+        run: npm run check:supply-chain

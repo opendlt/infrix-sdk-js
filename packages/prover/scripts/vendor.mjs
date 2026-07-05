@@ -47,6 +47,12 @@ const distProver = path.join(core, 'dist', 'prover');
 // pair (which would trip the loader's integrity check).
 const sourcePresent = fs.existsSync(path.join(core, 'cmd', 'prover-wasm'));
 const allowVendored = /^(1|true|yes)$/i.test(process.env.INFRIX_PROVER_ALLOW_VENDORED || '');
+// --soft (audit T1): in a clean source-ABSENT checkout with no committed assets,
+// exit 0 instead of 1 so the test runner can proceed and the tests self-skip
+// (the WASM genuinely cannot be produced — nothing to test). --soft NEVER softens
+// a source-present build failure; that stays fatal (fail-closed). prepack/publish
+// run WITHOUT --soft, so an empty package can never be produced.
+const soft = process.argv.includes('--soft');
 if (sourcePresent) {
   // OS-neutral build path (audit D1): drive the canonical Node builder with the
   // Node runtime already running this script — never shell to bash, which on a
@@ -108,6 +114,13 @@ if (fs.existsSync(path.join(distProver, 'infrix-prover.wasm'))) {
     ? 'freshly built artifact unavailable, INFRIX_PROVER_ALLOW_VENDORED opt-out active'
     : 'monorepo source absent (published-install mode)';
   console.log(`@infrix/prover: using committed assets/ — ${why}.`);
+} else if (soft) {
+  console.warn(
+    '@infrix/prover: no infrix-core source and no committed assets — nothing to vendor ' +
+      '(source-absent clean checkout). Tests will self-skip. This is NOT publishable: ' +
+      'prepack/prepublishOnly run without --soft and fail closed here.'
+  );
+  // exit 0: leave assets absent; the test suite skips when the WASM is missing.
 } else {
   console.error(
     '@infrix/prover: no WASM artifact found. Set INFRIX_CORE_DIR to an infrix-core checkout ' +
