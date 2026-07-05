@@ -20,10 +20,25 @@
 //     1. deletes each package's untracked generated output dirs FIRST (GENERATED),
 //        so the payload is proven to come from a fresh build — never stale
 //        artifacts left in a dirty working tree;
-//     2. produces the payload the way `npm publish` does — every package is packed
-//        WITHOUT `--ignore-scripts`, so npm runs its real prepare/prepack (tsc,
-//        vendoring, asset generation) exactly as publication would. Packages with
-//        no prepack simply tar their committed files, which IS their real payload.
+//     2. produces the payload the way `npm publish` does — it runs each package's
+//        real prepare/prepack (tsc, vendoring, asset generation) explicitly, so the
+//        packed tree is exactly what publication would build. Packages with no
+//        prepack simply tar their committed files, which IS their real payload.
+//
+// Clean-checkout parse safety (fifth-pass audit G1):
+//   npm's pack lifecycle scripts (proof-receipt/prover vendor.mjs, widgets
+//   emit-css.mjs, …) write progress to STDOUT. On npm versions that surface
+//   lifecycle/foreground-script output on the parent's stdout, running
+//   `npm pack --dry-run --json` WITHOUT `--ignore-scripts` interleaves that
+//   chatter (`> @infrix/… prepack`, `@infrix/…: vendored …`) ahead of the JSON, so
+//   `JSON.parse` blows up on a clean runner ("Unexpected token '@'"). We therefore
+//   run each package's prepack/prepare FIRST (its output captured, never parsed),
+//   then pack with `--ignore-scripts` so `npm pack --json` emits pure JSON. The
+//   tarball still reflects the freshly built artifacts, so the payload is just as
+//   faithful — the explicit prepack REBUILDS the generated dirs we delete below, so
+//   a local run leaves them rebuilt (not removed) rather than mutating the tree
+//   into a half-clean state. JSON is also extracted defensively (see parsePackJson)
+//   so a stray notice on stdout can never break the check.
 //   A whole-workspace `npm run build` runs once up front (npm resolves the
 //   cross-package build order) so each package's own `build` — including the
 //   metamask/golden-escrow API-surface `check.mjs` — is exercised with its sibling
@@ -127,13 +142,37 @@ function declaredTargets(pkg) {
   return [...out];
 }
 
-// packInfo returns { unpackedSize, files[] } for a package's real tarball. It
-// does NOT pass --ignore-scripts: npm runs the package's own prepare/prepack
-// exactly as `npm publish` would, so the reported contents are the true
-// publishable payload (dist/*, vendored deps, generated assets).
+// parsePackJson extracts the JSON array `npm pack --json` prints, defensively:
+// it slices from the first `[` to the last `]` rather than assuming stdout is pure
+// JSON, so a stray npm notice/warning on stdout can never break the check (audit
+// G1). Throws a descriptive error if no JSON array is present at all.
+function parsePackJson(raw) {
+  const start = raw.indexOf('[');
+  const end = raw.lastIndexOf(']');
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(`npm pack --json produced no JSON array: ${raw.trim().split('\n')[0] || '(empty output)'}`);
+  }
+  return JSON.parse(raw.slice(start, end + 1));
+}
+
+// packInfo returns { unpackedSize, files[] } for a package's REAL tarball. To keep
+// the payload faithful while parsing reliably on a clean runner (audit G1):
+//   1. run the package's own prepack + prepare EXPLICITLY (output captured, never
+//      parsed), so the on-disk tree is exactly what `npm publish` would build —
+//      dist/*, vendored deps, generated assets — regenerating whatever the caller
+//      deleted to defeat statefulness;
+//   2. then `npm pack --dry-run --json --ignore-scripts` — scripts already ran in
+//      step 1, so this only tars the freshly built files and emits pure JSON.
+// If prepack cannot produce the payload (e.g. @infrix/prover with no infrix-core
+// source), it throws here and the package fails closed.
 function packInfo(pkgDir) {
-  const raw = execSync(`${npm} pack --dry-run --json`, { cwd: pkgDir, encoding: 'utf8' });
-  const meta = JSON.parse(raw)[0] || {};
+  // npm's pack lifecycle order runs prepack before prepare; mirror it. --if-present
+  // makes both no-ops for packages that declare neither. stdio:'pipe' keeps their
+  // stdout chatter out of what we parse below.
+  execSync(`${npm} run prepack --if-present`, { cwd: pkgDir, stdio: 'pipe' });
+  execSync(`${npm} run prepare --if-present`, { cwd: pkgDir, stdio: 'pipe' });
+  const raw = execSync(`${npm} pack --dry-run --json --ignore-scripts`, { cwd: pkgDir, encoding: 'utf8' });
+  const meta = parsePackJson(raw)[0] || {};
   const files = (meta.files || []).map((f) => f.path.replace(/\\/g, '/'));
   return { unpackedSize: meta.unpackedSize || 0, files };
 }
