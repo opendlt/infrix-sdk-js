@@ -1,6 +1,6 @@
 {
   "name": "@infrix/templates",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Audited, versioned starter templates for Infrix apps — the OpenZeppelin-style catalog, using the real @infrix/client credential/predicate APIs (no placeholders).",
   "type": "module",
   "main": "src/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@infrix/verify",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Canonical browser-side Infrix proof verifier closure (offline portable-proof verification + receipt) shared by the Infrix SDKs and Nexus.",
   "type": "module",
   "main": "src/index.js",

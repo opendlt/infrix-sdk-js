@@ -1,6 +1,6 @@
 {
   "name": "@infrix/widgets-webcomponent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publishConfig": {
     "access": "public",
     "provenance": true
@@ -34,7 +34,7 @@
     "prepack": "npm run build:dep && tsc && node scripts/bundle.mjs"
   },
   "dependencies": {
-    "@infrix/widgets": "0.1.0"
+    "@infrix/widgets": "0.2.0"
   },
   "devDependencies": {
     "@types/node": "20.17.6",

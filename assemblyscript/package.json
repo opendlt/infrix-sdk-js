@@ -1,6 +1,6 @@
 {
   "name": "@infrix/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AssemblyScript SDK for Infrix smart contracts",
   "files": [
     "assembly/**/*.ts",

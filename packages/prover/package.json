@@ -1,6 +1,6 @@
 {
   "name": "@infrix/prover",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lazy-loaded WebAssembly selective-disclosure prover for Infrix — generate ZK predicate proofs in the browser or Node, private witness never leaves the device.",
   "type": "module",
   "main": "src/index.js",
