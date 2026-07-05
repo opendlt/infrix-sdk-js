@@ -14,7 +14,7 @@
   ],
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "bin": {
     "create-infrix-app": "dist/templates/cli.js"
