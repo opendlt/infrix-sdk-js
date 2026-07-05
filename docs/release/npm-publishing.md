@@ -62,9 +62,12 @@ artifact) recording the exact package set, versions, statuses, and outcomes.
 
 Before any publish, the workflow runs, in order:
 
-1. `npm run check:supply-chain` — builds each workspace package's real payload and
-   validates license, pinned deps, size budgets, and required generated files
-   (e.g. the `@infrix/prover` WASM assets).
+1. `node scripts/supply-chain-all.mjs` — builds every one of the **eleven**
+   packages' real payload (workspace and standalone, via the shared enumeration in
+   `scripts/release-packages.mjs`) and validates license, pinned deps, size
+   budgets, declared `main`/`types`/`exports` targets, and required generated files
+   (e.g. the `@infrix/prover` WASM assets). The workspace-only
+   `cd packages && npm run check:supply-chain` remains for local workspace dev.
 2. `npm test --workspaces --if-present` (workspace) and `npm test` in each
    standalone package — behavioral tests, not just payload shape (audit S4).
 3. `node scripts/release-npm.mjs --preflight` — the no-write registry plan above

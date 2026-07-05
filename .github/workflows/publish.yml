@@ -75,11 +75,12 @@ jobs:
             echo "== npm ci $d =="
             ( cd "$d" && npm ci )
           done
-      # Authoritative payload gate: build every workspace package's REAL published
-      # payload and validate license/pinned-deps/size/required-files.
-      - name: Supply-chain guard (build + validate real payloads)
-        working-directory: infrix-sdk-js/packages
-        run: npm run check:supply-chain
+      # Authoritative payload gate over ALL eleven packages (audit Z4): build every
+      # package's REAL published payload and validate license/pinned-deps/size/
+      # declared-targets/required-files — workspace AND standalone, one enumeration.
+      - name: Supply-chain guard (all 11 packages, real payloads)
+        working-directory: infrix-sdk-js
+        run: node scripts/supply-chain-all.mjs
       # Behavioral tests before publish (audit S4) — the guard proves payload shape,
       # not behavior.
       - name: Test workspace packages

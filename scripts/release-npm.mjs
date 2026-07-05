@@ -35,11 +35,9 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+import { repoRoot, packageDirs } from './release-packages.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(here, '..');
 const npm = 'npm';
 
 const MODE = process.argv.includes('--publish')
@@ -49,23 +47,9 @@ const MODE = process.argv.includes('--publish')
     : 'preflight';
 const manifestPath = path.resolve(argValue('--manifest') || path.join(repoRoot, 'release-manifest.json'));
 
-// Standalone public packages that live outside packages/ (audit S2).
-const STANDALONE = ['typescript', 'typescript-wallet', 'assemblyscript'];
-
 function argValue(flag) {
   const i = process.argv.indexOf(flag);
   return i !== -1 ? process.argv[i + 1] : undefined;
-}
-
-// publishableDirs returns absolute package directories for the FULL npm surface:
-// the workspace set (derived from packages/package.json so it can't drift) plus
-// the three standalone packages.
-function publishableDirs() {
-  const wsRoot = path.join(repoRoot, 'packages');
-  const ws = JSON.parse(fs.readFileSync(path.join(wsRoot, 'package.json'), 'utf8')).workspaces || [];
-  const workspace = ws.map((w) => path.join(wsRoot, w));
-  const standalone = STANDALONE.map((d) => path.join(repoRoot, d));
-  return [...workspace, ...standalone];
 }
 
 // registryVersions returns { ok, versions } for a package name. A package that has
@@ -100,7 +84,7 @@ function registryVersions(name) {
 function computePlan() {
   const plan = [];
   const seen = new Map();
-  for (const dir of publishableDirs()) {
+  for (const dir of packageDirs()) {
     const rel = path.relative(repoRoot, dir).replace(/\\/g, '/');
     const pjPath = path.join(dir, 'package.json');
     if (!fs.existsSync(pjPath)) {
