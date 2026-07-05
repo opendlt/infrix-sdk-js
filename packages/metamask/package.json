@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "description": "Submit a governed Infrix intent from MetaMask with one import: connect, sign typed data, and verify against an Accumulate key page.",
   "type": "module",

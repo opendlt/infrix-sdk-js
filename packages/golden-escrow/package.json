@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "description": "Build the golden verifiable-escrow flow with one import: create, govern, and prove in a single call.",
   "type": "module",

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "description": "Embed Infrix proof verification, receipts, Cinema replay, task cards, and trust-boundary explanations in your app — verified in-browser, with no node trust by default.",
   "type": "module",

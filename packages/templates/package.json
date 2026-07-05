@@ -14,7 +14,7 @@
   ],
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "scripts": {
     "build": "node -e \"process.stdout.write('@infrix/templates: JS modules, no build step\\n')\"",

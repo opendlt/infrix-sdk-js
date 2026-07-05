@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "description": "Framework-neutral Web Components for embedding Infrix proof verification — verified in-browser, no node trust, no React required.",
   "type": "module",

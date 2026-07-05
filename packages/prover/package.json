@@ -14,7 +14,7 @@
   ],
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "scripts": {
     "vendor": "node scripts/vendor.mjs",

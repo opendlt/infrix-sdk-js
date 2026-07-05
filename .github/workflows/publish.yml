@@ -1,0 +1,91 @@
+name: publish
+
+# npm trusted publishing / OIDC (fifth-pass audit G4).
+#
+# This workflow publishes every @infrix/* SDK package WITHOUT a long-lived npm
+# token: it authenticates to the registry with a short-lived credential minted via
+# GitHub's OIDC (npm "trusted publishing"), and attaches build provenance. That
+# removes standing npm publish authority from the release process — the residual
+# risk the fifth-pass audit flagged when only the token *location* had been moved.
+#
+# One-time setup (operator, on npmjs.com — cannot be done from here):
+#   For EACH package (@infrix/verify, @infrix/proof-receipt, @infrix/widgets,
+#   @infrix/widgets-webcomponent, @infrix/metamask, @infrix/golden-escrow,
+#   @infrix/prover, @infrix/templates): Package → Settings → Trusted Publisher →
+#   add GitHub Actions with repository `opendlt/infrix-sdk-js` and workflow
+#   `publish.yml`. Until a package is configured, its publish step fails closed
+#   (no token fallback, by design).
+#
+# Requires npm >= 11.5.1 for OIDC trusted publishing; setup-node's bundled npm is
+# older, so npm is upgraded below. `id-token: write` is mandatory for both the OIDC
+# token exchange and provenance attestation.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate and pack only; do not publish to npm'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+        with:
+          path: infrix-sdk-js
+      # @infrix/prover builds its WASM assets from the infrix-core source; a publish
+      # without them would ship a broken package (caught by the supply-chain guard).
+      - name: Checkout infrix-core (sibling, for the prover assets)
+        uses: actions/checkout@v4
+        with:
+          repository: opendlt/infrix-core
+          token: ${{ secrets.INFRIX_CORE_TOKEN || github.token }}
+          path: infrix-core
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.7'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - name: Upgrade npm to a trusted-publishing-capable version (>= 11.5.1)
+        run: |
+          npm install -g npm@latest
+          npm --version
+      - name: Install workspaces
+        working-directory: infrix-sdk-js/packages
+        run: npm ci
+      # Authoritative gate: build every package's REAL published payload and validate
+      # license/pinned-deps/size/required-files before anything can be published.
+      - name: Supply-chain guard (build + validate real payloads)
+        working-directory: infrix-sdk-js/packages
+        env:
+          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
+        run: npm run check:supply-chain
+      # Real publish — release events, or a manual dispatch with dry_run unchecked.
+      # Auth is via OIDC trusted publishing (no NODE_AUTH_TOKEN); provenance is
+      # generated because publishConfig.provenance=true in each package manifest.
+      - name: Publish to npm (trusted publishing / OIDC + provenance)
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
+        working-directory: infrix-sdk-js/packages
+        env:
+          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
+        run: npm publish --workspaces --access public
+      # Dry-run — manual dispatch with dry_run checked (the default). Lists exactly
+      # what would ship without touching the registry. Provenance is disabled here
+      # because attestations are only meaningful on a real publish.
+      - name: Dry-run publish (no registry write)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        working-directory: infrix-sdk-js/packages
+        env:
+          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
+        run: npm publish --workspaces --access public --dry-run --provenance=false

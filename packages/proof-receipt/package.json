@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "publishConfig": {
     "access": "public",
-    "provenance": false
+    "provenance": true
   },
   "description": "Verify an Infrix portable proof and render its receipt — in the browser or Node, with no node trust.",
   "type": "module",
