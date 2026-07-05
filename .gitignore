@@ -10,5 +10,7 @@ test-dist/
 *.tsbuildinfo
 .DS_Store
 
-# Generated release plan (written by scripts/release-npm.mjs; uploaded as a CI artifact).
-release-manifest.json
+# Generated release plans (written by scripts/release-npm.mjs to any --manifest path;
+# uploaded as a CI artifact). Glob covers custom paths like release-manifest.audit.json.
+release-manifest*.json
+**/release-manifest*.json
