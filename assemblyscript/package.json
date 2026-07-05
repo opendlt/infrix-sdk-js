@@ -2,6 +2,15 @@
   "name": "@infrix/sdk",
   "version": "0.1.0",
   "description": "AssemblyScript SDK for Infrix smart contracts",
+  "files": [
+    "assembly/**/*.ts",
+    "!assembly/tests.ts",
+    "build/release.js",
+    "build/release.d.ts",
+    "build/release.wasm",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public",
     "provenance": false
@@ -27,6 +36,7 @@
     "asbuild:release": "asc assembly/wasm-entry.ts --target release",
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
     "build": "npm run asbuild",
+    "prepack": "npm run asbuild:release",
     "pretest": "npm run asbuild",
     "test": "node --test --test-reporter=spec test/*.test.mjs"
   },
