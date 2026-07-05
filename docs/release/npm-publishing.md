@@ -35,22 +35,43 @@ Standalone packages (their own project dirs):
 All eleven are enumerated by `scripts/release-npm.mjs`, the single release
 orchestrator.
 
-## Release policy — publish-if-absent
+## Release policy — publish-if-absent with a payload-identity guard
 
 Each package is versioned **independently**. `scripts/release-npm.mjs` queries the
 registry for every package's exact `name@version` and builds a plan:
 
 - **absent** → it will be published;
-- **published** → it is **skipped** (that version is already released — idempotent);
+- **published-same** → **skipped** (that version is already released AND the local
+  built tarball is byte-for-byte identical to the registry copy — idempotent);
+- **published-different** → the run **fails** (audit Z1). The local payload differs
+  from what is on the registry for this exact version, so a green release would
+  silently NOT ship the local change. Bump the version to ship it, or revert the
+  local change;
 - **error** (registry unreachable / auth failure) → the run **fails closed**.
+
+Payload identity is decided by comparing the local built tarball shasum
+(`npm pack --dry-run --json`, built via the package's real prepack) against the
+registry `dist.shasum`. CI pins npm (below), so the comparison is apples-to-apples.
 
 Because only absent versions are ever published, a release can never fail on an
 already-published version, and re-running after a partial failure simply resumes
 the packages that have not published yet. **To release a changed package, bump its
-version** — an unbumped package is treated as already-released and skipped.
+version.**
 
 The orchestrator writes a `release-manifest.json` (uploaded as a workflow
-artifact) recording the exact package set, versions, statuses, and outcomes.
+artifact) recording each package's version, status, `registryShasum`,
+`localShasum`, `payloadMatchesRegistry`, and publish outcome.
+
+### Modes
+
+- `--preflight` — no writes; registry plan + payload-identity check; fails on any
+  error or `published-different`.
+- `--dry-run` — **release-readiness**: the preflight gate (fails on error /
+  `published-different`), then `npm publish --dry-run` for every package.
+- `--payload-only` — **registry-independent**: only builds and packs every package,
+  with no registry query and no readiness gate (audit Z6). Use it to validate
+  packability offline; it is NOT a release-readiness check.
+- `--publish` — the preflight gate, then publishes each absent package.
 
 ## Publishing
 
@@ -106,8 +127,10 @@ From the repo root, with an `infrix-core` checkout available:
 
 ```sh
 export INFRIX_CORE_DIR=/path/to/infrix-core
-node scripts/release-npm.mjs --preflight   # registry plan, no writes
-node scripts/release-npm.mjs --dry-run     # build + pack every package, no writes
+node scripts/supply-chain-all.mjs          # payload guard over all 11 packages
+node scripts/release-npm.mjs --preflight    # registry plan + payload-identity, no writes
+node scripts/release-npm.mjs --dry-run      # release-readiness gate + pack every package
+node scripts/release-npm.mjs --payload-only # pack every package, ignore registry (offline)
 ```
 
 Use npm `11.5.1` locally to match CI.
