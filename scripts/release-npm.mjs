@@ -74,17 +74,25 @@ function publishableDirs() {
 // reported as { ok:false, reason } so the caller fails closed.
 function registryVersions(name) {
   try {
-    const out = execSync(`${npm} view ${name} versions --json`, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    // Bound the registry probe so a slow/dead registry fails CLOSED fast instead of
+    // hanging the release on npm's default retry backoff: cap fetch retries/timeout,
+    // and put a hard per-call ceiling on execSync as a backstop. A timeout throws,
+    // and its message is not an E404, so it is classified as an error (not "absent").
+    const out = execSync(
+      `${npm} view ${name} versions --json --fetch-retries=2 --fetch-retry-mintimeout=1000 --fetch-retry-maxtimeout=15000`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 60000 }
+    );
     const v = JSON.parse(out || 'null');
     const versions = Array.isArray(v) ? v : v ? [v] : [];
     return { ok: true, versions };
   } catch (e) {
     const err = `${e.stderr || ''}${e.stdout || ''}`;
+    // A genuine "package/version not on the registry" is a 404 — that is ABSENT, a
+    // normal state. Anything else (network, DNS, auth, timeout) is an ERROR that
+    // must fail the preflight, never be mistaken for absent.
     if (/E404|404/i.test(err)) return { ok: true, versions: [] };
-    return { ok: false, reason: (err.trim().split('\n')[0] || e.message || 'npm view failed').slice(0, 300) };
+    const why = e.killed || e.signal ? `registry probe timed out` : err.trim().split('\n')[0] || e.message || 'npm view failed';
+    return { ok: false, reason: why.slice(0, 300) };
   }
 }
 
