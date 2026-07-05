@@ -9,3 +9,6 @@ test-dist/
 **/test-dist/
 *.tsbuildinfo
 .DS_Store
+
+# Generated release plan (written by scripts/release-npm.mjs; uploaded as a CI artifact).
+release-manifest.json
