@@ -41,9 +41,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { repoRoot, packageDirs } from './release-packages.mjs';
+import { repoRoot, packageDirs, loadPackages } from './release-packages.mjs';
 
 const npm = 'npm';
+const REQUIRE_TP_READY = process.argv.includes('--require-trusted-publisher-ready');
 
 const MODE = process.argv.includes('--publish')
   ? 'publish'
@@ -58,6 +59,44 @@ function argValue(flag) {
   const i = process.argv.indexOf(flag);
   return i !== -1 ? process.argv[i + 1] : undefined;
 }
+
+// assertTrustedPublisherReady enforces that EVERY publishable package is attested
+// as trusted-publisher-configured in release/trusted-publishers.json before any
+// registry write (audit Z5). npm has no API to verify this, so the committed matrix
+// is the source of truth; the operator flips each entry after configuring it on
+// npmjs.com. A package that is missing or not configured=true blocks the publish,
+// so a later unconfigured package can never cause a partial/split release.
+function assertTrustedPublisherReady() {
+  const matrixPath = path.join(repoRoot, 'release', 'trusted-publishers.json');
+  let matrix;
+  try {
+    matrix = JSON.parse(fs.readFileSync(matrixPath, 'utf8'));
+  } catch (e) {
+    console.error(`\ntrusted-publisher gate FAILED: cannot read ${matrixPath}: ${e.message}`);
+    process.exit(1);
+  }
+  const entries = matrix.packages || {};
+  const names = loadPackages().map((p) => p.name).filter(Boolean);
+  const notReady = [];
+  for (const name of names) {
+    const e = entries[name];
+    if (!e) notReady.push(`${name}: no entry in trusted-publishers.json`);
+    else if (e.configured !== true) notReady.push(`${name}: configured=${e.configured}`);
+  }
+  if (notReady.length) {
+    console.error('\ntrusted-publisher gate FAILED — publish blocked until every package is configured=true:');
+    for (const n of notReady) console.error('  - ' + n);
+    console.error(
+      '\nConfigure each package on npmjs.com (Settings -> Trusted Publisher -> GitHub Actions,\n' +
+        `repository ${matrix.repository || 'opendlt/infrix-sdk-js'}, workflow ${matrix.workflow || 'publish.yml'}),\n` +
+        'then set configured=true (with operator + date) in release/trusted-publishers.json.'
+    );
+    process.exit(1);
+  }
+  console.log(`trusted-publisher gate OK: all ${names.length} packages attested configured.`);
+}
+
+if (REQUIRE_TP_READY) assertTrustedPublisherReady();
 
 // parsePackJson extracts the JSON array `npm pack --json` prints, defensively
 // (a stray notice on stdout can never break it — audit G1).

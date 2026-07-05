@@ -101,10 +101,13 @@ jobs:
       # Real publish — release events, or a manual dispatch with dry_run unchecked.
       # OIDC trusted publishing (no NODE_AUTH_TOKEN); provenance via each manifest's
       # publishConfig. Only absent versions are published; a re-run resumes the rest.
+      # --require-trusted-publisher-ready (audit Z5) refuses to write to the registry
+      # until release/trusted-publishers.json attests every package is configured, so
+      # a package lacking npm trusted-publisher setup cannot cause a partial release.
       - name: Publish to npm (trusted publishing / OIDC + provenance)
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
         working-directory: infrix-sdk-js
-        run: node scripts/release-npm.mjs --publish --manifest release-manifest.json
+        run: node scripts/release-npm.mjs --publish --require-trusted-publisher-ready --manifest release-manifest.json
       # Dry-run — manual dispatch with dry_run checked (the default). Builds and
       # packs every package without touching the registry.
       - name: Dry-run publish (no registry write)

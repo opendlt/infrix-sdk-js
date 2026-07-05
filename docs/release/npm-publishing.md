@@ -109,6 +109,19 @@ set from this repo. For **each** of the eleven packages:
 Until a package is registered as a trusted publisher, its publish step **fails
 closed** — there is intentionally no token fallback.
 
+### Trusted-publisher readiness gate (audit Z5)
+
+npm exposes no API to query trusted-publisher configuration, so the operator
+attests it in `release/trusted-publishers.json` — one entry per package. The
+publish step runs `release-npm.mjs --publish --require-trusted-publisher-ready`,
+which **refuses to write anything to the registry** until every publishable package
+in that file is `configured: true`. This prevents a partial/split release where an
+earlier package publishes but a later one fails for lack of trusted-publisher setup.
+
+After configuring a package on npmjs.com, set its `configured` to `true` and fill
+in `operator` and `date`, then commit. The gate list is checked against the shared
+package enumeration, so a newly added package with no entry also blocks publish.
+
 ## Requirements baked into the workflow
 
 - `permissions: id-token: write` — required for the OIDC token exchange and for

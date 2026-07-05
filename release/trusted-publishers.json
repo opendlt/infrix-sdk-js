@@ -1,0 +1,30 @@
+{
+  "_comment": [
+    "Operator attestation of npm trusted-publishing setup (audit Z5).",
+    "npm exposes no public API to query trusted-publisher configuration, so this",
+    "committed matrix is the machine-readable source of truth. After configuring a",
+    "package on npmjs.com (Package -> Settings -> Trusted Publisher -> GitHub Actions,",
+    "repository 'opendlt/infrix-sdk-js', workflow 'publish.yml'), set that package's",
+    "configured=true and fill in operator + date. `release-npm.mjs --publish",
+    "--require-trusted-publisher-ready` refuses to write to the registry until EVERY",
+    "publishable package here is configured=true, so a partial release caused by a",
+    "package that lacks trusted-publisher setup cannot happen. Keep this list in sync",
+    "with scripts/release-packages.mjs — the gate fails if any publishable package is",
+    "missing an entry."
+  ],
+  "repository": "opendlt/infrix-sdk-js",
+  "workflow": "publish.yml",
+  "packages": {
+    "@infrix/verify": { "configured": false, "operator": null, "date": null },
+    "@infrix/proof-receipt": { "configured": false, "operator": null, "date": null },
+    "@infrix/widgets": { "configured": false, "operator": null, "date": null },
+    "@infrix/widgets-webcomponent": { "configured": false, "operator": null, "date": null },
+    "@infrix/metamask": { "configured": false, "operator": null, "date": null },
+    "@infrix/golden-escrow": { "configured": false, "operator": null, "date": null },
+    "@infrix/prover": { "configured": false, "operator": null, "date": null },
+    "@infrix/templates": { "configured": false, "operator": null, "date": null },
+    "@infrix/client": { "configured": false, "operator": null, "date": null },
+    "@infrix/wallet": { "configured": false, "operator": null, "date": null },
+    "@infrix/sdk": { "configured": false, "operator": null, "date": null }
+  }
+}
