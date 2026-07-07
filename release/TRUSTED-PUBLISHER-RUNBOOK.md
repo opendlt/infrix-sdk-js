@@ -1,5 +1,14 @@
 # npm trusted-publisher setup runbook
 
+> **RELEASE-BLOCKING OPERATOR TASK (pass-20 audit P2-1).** Completing the
+> npmjs.com trusted-publisher registration for all eleven `@infrix/*` packages
+> (the per-package steps below) is a **release-blocking** operator action. Until
+> it is done, `scripts/release-npm.mjs --publish --require-trusted-publisher-ready`
+> refuses to publish (fail-closed), and npm publishing must NOT be claimed as
+> turnkey/production-operational. This registration happens on npmjs.com and
+> cannot be performed from the repo — do not flip any `configured:true` without
+> actually registering, or the attestation the gate enforces becomes a fabrication.
+
 Pass-17 audit P1-7. The npm release path is **fail-closed by design**: every one
 of the eleven `@infrix/*` packages is listed in `trusted-publishers.json` with
 `configured:false`, and `scripts/release-npm.mjs --publish
