@@ -105,3 +105,17 @@ jobs:
         env:
           INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
         run: npm run check:supply-chain
+      # Pass-23 audit P2-3: the AUTHORITATIVE full-surface guard over ALL 11
+      # publishable packages (workspace + standalone), producing the fresh npm-pack
+      # payload manifest that is archived as the verified supply-chain artifact.
+      - name: Supply-chain check (all 11 packages) + write manifest
+        working-directory: infrix-sdk-js
+        env:
+          INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
+        run: node scripts/supply-chain-all.mjs --manifest supply-chain-manifest.json
+      - name: Archive supply-chain manifest (all 11 packages)
+        uses: actions/upload-artifact@v4
+        with:
+          name: supply-chain-manifest
+          path: infrix-sdk-js/supply-chain-manifest.json
+          if-no-files-found: error

@@ -89,6 +89,24 @@ Before any publish, the workflow runs, in order:
    budgets, declared `main`/`types`/`exports` targets, and required generated files
    (e.g. the `@infrix/prover` WASM assets). The workspace-only
    `cd packages && npm run check:supply-chain` remains for local workspace dev.
+
+   **AUTHORITATIVE runner = CI (Linux).** `supply-chain-all.mjs` uses the npm
+   LIFECYCLE (`npm run build --workspaces`, per-package prepack, `npm pack`), which
+   produces the exact published tarball manifest. CI runs it on Linux and archives
+   that fresh manifest for all 11 packages — that is the source of truth for a
+   publish.
+
+   **Windows-reproducible fallback (pass-23 audit P2-3).** On some Windows checkouts
+   the npm lifecycle spawner fails with `spawn EPERM` (a node/npm/Windows toolchain
+   interaction), so `supply-chain-all.mjs` cannot run locally there. Use
+   `node scripts/supply-chain-direct.mjs` instead: it spawns **no npm** (pure Node),
+   so it never hits that EPERM, and reproducibly verifies license + pinned deps +
+   the declared/required on-disk payload + size budgets over the same 11 packages.
+   It verifies the CURRENT on-disk BUILT state; freshness (delete-then-rebuild) and
+   the exact `npm pack` tarball manifest are delegated to the CI runner above. A
+   package whose build output is absent locally is reported `NEEDS_BUILD` (build it,
+   or trust the CI artifact), distinct from a real license/pin/payload `FAIL`. Fenced
+   by `release/supply-chain-direct.test.mjs`.
 2. `npm test --workspaces --if-present` (workspace) and `npm test` in each
    standalone package — behavioral tests, not just payload shape (audit S4).
 3. `node scripts/release-npm.mjs --preflight` — the no-write registry plan above

@@ -27,6 +27,12 @@ import { repoRoot, loadPackages, GUARD_CONFIG, DEFAULT_BUDGET } from './release-
 
 const npm = 'npm';
 const problems = [];
+// Pass-23 audit P2-3: when --manifest <path> is passed, write the fresh
+// per-package payload manifest (file list + unpacked size) so CI can ARCHIVE the
+// authoritative supply-chain manifest for all 11 packages as a verified artifact.
+const manifestIdx = process.argv.indexOf('--manifest');
+const manifestPath = manifestIdx !== -1 ? process.argv[manifestIdx + 1] : null;
+const manifest = { generatedFromNpmPack: true, packages: {} };
 
 // Exercise each workspace package's own `build` once (npm resolves cross-package
 // order) so sibling-importing checks (metamask/golden-escrow check.mjs) run with
@@ -127,6 +133,21 @@ for (const { dir, name, rel, pkg } of packages) {
   } else {
     console.log(`  ${name}: ${kb(info.unpackedSize)} / ${kb(budget)} — ${info.files.length} files — MIT — ok  (${rel})`);
   }
+
+  manifest.packages[name] = {
+    rel,
+    version: pkg.version || null,
+    unpackedSize: info.unpackedSize,
+    budget,
+    fileCount: info.files.length,
+    files: info.files.slice().sort(),
+  };
+}
+
+if (manifestPath) {
+  manifest.packageCount = Object.keys(manifest.packages).length;
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  console.log(`\nwrote supply-chain manifest for ${manifest.packageCount} packages to ${manifestPath}`);
 }
 
 if (problems.length) {
