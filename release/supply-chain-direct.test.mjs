@@ -15,14 +15,33 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..');
 const script = path.join(repoRoot, 'scripts', 'supply-chain-direct.mjs');
 
-test('direct-node supply-chain guard runs (no npm spawned) and passes', () => {
-  // Spawn NODE — not npm — so the guard is reproducible where the npm lifecycle
-  // spawner fails EPERM. process.execPath is the running node binary.
-  const res = spawnSync(process.execPath, [script], { cwd: repoRoot, encoding: 'utf8' });
-  const out = `${res.stdout || ''}\n${res.stderr || ''}`;
-  assert.equal(res.status, 0, `supply-chain-direct must exit 0; output:\n${out}`);
-  assert.match(out, /supply-chain-direct check passed/, 'must print the passed summary');
-  assert.match(out, /no npm spawned/, 'must state it spawned no npm (the reproducibility contract)');
+// Spawn NODE — not npm — so the guard is reproducible where the npm lifecycle
+// spawner fails EPERM. process.execPath is the running node binary.
+function runGuard(...args) {
+  const res = spawnSync(process.execPath, [script, ...args], { cwd: repoRoot, encoding: 'utf8' });
+  return { status: res.status, out: `${res.stdout || ''}\n${res.stderr || ''}` };
+}
+
+test('STRICT default: NEEDS_BUILD implies a non-zero exit (pass-24 P1-4)', () => {
+  // The release/audit posture must NEVER print "passed" while a package is
+  // NEEDS_BUILD. This invariant holds regardless of the local build state:
+  //   all built  -> no NEEDS_BUILD -> exit 0 + "passed"
+  //   any unbuilt -> NEEDS_BUILD    -> exit != 0 (FAILED)
+  const { status, out } = runGuard();
+  assert.match(out, /no npm spawned/, 'must state it spawned no npm (reproducibility contract)');
+  if (out.includes('NEEDS_BUILD')) {
+    assert.notEqual(status, 0, `strict mode must FAIL when a package is NEEDS_BUILD; output:\n${out}`);
+    assert.match(out, /supply-chain-direct check FAILED/, 'must print the FAILED summary');
+  } else {
+    assert.equal(status, 0, `all-built strict run must pass; output:\n${out}`);
+    assert.match(out, /supply-chain-direct check passed/, 'must print the passed summary');
+  }
+});
+
+test('TRIAGE mode: reports NEEDS_BUILD but exits 0 (Windows soft-check)', () => {
+  const { status, out } = runGuard('--triage');
+  assert.equal(status, 0, `--triage must always exit 0; output:\n${out}`);
+  assert.match(out, /supply-chain-direct check passed/, 'triage prints a passed summary');
 });
 
 test('direct guard covers exactly the publishable package surface', async () => {
@@ -30,8 +49,7 @@ test('direct guard covers exactly the publishable package surface', async () => 
   const { GUARD_CONFIG } = await import(
     pathToFileURL(path.join(repoRoot, 'scripts', 'release-packages.mjs')).href
   );
-  const res = spawnSync(process.execPath, [script], { cwd: repoRoot, encoding: 'utf8' });
-  const out = `${res.stdout || ''}\n${res.stderr || ''}`;
+  const { out } = runGuard('--triage');
   for (const name of Object.keys(GUARD_CONFIG)) {
     assert.ok(out.includes(name), `direct guard output must cover ${name}`);
   }

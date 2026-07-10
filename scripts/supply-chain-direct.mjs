@@ -23,17 +23,29 @@
 //
 // It verifies the CURRENT ON-DISK BUILT state. Freshness (delete-then-rebuild) is
 // delegated to the CI `npm pack` guard. A package whose build output is absent is
-// reported NEEDS_BUILD (build it, or trust the CI artifact) — distinct from a real
-// FAIL (license/pin/declared-file/size). Exit non-zero on any FAIL; add
-// `--require-built` to also fail on NEEDS_BUILD.
+// reported NEEDS_BUILD.
 //
-// Run: node scripts/supply-chain-direct.mjs   [--require-built]
+// STRICT BY DEFAULT (pass-24 audit P1-4): the default (release/audit) posture
+// FAILS on any NEEDS_BUILD — a supply-chain guard must never print "passed" while
+// required publish output is missing. Pass `--triage` for a Windows soft-check
+// that reports NEEDS_BUILD without failing (for diagnosing which packages to build
+// on a box where the npm lifecycle spawner is broken).
+//
+// Run: node scripts/supply-chain-direct.mjs            # STRICT (release/audit)
+//      node scripts/supply-chain-direct.mjs --triage   # soft Windows triage
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadPackages, GUARD_CONFIG, DEFAULT_BUDGET } from './release-packages.mjs';
 
-const requireBuilt = process.argv.includes('--require-built');
+// Pass-24 audit P1-4: STRICT-by-default. A package whose build output is absent
+// (NEEDS_BUILD) FAILS the guard in the default release/audit posture — a supply-
+// chain guard must never print "passed" while required publish output is missing.
+// `--triage` is the soft Windows-triage mode: it still reports NEEDS_BUILD but
+// exits 0, for diagnosing which packages need building on a box where the npm
+// lifecycle spawner is broken. `--require-built` is retained as an explicit alias
+// for the strict default.
+const triage = process.argv.includes('--triage');
 const fails = [];
 const needsBuild = [];
 
@@ -206,14 +218,23 @@ for (const { dir, name, rel, pkg } of packages) {
 
 for (const w of needsBuild) console.log(`  ${w}`);
 
-if (fails.length || (requireBuilt && needsBuild.length)) {
+// STRICT default: any FAIL, or any NEEDS_BUILD (unless --triage), fails the guard.
+if (fails.length || (!triage && needsBuild.length)) {
   console.error('\nsupply-chain-direct check FAILED:');
   for (const p of fails) console.error('  - ' + p);
-  if (requireBuilt) for (const w of needsBuild) console.error('  - ' + w);
+  if (!triage) for (const w of needsBuild) console.error('  - ' + w);
+  if (!triage && needsBuild.length) {
+    console.error(
+      '  hint: build the package(s) above, then re-run — a release/audit guard must not pass with missing publish output. ' +
+        'Use --triage for a Windows soft-check that reports NEEDS_BUILD without failing.',
+    );
+  }
   process.exit(1);
 }
 console.log(
   `\nsupply-chain-direct check passed: ${packages.length} packages — license + pins + declared/required payload verified on disk (no npm spawned).` +
-    (needsBuild.length ? ` ${needsBuild.length} package(s) NEEDS_BUILD (build output absent locally — verified fresh by the CI npm-pack guard).` : '') +
+    (triage && needsBuild.length
+      ? ` [TRIAGE] ${needsBuild.length} package(s) NEEDS_BUILD were reported but NOT failed (--triage). Build them for a release-mode pass.`
+      : ' All packages are built and within budget.') +
     `\nThe authoritative FRESH-payload manifest for all 11 packages is produced by CI via scripts/supply-chain-all.mjs (npm pack).`,
 );

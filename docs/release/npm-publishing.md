@@ -96,17 +96,27 @@ Before any publish, the workflow runs, in order:
    that fresh manifest for all 11 packages — that is the source of truth for a
    publish.
 
-   **Windows-reproducible fallback (pass-23 audit P2-3).** On some Windows checkouts
-   the npm lifecycle spawner fails with `spawn EPERM` (a node/npm/Windows toolchain
-   interaction), so `supply-chain-all.mjs` cannot run locally there. Use
-   `node scripts/supply-chain-direct.mjs` instead: it spawns **no npm** (pure Node),
-   so it never hits that EPERM, and reproducibly verifies license + pinned deps +
-   the declared/required on-disk payload + size budgets over the same 11 packages.
-   It verifies the CURRENT on-disk BUILT state; freshness (delete-then-rebuild) and
-   the exact `npm pack` tarball manifest are delegated to the CI runner above. A
-   package whose build output is absent locally is reported `NEEDS_BUILD` (build it,
-   or trust the CI artifact), distinct from a real license/pin/payload `FAIL`. Fenced
-   by `release/supply-chain-direct.test.mjs`.
+   **Release manifest must cover ALL 11 packages (pass-24 audit P1-4).** The
+   archived `supply-chain-manifest.json` records `complete: true` only when it
+   covers all 11 packages; an incomplete manifest is a supply-chain FAILURE and the
+   CI step fails (so an incomplete manifest is never archived). **No publish or
+   release claim may be made unless the archived CI manifest is `complete: true`
+   for all 11 packages.**
+
+   **Windows-reproducible fallback (pass-23 audit P2-3 / pass-24 P1-4).** On some
+   Windows checkouts the npm lifecycle spawner fails with `spawn EPERM` (a
+   node/npm/Windows toolchain interaction), so `supply-chain-all.mjs` cannot run
+   locally there. Use `node scripts/supply-chain-direct.mjs` instead: it spawns **no
+   npm** (pure Node), so it never hits that EPERM, and reproducibly verifies license
+   + pinned deps + the declared/required on-disk payload + size budgets over the
+   same 11 packages. It is **STRICT by default** (release/audit posture): a package
+   whose build output is absent is `NEEDS_BUILD` and the guard **FAILS** — it never
+   prints "passed" with missing publish output. Build the package(s) first, then
+   re-run. `node scripts/supply-chain-direct.mjs --triage` is the Windows soft-check
+   that reports `NEEDS_BUILD` without failing, for diagnosing what to build. It
+   verifies the on-disk BUILT state; freshness (delete-then-rebuild) and the exact
+   `npm pack` tarball manifest remain delegated to the authoritative CI runner
+   above. Fenced by `release/supply-chain-direct.test.mjs`.
 2. `npm test --workspaces --if-present` (workspace) and `npm test` in each
    standalone package — behavioral tests, not just payload shape (audit S4).
 3. `node scripts/release-npm.mjs --preflight` — the no-write registry plan above

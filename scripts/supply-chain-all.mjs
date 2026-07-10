@@ -146,8 +146,18 @@ for (const { dir, name, rel, pkg } of packages) {
 
 if (manifestPath) {
   manifest.packageCount = Object.keys(manifest.packages).length;
+  manifest.expectedPackageCount = packages.length;
+  manifest.complete = manifest.packageCount === packages.length;
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-  console.log(`\nwrote supply-chain manifest for ${manifest.packageCount} packages to ${manifestPath}`);
+  console.log(`\nwrote supply-chain manifest for ${manifest.packageCount}/${packages.length} packages to ${manifestPath}`);
+  // Pass-24 audit P1-4: a release manifest MUST cover ALL packages. A partial
+  // manifest (a package could not build its payload) is a supply-chain FAILURE —
+  // no publish/release claim may be made from an incomplete manifest.
+  if (!manifest.complete) {
+    problems.push(
+      `supply-chain manifest is INCOMPLETE: ${manifest.packageCount}/${packages.length} packages — a release manifest must cover ALL ${packages.length} packages`,
+    );
+  }
 }
 
 if (problems.length) {
