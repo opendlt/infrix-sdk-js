@@ -148,14 +148,27 @@ if (manifestPath) {
   manifest.packageCount = Object.keys(manifest.packages).length;
   manifest.expectedPackageCount = packages.length;
   manifest.complete = manifest.packageCount === packages.length;
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-  console.log(`\nwrote supply-chain manifest for ${manifest.packageCount}/${packages.length} packages to ${manifestPath}`);
   // Pass-24 audit P1-4: a release manifest MUST cover ALL packages. A partial
   // manifest (a package could not build its payload) is a supply-chain FAILURE —
   // no publish/release claim may be made from an incomplete manifest.
-  if (!manifest.complete) {
+  //
+  // Pass-25 audit P2-1: the AUTHORITATIVE manifest path is written ONLY when the
+  // manifest is complete. An incomplete run never contaminates the authoritative
+  // artifact with a partial payload set (which a later step could mistake for a
+  // full one); instead the partial data is written to an explicitly-named
+  // diagnostic path (<manifestPath>.partial) purely for triage, and the run fails.
+  if (manifest.complete) {
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    console.log(`\nwrote COMPLETE supply-chain manifest for ${manifest.packageCount}/${packages.length} packages to ${manifestPath}`);
+  } else {
+    const diagnosticPath = `${manifestPath}.partial`;
+    fs.writeFileSync(diagnosticPath, JSON.stringify(manifest, null, 2));
+    console.error(
+      `\nsupply-chain manifest is INCOMPLETE (${manifest.packageCount}/${packages.length} packages) — ` +
+        `NOT writing the authoritative manifest ${manifestPath}; wrote a diagnostic partial to ${diagnosticPath}`,
+    );
     problems.push(
-      `supply-chain manifest is INCOMPLETE: ${manifest.packageCount}/${packages.length} packages — a release manifest must cover ALL ${packages.length} packages`,
+      `supply-chain manifest is INCOMPLETE: ${manifest.packageCount}/${packages.length} packages — a release manifest must cover ALL ${packages.length} packages (diagnostic partial at ${diagnosticPath})`,
     );
   }
 }
