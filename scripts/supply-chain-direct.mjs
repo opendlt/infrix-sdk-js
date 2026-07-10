@@ -220,7 +220,11 @@ for (const w of needsBuild) console.log(`  ${w}`);
 
 // STRICT default: any FAIL, or any NEEDS_BUILD (unless --triage), fails the guard.
 if (fails.length || (!triage && needsBuild.length)) {
-  console.error('\nsupply-chain-direct check FAILED:');
+  // Pass-26 audit P0-3: emit the reproducibility contract ("no npm spawned") on the
+  // FAILURE path too, not only on success — this guard spawns NOTHING regardless of
+  // outcome, and downstream tests/operators assert that contract on both pass and
+  // fail so a Windows checkout with the compromised npm can trust the result either way.
+  console.error('\nsupply-chain-direct check FAILED (no npm spawned):');
   for (const p of fails) console.error('  - ' + p);
   if (!triage) for (const w of needsBuild) console.error('  - ' + w);
   if (!triage && needsBuild.length) {
