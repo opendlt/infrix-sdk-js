@@ -12,7 +12,16 @@
 // running an arbitrary `npm run` chain. Run it, then verify with
 // `node scripts/supply-chain-direct.mjs` (strict) — both spawn no npm.
 //
-// Run: node scripts/build-all-direct.mjs            (needs INFRIX_CORE_DIR for @infrix/prover)
+// STRICT BY DEFAULT (pass-29 audit P2-1): a publishable package that cannot be
+// FRESHLY rebuilt FAILS the build — including `@infrix/prover`, which needs
+// INFRIX_CORE_DIR to vendor its prover core. A green build-all-direct must mean every
+// publishable package's payload was freshly produced, so local no-npm evidence is not
+// silently incomplete. Pass `--triage` for a soft local check that SKIPs (does not
+// fail on) a package that cannot be built here. Without INFRIX_CORE_DIR the
+// authoritative prover payload evidence is CI's archived npm-pack manifest.
+//
+// Run: node scripts/build-all-direct.mjs            # STRICT (needs INFRIX_CORE_DIR for @infrix/prover)
+//      node scripts/build-all-direct.mjs --triage   # soft: SKIP unbuildable packages, exit 0
 
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
@@ -23,6 +32,9 @@ import { repoRoot } from './release-packages.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 void here;
+
+// STRICT by default; --triage soft-skips packages that cannot be freshly built here.
+const triage = process.argv.includes('--triage');
 
 // resolveBin resolves a package bin's JS entrypoint from a package directory, so we
 // can launch it via node.exe (never the `.cmd` shim).
@@ -93,14 +105,24 @@ if (fs.existsSync(proverDir)) {
       failures.push(`@infrix/prover: ${e.message}`);
       console.error(`  @infrix/prover: FAILED — ${e.message}`);
     }
+  } else if (triage) {
+    console.log('\n  @infrix/prover: SKIP (--triage; set INFRIX_CORE_DIR to vendor its prover core)');
   } else {
-    console.log('\n  @infrix/prover: SKIP (set INFRIX_CORE_DIR to vendor its prover core)');
+    // STRICT default (pass-29 P2-1): a publishable package that cannot be freshly
+    // rebuilt is a FAILURE, not a silent skip — so a green run always means every
+    // publishable payload was freshly produced.
+    failures.push('@infrix/prover: cannot fresh-build — INFRIX_CORE_DIR is not set (set it to vendor the prover core, or run with --triage for a soft local check; CI\'s npm-pack manifest is the authoritative prover payload evidence)');
+    console.error('\n  @infrix/prover: FAILED — INFRIX_CORE_DIR not set (strict mode requires a fresh build; use --triage to soft-skip)');
   }
 }
 
 if (failures.length) {
   console.error('\nbuild-all-direct FAILED:');
   for (const f of failures) console.error('  - ' + f);
+  console.error('\n(no npm spawned) — a strict build-all-direct requires every publishable package to fresh-build; pass --triage for a soft local check.');
   process.exit(1);
 }
-console.log('\nbuild-all-direct: all packages built directly via node (no npm spawned). Verify with: node scripts/supply-chain-direct.mjs');
+console.log(
+  '\nbuild-all-direct: all packages built directly via node (no npm spawned). Verify with: node scripts/supply-chain-direct.mjs' +
+    (triage ? ' [TRIAGE — unbuildable packages were SKIPped, not failed]' : ''),
+);

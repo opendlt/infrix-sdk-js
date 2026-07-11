@@ -80,3 +80,13 @@ Doctrine:
   publish evidence; publish only from CI (or a clean host) where the preflight passes.
 
 Run the preflight standalone at any time: `node scripts/npm-preflight.mjs`.
+
+### Fresh-build completeness (pass-29 audit P2-1)
+
+`scripts/build-all-direct.mjs` is STRICT by default: a publishable package that cannot
+be FRESHLY rebuilt is a **failure**, not a silent skip. In particular `@infrix/prover`
+needs `INFRIX_CORE_DIR` to vendor its prover core, so a strict local run without it
+FAILS — the local no-npm evidence is therefore never silently incomplete. Use
+`--triage` for a soft local check that SKIPs unbuildable packages and exits 0. The
+AUTHORITATIVE prover payload evidence is CI's archived npm-pack manifest (produced on a
+clean runner where the preflight passes and `INFRIX_CORE_DIR` is available).
