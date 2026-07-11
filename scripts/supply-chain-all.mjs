@@ -24,6 +24,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { repoRoot, loadPackages, GUARD_CONFIG, DEFAULT_BUDGET } from './release-packages.mjs';
+import { assertTrustedNpm } from './npm-preflight.mjs';
+
+// Pass-28 audit P1-7: this guard SPAWNS npm (`npm pack`), so its evidence is only
+// trustworthy when the npm that runs is the trusted npm bundled with the Node
+// install. Refuse to run on a host where a user-global npm diverges from it (the
+// audit workstation's compromised %APPDATA%\npm). On such a host use the no-npm
+// direct-node path (supply-chain-direct.mjs); the authoritative npm-pack manifest is
+// produced by CI on a clean runner.
+assertTrustedNpm();
 
 const npm = 'npm';
 const problems = [];

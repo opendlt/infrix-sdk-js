@@ -42,6 +42,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { repoRoot, packageDirs, loadPackages } from './release-packages.mjs';
+import { assertTrustedNpm } from './npm-preflight.mjs';
+
+// Pass-28 audit P1-7: release orchestration SPAWNS npm (pack/publish), so refuse to
+// run on a host where a user-global npm diverges from the trusted npm bundled with
+// the Node install (the audit workstation's compromised %APPDATA%\npm). Publish from
+// CI on a clean runner, where this preflight passes.
+assertTrustedNpm();
 
 const npm = 'npm';
 const REQUIRE_TP_READY = process.argv.includes('--require-trusted-publisher-ready');

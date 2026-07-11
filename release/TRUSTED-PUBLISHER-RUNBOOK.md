@@ -58,3 +58,25 @@ node scripts/release-npm.mjs --publish --require-trusted-publisher-ready
 The gate (`trusted-publishers.test.mjs`) fences that this matrix covers every
 publishable package and that the readiness check is fail-closed, so a package can
 never be silently dropped or a partial release slip through.
+
+## npm environment preflight (pass-28 audit P1-7)
+
+`scripts/release-npm.mjs` and `scripts/supply-chain-all.mjs` SPAWN npm, so their
+evidence is only trustworthy when the npm that runs is the trusted npm **bundled
+with the Node install**. Both call `assertTrustedNpm()` (`scripts/npm-preflight.mjs`)
+at startup, which REFUSES to run (exit 1) when a **user-global npm diverges** from
+that bundled npm — e.g. the audit workstation's compromised
+`%APPDATA%\npm\node_modules\npm\lib\cli.js` (72450 bytes) vs the trusted
+`C:\Program Files\nodejs\node_modules\npm\lib\cli.js` (419 bytes).
+
+Doctrine:
+
+- **`node scripts/supply-chain-direct.mjs`** — local triage / reproducibility
+  evidence. It spawns NOTHING (pure Node fs), so it is safe on a compromised host and
+  is the local verification path there.
+- **CI's archived npm-pack manifest** (`scripts/supply-chain-all.mjs` on a clean
+  runner where the preflight passes) — the AUTHORITATIVE publish-payload evidence.
+- Never treat a local `npm pack` manifest from a host that fails the preflight as
+  publish evidence; publish only from CI (or a clean host) where the preflight passes.
+
+Run the preflight standalone at any time: `node scripts/npm-preflight.mjs`.
