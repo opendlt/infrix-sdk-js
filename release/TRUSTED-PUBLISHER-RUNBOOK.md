@@ -90,3 +90,24 @@ FAILS — the local no-npm evidence is therefore never silently incomplete. Use
 `--triage` for a soft local check that SKIPs unbuildable packages and exits 0. The
 AUTHORITATIVE prover payload evidence is CI's archived npm-pack manifest (produced on a
 clean runner where the preflight passes and `INFRIX_CORE_DIR` is available).
+
+### Release-evidence checklist (pass-30 audit P2-2)
+
+A release/pass-close claim about the SDK publish payload MUST cite BOTH artifacts
+below. Local no-npm evidence alone is NEVER a substitute for the CI npm-pack manifest,
+and it is complete only when `INFRIX_CORE_DIR` was set and all 11 packages were covered.
+
+- [ ] **Direct no-npm build (local reproducibility)** — with `INFRIX_CORE_DIR` set to a
+      real `infrix-core` checkout, `node scripts/build-all-direct.mjs` exits 0 (STRICT;
+      no `@infrix/prover` SKIP) and `node scripts/supply-chain-direct.mjs` passes for
+      all **11** packages. Do NOT claim local payload completeness if `INFRIX_CORE_DIR`
+      was unset (prover skipped) or fewer than 11 packages were covered.
+- [ ] **CI npm-pack manifest (authoritative publish payload)** — `scripts/supply-chain-all.mjs`
+      on a clean runner (npm-preflight passes) produced the archived npm-pack manifest
+      for all 11 packages. This is the only authoritative publish-payload evidence.
+- [ ] **npm-preflight** — `node scripts/npm-preflight.mjs` passes on the publishing
+      host (a compromised user-global npm is refused; publish only where it passes).
+
+Cite the direct-build log AND the CI npm-pack manifest by their artifact locations in
+the release record; a missing CI manifest is RED for the publish payload, not
+"local-verified-and-okay".
