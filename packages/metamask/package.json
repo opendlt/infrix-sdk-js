@@ -31,7 +31,7 @@
     "test": "node --test \"test/*.test.mjs\""
   },
   "peerDependencies": {
-    "@infrix/client": "^0.1.0"
+    "@infrix/client": "^0.2.0"
   },
   "peerDependenciesMeta": {
     "@infrix/client": {

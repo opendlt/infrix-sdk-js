@@ -10,7 +10,14 @@
     "publishable package here is configured=true, so a partial release caused by a",
     "package that lacks trusted-publisher setup cannot happen. Keep this list in sync",
     "with scripts/release-packages.mjs — the gate fails if any publishable package is",
-    "missing an entry."
+    "missing an entry.",
+    "Plan-3 (npm lane split): this trusted-publisher gate is the PUBLISH gate for the",
+    "npm-registry-published lane. After a real publish, scripts/verify-npm-registry.mjs",
+    "queries the LIVE registry and emits npm-registry-verification.json — that artifact",
+    "(allLive=true, 11/11) is the ONLY evidence that turns the infrix-core",
+    "npm-registry-published lane green. Buildability is the SEPARATE npm-pack-manifest",
+    "lane (supply-chain-all.mjs --manifest). configured=false here = RED until the",
+    "operator registers the package on npmjs.com."
   ],
   "repository": "opendlt/infrix-sdk-js",
   "workflow": "publish.yml",

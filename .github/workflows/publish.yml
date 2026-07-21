@@ -32,6 +32,8 @@ on:
 permissions:
   contents: read
   id-token: write
+  # Plan-3: sign (build-provenance attest) the pack + registry-verification artifacts.
+  attestations: write
 
 jobs:
   publish:
@@ -78,9 +80,11 @@ jobs:
       # Authoritative payload gate over ALL eleven packages (audit Z4): build every
       # package's REAL published payload and validate license/pinned-deps/size/
       # declared-targets/required-files — workspace AND standalone, one enumeration.
-      - name: Supply-chain guard (all 11 packages, real payloads)
+      # Plan-3 lane 1 (npm-pack-manifest / BUILDABILITY): --manifest writes the
+      # authoritative pack manifest (per-package dist.shasum/integrity) uploaded below.
+      - name: Supply-chain guard + pack manifest (all 11 packages, real payloads)
         working-directory: infrix-sdk-js
-        run: node scripts/supply-chain-all.mjs
+        run: node scripts/supply-chain-all.mjs --manifest npm-pack-manifest.json
       # Behavioral tests before publish (audit S4) — the guard proves payload shape,
       # not behavior.
       - name: Test workspace packages
@@ -114,12 +118,33 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         working-directory: infrix-sdk-js
         run: node scripts/release-npm.mjs --dry-run --manifest release-manifest.json
+      # Plan-3 lane 2 (npm-registry-published / PUBLICATION): AFTER a real publish,
+      # query the LIVE npm registry and confirm every exact name@version is published,
+      # comparing dist.shasum + dist.integrity against the pack manifest. Fails closed
+      # unless all 11 are live + integrity-matched — this is the ONLY evidence that
+      # turns the infrix-core npm-registry-published lane green.
+      - name: Verify registry publication (live registry query)
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
+        working-directory: infrix-sdk-js
+        run: node scripts/verify-npm-registry.mjs --manifest npm-pack-manifest.json --out npm-registry-verification.json
+      # Sign (build-provenance attestation) the two split artifacts so a consumer can
+      # cryptographically verify they were produced by THIS workflow run.
+      - name: Attest pack + registry artifacts (signed)
+        if: ${{ (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)) && always() }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            infrix-sdk-js/npm-pack-manifest.json
+            infrix-sdk-js/npm-registry-verification.json
       # Record the exact package set / versions / outcomes as a release artifact
       # (audit S3), even if a prior step failed.
-      - name: Upload release manifest
+      - name: Upload release + pack + registry-verification manifests
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: release-manifest
-          path: infrix-sdk-js/release-manifest.json
+          name: release-npm-lanes
+          path: |
+            infrix-sdk-js/release-manifest.json
+            infrix-sdk-js/npm-pack-manifest.json
+            infrix-sdk-js/npm-registry-verification.json
           if-no-files-found: ignore

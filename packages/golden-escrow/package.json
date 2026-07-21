@@ -35,7 +35,7 @@
     "@infrix/proof-receipt": "^0.2.0"
   },
   "peerDependencies": {
-    "@infrix/client": "^0.1.0"
+    "@infrix/client": "^0.2.0"
   },
   "peerDependenciesMeta": {
     "@infrix/client": {
