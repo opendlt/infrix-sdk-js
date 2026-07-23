@@ -118,10 +118,18 @@ async function main() {
     const regIntegrity = r.dist?.integrity || null;
     const shasumMatch = pm.shasum && regShasum ? pm.shasum === regShasum : null;
     const integrityMatch = pm.integrity && regIntegrity ? pm.integrity === regIntegrity : null;
+    // Provenance: an npm build-provenance attestation (Sigstore) cryptographically
+    // ties the published tarball to the exact GitHub commit + workflow run. It is a
+    // stronger, non-fragile integrity guarantee than a shasum comparison (which
+    // false-mismatches across non-byte-reproducible build environments).
+    const att = r.dist?.attestations || null;
+    const provenance = !!(att && (att.provenance || att.url));
     results.push({
       name: p.name,
       version: p.version,
       live: r.live,
+      provenance,
+      attestationsUrl: att?.url || null,
       registryShasum: regShasum,
       registryIntegrity: regIntegrity,
       manifestShasum: pm.shasum || null,
@@ -139,11 +147,13 @@ async function main() {
   // value that mismatched IS a failure.
   const integrityMismatch = results.some((r) => r.shasumMatch === false || r.integrityMatch === false);
   const allIntegrityVerified = !integrityMismatch;
+  const provenancePackages = results.filter((r) => r.live && r.provenance).length;
+  const allProvenance = provenancePackages === pkgs.length && pkgs.length === 11;
 
   const artifact = {
     lane: 'npm-registry-published',
     note:
-      'Live registry verification produced by scripts/verify-npm-registry.mjs — queries the public npm registry over HTTPS and confirms each exact name@version is PUBLISHED, comparing dist.shasum and dist.integrity against the pack manifest where available. This is executable evidence of PUBLICATION; it is NOT a proxy for buildability (that is npm-pack-manifest). Never mark the release npm lane green from checked-in JSON — regenerate this against the live registry.',
+      'Live registry verification produced by scripts/verify-npm-registry.mjs — queries the public npm registry over HTTPS and confirms each exact name@version is PUBLISHED, that it carries a build-provenance attestation (dist.attestations — Sigstore, tied to the GitHub commit + workflow run), and compares dist.shasum/dist.integrity against the pack manifest where available. Provenance is the strong integrity guarantee (a shasum compare false-mismatches across non-byte-reproducible build environments). This is executable evidence of PUBLICATION; it is NOT a proxy for buildability (that is npm-pack-manifest). Never mark the release npm lane green from checked-in JSON — regenerate this against the live registry.',
     registry,
     verifiedAt,
     expectedPackages: 11,
@@ -151,6 +161,8 @@ async function main() {
     livePackages,
     allLive,
     allIntegrityVerified,
+    provenancePackages,
+    allProvenance,
     packManifest: manifestPath ? path.relative(repoRoot, path.resolve(manifestPath)).replace(/\\/g, '/') : null,
     packages: results,
   };
@@ -158,11 +170,11 @@ async function main() {
   fs.writeFileSync(outPath, JSON.stringify(artifact, null, 2));
   console.log(`wrote registry-verification artifact to ${outPath}`);
   console.log(`  registry: ${registry}`);
-  console.log(`  live: ${livePackages}/${pkgs.length} (expected 11)`);
+  console.log(`  live: ${livePackages}/${pkgs.length} (expected 11), provenance: ${provenancePackages}/${pkgs.length}`);
   for (const r of results) {
     const mark = r.live ? 'LIVE ' : 'ABSENT';
     const extra = r.live
-      ? `shasum=${r.shasumMatch === null ? 'n/a' : r.shasumMatch ? 'match' : 'MISMATCH'} integrity=${r.integrityMatch === null ? 'n/a' : r.integrityMatch ? 'match' : 'MISMATCH'}`
+      ? `provenance=${r.provenance ? 'YES' : 'NO'} shasum=${r.shasumMatch === null ? 'n/a' : r.shasumMatch ? 'match' : 'MISMATCH'}`
       : r.note || r.error || '';
     console.log(`  ${mark} ${r.name}@${r.version}  ${extra}`);
   }
@@ -179,7 +191,11 @@ async function main() {
     console.error(`\nregistry verification: a published payload does NOT match the pack manifest (dist.shasum/integrity mismatch). The npm-registry-published lane is RED.`);
     process.exit(1);
   }
-  console.log(`\nregistry verification PASSED: all 11 packages live and integrity-verified.`);
+  if (!allProvenance) {
+    console.error(`\nregistry verification: only ${provenancePackages}/${pkgs.length} packages carry a provenance attestation. The npm-registry-published lane is RED until every package is published WITH provenance.`);
+    process.exit(1);
+  }
+  console.log(`\nregistry verification PASSED: all 11 packages live, provenance-attested, and integrity-consistent.`);
 }
 
 main().catch((e) => {

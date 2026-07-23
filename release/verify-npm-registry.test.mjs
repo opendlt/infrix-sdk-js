@@ -29,6 +29,10 @@ function startMockRegistry(pkgs, mode) {
   const enc = (name) => name.replace('/', '%2f');
   for (const p of pkgs) {
     if (absent.has(p.name)) continue;
+    // Every published version carries a build-provenance attestation, EXCEPT in
+    // 'noProvenance' mode where the first package is missing it (to prove the lane
+    // fails closed without provenance).
+    const hasProv = !(mode === 'noProvenance' && p.name === pkgs[0].name);
     byEncName.set(enc(p.name), {
       name: p.name,
       'dist-tags': { latest: p.version },
@@ -39,6 +43,7 @@ function startMockRegistry(pkgs, mode) {
           dist: {
             shasum: mode === 'badHash' ? 'ffffffffffffffffffffffffffffffffffffffff' : KNOWN_SHASUM,
             integrity: mode === 'badHash' ? 'sha512-BADBADBADBADBADBADBADBADBADBADBADBADBAD==' : KNOWN_INTEGRITY,
+            ...(hasProv ? { attestations: { url: 'https://registry.npmjs.org/-/npm/v1/attestations/x', provenance: { predicateType: 'https://slsa.dev/provenance/v1' } } } : {}),
           },
         },
       },
@@ -155,6 +160,33 @@ test('integrity mismatch: registry hash differs from the pack manifest → RED, 
   } finally {
     server.close();
     fs.unlinkSync(manifest);
+  }
+});
+
+test('noProvenance: a package published WITHOUT provenance → RED, exit 1', async () => {
+  const pkgs = loadPackages();
+  const { server, port } = await startMockRegistry(pkgs, 'noProvenance');
+  try {
+    const { status, artifact } = await runVerifier(port);
+    assert.equal(artifact.allLive, true, 'all live...');
+    assert.equal(artifact.allProvenance, false, '...but one lacks a provenance attestation');
+    assert.equal(artifact.provenancePackages, 10);
+    assert.equal(status, 1, 'a package without provenance is RED');
+  } finally {
+    server.close();
+  }
+});
+
+test('allLive scenario also carries provenance on every package', async () => {
+  const pkgs = loadPackages();
+  const { server, port } = await startMockRegistry(pkgs, 'allLive');
+  try {
+    const { artifact } = await runVerifier(port);
+    assert.equal(artifact.allProvenance, true);
+    assert.equal(artifact.provenancePackages, 11);
+    assert.ok(artifact.packages.every((p) => p.provenance === true));
+  } finally {
+    server.close();
   }
 });
 
