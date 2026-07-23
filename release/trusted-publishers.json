@@ -16,22 +16,68 @@
     "queries the LIVE registry and emits npm-registry-verification.json — that artifact",
     "(allLive=true, 11/11) is the ONLY evidence that turns the infrix-core",
     "npm-registry-published lane green. Buildability is the SEPARATE npm-pack-manifest",
-    "lane (supply-chain-all.mjs --manifest). configured=false here = RED until the",
-    "operator registers the package on npmjs.com."
+    "lane (supply-chain-all.mjs --manifest). configured=false = RED until the",
+    "operator registers the package on npmjs.com. STATUS 2026-07-23: all 11",
+    "configured=true — every package has a GitHub Actions trusted publisher",
+    "(opendlt/infrix-sdk-js, publish.yml), so publish.yml runs pure OIDC (no token)."
   ],
   "repository": "opendlt/infrix-sdk-js",
   "workflow": "publish.yml",
   "packages": {
-    "@infrix/verify": { "configured": false, "operator": null, "date": null },
-    "@infrix/proof-receipt": { "configured": false, "operator": null, "date": null },
-    "@infrix/widgets": { "configured": false, "operator": null, "date": null },
-    "@infrix/widgets-webcomponent": { "configured": false, "operator": null, "date": null },
-    "@infrix/metamask": { "configured": false, "operator": null, "date": null },
-    "@infrix/golden-escrow": { "configured": false, "operator": null, "date": null },
-    "@infrix/prover": { "configured": false, "operator": null, "date": null },
-    "@infrix/templates": { "configured": false, "operator": null, "date": null },
-    "@infrix/client": { "configured": false, "operator": null, "date": null },
-    "@infrix/wallet": { "configured": false, "operator": null, "date": null },
-    "@infrix/sdk": { "configured": false, "operator": null, "date": null }
+    "@infrix/verify": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/proof-receipt": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/widgets": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/widgets-webcomponent": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/metamask": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/golden-escrow": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/prover": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/templates": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/client": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/wallet": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    },
+    "@infrix/sdk": {
+      "configured": true,
+      "operator": "jason-gregoire",
+      "date": "2026-07-23"
+    }
   }
 }

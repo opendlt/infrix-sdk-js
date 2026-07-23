@@ -106,21 +106,19 @@ jobs:
         working-directory: infrix-sdk-js
         run: node scripts/release-npm.mjs --preflight --manifest release-manifest.json
       # Real publish — release events, or a manual dispatch with dry_run unchecked.
-      # Auth is the NPM_TOKEN secret (an npm Automation token, so it bypasses 2FA in
-      # CI); PROVENANCE is still generated because the job has id-token: write and each
-      # manifest sets publishConfig.provenance=true — provenance is minted from the
-      # GitHub OIDC identity regardless of whether the auth is a token or trusted
-      # publishing. This token path is used because @infrix/prover and @infrix/templates
-      # are brand-new (0.2.0) and cannot have a trusted publisher configured until they
-      # exist; a token first-publish creates them WITH provenance. The 9 existing
-      # packages already have trusted publishers configured for future no-token releases.
-      # Only absent versions are published; a re-run resumes the rest.
-      - name: Publish to npm (NPM_TOKEN + provenance via OIDC id-token)
+      # PURE OIDC trusted publishing (no NODE_AUTH_TOKEN / no long-lived token): the
+      # job's id-token: write mints a short-lived credential per package, and each
+      # tarball carries a build-provenance attestation (publishConfig.provenance=true).
+      # All 11 packages have a GitHub Actions trusted publisher configured on npmjs.com
+      # (release/trusted-publishers.json, configured 2026-07-23 after the 0.2.0 token
+      # bootstrap created @infrix/prover + @infrix/templates). --require-trusted-publisher-ready
+      # refuses to write until that attestation is complete, so a package lacking
+      # trusted-publisher setup cannot cause a partial release. Only absent versions
+      # are published; a re-run resumes the rest.
+      - name: Publish to npm (trusted publishing / OIDC + provenance)
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
         working-directory: infrix-sdk-js
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: node scripts/release-npm.mjs --publish --manifest release-manifest.json
+        run: node scripts/release-npm.mjs --publish --require-trusted-publisher-ready --manifest release-manifest.json
       # Dry-run — manual dispatch with dry_run checked (the default). Builds and
       # packs every package without touching the registry.
       - name: Dry-run publish (no registry write)
