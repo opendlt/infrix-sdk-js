@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+# A newer push cancels an in-progress run for the same ref (Actions-minute
+# conservation during iterative work).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Cross-repo goal-type parity: the committed TS + AS IntentGoalType regions
@@ -44,7 +53,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Windows bills at 2x Actions minutes — run the Windows leg only on
+        # release + manual dispatch; push/PR run ubuntu-only. The D1 guard
+        # (bash->WSL can't see Go) is still covered on every release.
+        os: ${{ (github.event_name == 'release' || github.event_name == 'workflow_dispatch') && fromJSON('["ubuntu-latest", "windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout SDK
