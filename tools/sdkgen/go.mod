@@ -5,4 +5,4 @@ module github.com/opendlt/infrix-sdk-js/tools/sdkgen
 
 go 1.25.7
 
-require github.com/opendlt/infrix-schema v0.2.0
+require github.com/opendlt/infrix-schema v0.4.0

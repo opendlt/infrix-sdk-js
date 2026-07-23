@@ -481,8 +481,11 @@ export namespace Governance {
   export const GOAL_ROLE_NORMALIZE: string = "ROLE_NORMALIZE";
   export const GOAL_DISCLOSURE_GRANT: string = "DISCLOSURE_GRANT";
   export const GOAL_DISCLOSURE_REVOKE: string = "DISCLOSURE_REVOKE";
+  export const GOAL_DISCLOSURE_REGISTER_KEY: string = "DISCLOSURE_REGISTER_KEY";
   export const GOAL_CONTRACT_DEPLOY: string = "CONTRACT_DEPLOY";
   export const GOAL_CONTRACT_CALL: string = "CONTRACT_CALL";
+  export const GOAL_EVM_DEPLOY: string = "EVM_DEPLOY";
+  export const GOAL_EVM_CALL: string = "EVM_CALL";
   export const GOAL_SWARM_CREATE: string = "SWARM_CREATE";
   export const GOAL_SWARM_JOIN: string = "SWARM_JOIN";
   export const GOAL_SWARM_COORDINATE: string = "SWARM_COORDINATE";
