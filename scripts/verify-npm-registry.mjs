@@ -47,6 +47,13 @@ const registry = (arg('--registry', DEFAULT_REGISTRY)).replace(/\/+$/, '');
 const outPath = arg('--out', path.join(repoRoot, 'npm-registry-verification.json'));
 const manifestPath = arg('--manifest', null);
 const verifiedAt = arg('--verified-at', new Date().toISOString());
+// A brand-new package can lag the registry read CDN by a minute or two after its
+// first publish. --retries N re-queries (only) while some packages are simply
+// not-live-yet, so a post-publish verify doesn't false-fail on propagation.
+const retries = Math.max(0, parseInt(arg('--retries', '0'), 10) || 0);
+const retryDelay = Math.max(1, parseInt(arg('--retry-delay', '15'), 10) || 15);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // packManifestByName maps a package name → { shasum, integrity } as recorded by
 // the pack step, when a pack manifest is supplied. The pack manifest may be a
@@ -104,40 +111,56 @@ async function main() {
   const pkgs = loadPackages(); // canonical 11 (name, version), skips private
   const packMeta = packManifestByName();
 
-  const results = [];
-  let hardError = null;
-  for (const p of pkgs) {
-    const r = await registryVersion(p.name, p.version);
-    if (!r.ok) {
-      hardError = hardError || `${p.name}: ${r.reason}`;
-      results.push({ name: p.name, version: p.version, live: false, error: r.reason });
-      continue;
+  // queryOnce queries every package once and returns { results, hardError }.
+  const queryOnce = async () => {
+    const results = [];
+    let hardError = null;
+    for (const p of pkgs) {
+      const r = await registryVersion(p.name, p.version);
+      if (!r.ok) {
+        hardError = hardError || `${p.name}: ${r.reason}`;
+        results.push({ name: p.name, version: p.version, live: false, error: r.reason });
+        continue;
+      }
+      const pm = packMeta[p.name] || {};
+      const regShasum = r.dist?.shasum || null;
+      const regIntegrity = r.dist?.integrity || null;
+      const shasumMatch = pm.shasum && regShasum ? pm.shasum === regShasum : null;
+      const integrityMatch = pm.integrity && regIntegrity ? pm.integrity === regIntegrity : null;
+      // Provenance: an npm build-provenance attestation (Sigstore) cryptographically
+      // ties the published tarball to the exact GitHub commit + workflow run. It is a
+      // stronger, non-fragile integrity guarantee than a shasum comparison (which
+      // false-mismatches across non-byte-reproducible build environments).
+      const att = r.dist?.attestations || null;
+      const provenance = !!(att && (att.provenance || att.url));
+      results.push({
+        name: p.name,
+        version: p.version,
+        live: r.live,
+        provenance,
+        attestationsUrl: att?.url || null,
+        registryShasum: regShasum,
+        registryIntegrity: regIntegrity,
+        manifestShasum: pm.shasum || null,
+        manifestIntegrity: pm.integrity || null,
+        shasumMatch,
+        integrityMatch,
+        note: r.live ? undefined : r.reason,
+      });
     }
-    const pm = packMeta[p.name] || {};
-    const regShasum = r.dist?.shasum || null;
-    const regIntegrity = r.dist?.integrity || null;
-    const shasumMatch = pm.shasum && regShasum ? pm.shasum === regShasum : null;
-    const integrityMatch = pm.integrity && regIntegrity ? pm.integrity === regIntegrity : null;
-    // Provenance: an npm build-provenance attestation (Sigstore) cryptographically
-    // ties the published tarball to the exact GitHub commit + workflow run. It is a
-    // stronger, non-fragile integrity guarantee than a shasum comparison (which
-    // false-mismatches across non-byte-reproducible build environments).
-    const att = r.dist?.attestations || null;
-    const provenance = !!(att && (att.provenance || att.url));
-    results.push({
-      name: p.name,
-      version: p.version,
-      live: r.live,
-      provenance,
-      attestationsUrl: att?.url || null,
-      registryShasum: regShasum,
-      registryIntegrity: regIntegrity,
-      manifestShasum: pm.shasum || null,
-      manifestIntegrity: pm.integrity || null,
-      shasumMatch,
-      integrityMatch,
-      note: r.live ? undefined : r.reason,
-    });
+    return { results, hardError };
+  };
+
+  // Retry only while some packages are merely not-live-yet (propagation) — never on
+  // a hard error (that's a real failure to surface immediately).
+  let results, hardError;
+  for (let attempt = 0; ; attempt++) {
+    ({ results, hardError } = await queryOnce());
+    const live = results.filter((r) => r.live).length;
+    if (hardError || live === pkgs.length || attempt >= retries) break;
+    const absent = results.filter((r) => !r.live && !r.error).length;
+    console.log(`  ${live}/${pkgs.length} live (attempt ${attempt + 1}/${retries + 1}) — waiting ${retryDelay}s for ${absent} package(s) to propagate...`);
+    await sleep(retryDelay * 1000);
   }
 
   const livePackages = results.filter((r) => r.live).length;

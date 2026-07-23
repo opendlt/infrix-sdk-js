@@ -132,10 +132,13 @@ jobs:
       # comparing dist.shasum + dist.integrity against the pack manifest. Fails closed
       # unless all 11 are live + integrity-matched — this is the ONLY evidence that
       # turns the infrix-core npm-registry-published lane green.
-      - name: Verify registry publication (live registry query)
+      # --retries tolerates the read-CDN propagation lag on a brand-new package's
+      # FIRST publish (e.g. @infrix/prover, @infrix/templates) so this step doesn't
+      # false-fail; it retries ONLY while some packages are not-live-yet, up to ~2min.
+      - name: Verify registry publication (live registry query, provenance-checked)
         if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run) }}
         working-directory: infrix-sdk-js
-        run: node scripts/verify-npm-registry.mjs --manifest npm-pack-manifest.json --out npm-registry-verification.json
+        run: node scripts/verify-npm-registry.mjs --manifest npm-pack-manifest.json --out npm-registry-verification.json --retries 8 --retry-delay 15
       # Sign (build-provenance attestation) the two split artifacts so a consumer can
       # cryptographically verify they were produced by THIS workflow run.
       - name: Attest pack + registry artifacts (signed)
