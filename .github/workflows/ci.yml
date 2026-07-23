@@ -38,8 +38,8 @@ jobs:
   # The Windows leg guards the D1 failure mode (bash -> WSL cannot see Go); the
   # rebuild goes through the OS-neutral Node builder (infrix-core/scripts/build-prover-wasm.mjs).
   #
-  # If infrix-core is private, set the INFRIX_CORE_TOKEN secret to a read-only PAT;
-  # if it is public, the default checkout token is sufficient.
+  # infrix-core is private, so the sibling checkout below uses the read-only
+  # INFRIX_CORE_DEPLOY_KEY secret (same key publish.yml uses).
   prover-source-rebuild:
     strategy:
       fail-fast: false
@@ -55,7 +55,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: opendlt/infrix-core
-          token: ${{ secrets.INFRIX_CORE_TOKEN || github.token }}
+          # infrix-core is private; the SDK repo's github.token can't read it. Use
+          # the same read-only DEPLOY KEY publish.yml uses (secret INFRIX_CORE_DEPLOY_KEY;
+          # public half on infrix-core → Settings → Deploy keys). ssh-key → SSH checkout.
+          ssh-key: ${{ secrets.INFRIX_CORE_DEPLOY_KEY }}
           path: infrix-core
       - uses: actions/setup-go@v5
         with:
@@ -76,8 +79,8 @@ jobs:
   # of every workspace package (license, pinned deps, non-empty payload, size
   # budget, and required generated files such as the @infrix/prover WASM assets).
   # It needs infrix-core so @infrix/prover can build its assets — a package that
-  # would publish without them is a supply-chain finding, not a skip. Same
-  # INFRIX_CORE_TOKEN note as prover-source-rebuild.
+  # would publish without them is a supply-chain finding, not a skip. Uses the
+  # same INFRIX_CORE_DEPLOY_KEY sibling checkout as prover-source-rebuild.
   supply-chain:
     runs-on: ubuntu-latest
     steps:
@@ -89,7 +92,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: opendlt/infrix-core
-          token: ${{ secrets.INFRIX_CORE_TOKEN || github.token }}
+          # Same read-only DEPLOY KEY as prover-source-rebuild / publish.yml
+          # (secret INFRIX_CORE_DEPLOY_KEY); github.token can't read private infrix-core.
+          ssh-key: ${{ secrets.INFRIX_CORE_DEPLOY_KEY }}
           path: infrix-core
       - uses: actions/setup-go@v5
         with:
