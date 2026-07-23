@@ -105,6 +105,17 @@ jobs:
       - name: Install workspaces
         working-directory: infrix-sdk-js/packages
         run: npm ci
+      # The 3 STANDALONE packages (typescript→@infrix/client, typescript-wallet→
+      # @infrix/wallet, assemblyscript→@infrix/sdk) are NOT in the packages/ workspace,
+      # so supply-chain-all.mjs (which packs ALL 11) needs their deps installed first —
+      # their prepack builds tsc/asc from these node_modules. Mirrors publish.yml.
+      - name: Install standalone packages
+        working-directory: infrix-sdk-js
+        run: |
+          for d in typescript typescript-wallet assemblyscript; do
+            echo "== npm ci $d =="
+            ( cd "$d" && npm ci )
+          done
       - name: Supply-chain check (all workspace packages)
         working-directory: infrix-sdk-js/packages
         env:
