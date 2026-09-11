@@ -26,6 +26,22 @@ jobs:
           go-version: '1.25.7'
       - run: go test ./... -count=1
         working-directory: tools/sdkgen
+      # The check above compares the SDK to the schema version THIS tool pins.
+      # That pin fell to v0.4.0 while the node ran v0.6.0, so the check stayed
+      # green while both unions were five goals short of what the node accepts.
+      # Refuse a pin that is behind the latest published schema release.
+      - name: The pinned infrix-schema is the latest release
+        working-directory: tools/sdkgen
+        env:
+          GOWORK: off
+        run: |
+          set -euo pipefail
+          info="$(go list -m -u -json github.com/opendlt/infrix-schema)"
+          echo "$info"
+          if echo "$info" | grep -q '"Update"'; then
+            echo "::error::tools/sdkgen pins an infrix-schema release that is not the latest; bump it (go get github.com/opendlt/infrix-schema@latest) and regenerate with go run ."
+            exit 1
+          fi
 
   packages:
     runs-on: ubuntu-latest
