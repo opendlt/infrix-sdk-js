@@ -87,6 +87,57 @@ jobs:
           INFRIX_CORE_DIR: ${{ github.workspace }}/infrix-core
         run: npm test --workspace @infrix/prover
 
+  # @infrix/client (typescript/) had NO CI lane at all: `packages` covers only the
+  # packages/ workspace, and typescript/ is standalone. Its 174 tests gated nothing,
+  # which is how its vendored-fixture drift fence sat SKIPPED from the moment the
+  # SDK was extracted out of infrix-core without anyone seeing it.
+  #
+  # Both modes are run on purpose, for the same reason prover-source-rebuild runs
+  # source-present separately:
+  #   * source-ABSENT  — what a consumer of the published package gets. The parity
+  #                      fence legitimately skips; everything else must still pass.
+  #   * source-PRESENT — infrix-nexus-web and infrix-crates (both public) checked out
+  #                      as siblings, so the fixture byte-identity fence and the
+  #                      contract result-code fence both execute. The step FAILS if
+  #                      anything skips, because a skip here is the exact condition
+  #                      that hid the broken resolver.
+  client-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+        with:
+          path: infrix-sdk-js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install @infrix/client
+        working-directory: infrix-sdk-js/typescript
+        run: npm ci
+      - name: Test source-ABSENT (published-consumer mode)
+        working-directory: infrix-sdk-js/typescript
+        run: npm test
+      - name: Checkout infrix-nexus-web (sibling, the parity-fixture source of truth)
+        uses: actions/checkout@v4
+        with:
+          repository: opendlt/infrix-nexus-web
+          path: infrix-nexus-web
+      - name: Checkout infrix-crates (sibling, the source of the contract result-code registry)
+        uses: actions/checkout@v4
+        with:
+          repository: opendlt/infrix-crates
+          path: infrix-crates
+      - name: Test source-PRESENT (the parity and result-code fences must run, not skip)
+        working-directory: infrix-sdk-js/typescript
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee client-suite.log
+          if ! grep -qE '^.* skipped 0$' client-suite.log; then
+            echo "::error::the client suite skipped a test with the fixture source present -- a skipped drift fence reads as coverage"
+            grep -E 'skipped' client-suite.log || true
+            exit 1
+          fi
+
   # Supply-chain guard (third-pass audit T2). Validates the REAL published tarball
   # of every workspace package (license, pinned deps, non-empty payload, size
   # budget, and required generated files such as the @infrix/prover WASM assets).

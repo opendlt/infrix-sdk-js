@@ -877,9 +877,26 @@ export class MissionClient {
   async sloCreate(contract: string, metric: string, target: number, window: string): Promise<void> {
     await this.rpc<void>('mission.slo.create', { contract, metric, target, window });
   }
-  async alerts(): Promise<MissionAlert[]> {
-    const r = await this.rpc<{ alerts: MissionAlert[] }>('mission.alert.list', {});
-    return r.alerts;
+  /**
+   * Firing alerts for one contract.
+   *
+   * The alert routes are per-contract because an unscoped listing discloses
+   * which contracts exist and which are failing. This used to send no contract
+   * at all and read `alerts` from a response whose list is called `active`,
+   * so it returned undefined against every node.
+   */
+  async alerts(contract: string): Promise<MissionAlert[]> {
+    const r = await this.rpc<{ active: MissionAlert[] }>('mission.alert.list', { contract });
+    return r.active ?? [];
+  }
+
+  /**
+   * Every firing alert in the repo. Audit/investigation purposes only — the
+   * node answers NOT-FOUND to any other disclosure purpose.
+   */
+  async systemAlerts(): Promise<MissionAlert[]> {
+    const r = await this.rpc<{ active: MissionAlert[] }>('mission.alert.system', {});
+    return r.active ?? [];
   }
   async cost(contract: string, period = '30d'): Promise<MissionCostReport> {
     return this.rpc<MissionCostReport>('mission.cost', { contract, period });
@@ -959,3 +976,14 @@ export * as app from './app';
 
 // Default export for convenience.
 export default InfrixClient;
+
+// A.ABI.RESULTCODE.REGISTRY: the ABI's contract result codes, so a caller can
+// tell an unknown selector apart from a domain refusal instead of seeing only
+// that the contract said no.
+export {
+  CONTRACT_RESULT_CODES,
+  classifyContractResultCode,
+  contractResultName,
+  describeContractRefusal,
+} from './contractResultCode';
+export type { ContractFailureClass, ContractRefusal } from './contractResultCode';

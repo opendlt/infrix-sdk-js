@@ -1,9 +1,9 @@
 import { SubClient } from './base';
 import type {
   AnchoredRecord,
+  AnchorStats,
   AnchorListFilter,
   AnchorVerificationResult,
-  AnchorStats,
 } from '../types/governance';
 
 /**
@@ -33,7 +33,13 @@ export class AnchorSubClient extends SubClient {
   }
 
   /**
-   * Get anchoring statistics.
+   * Anchoring statistics over the anchors THIS actor can see.
+   *
+   * Actor-scoped, not repo-wide. The node aggregates over ListWithActor, which
+   * excludes records the caller may not see, so these counts cover exactly what
+   * list() would enumerate for you. The repo-wide version was removed under the
+   * Gap 12 closure for leaking cardinality; the scoped one leaks nothing you
+   * could not already count yourself.
    */
   async stats(): Promise<AnchorStats> {
     return this.rpc<AnchorStats>('anchor.stats', {});
