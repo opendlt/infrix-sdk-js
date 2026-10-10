@@ -34,10 +34,12 @@
   "scripts": {
     "asbuild:debug": "asc assembly/wasm-entry.ts --target debug",
     "asbuild:release": "asc assembly/wasm-entry.ts --target release",
+    "asbuild:probe": "asc test/submit-probe.ts --target probe",
+    "asbuild:governance-probe": "asc test/governance-probe.ts --target governanceProbe",
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
     "build": "npm run asbuild",
     "prepack": "npm run asbuild:release",
-    "pretest": "npm run asbuild",
+    "pretest": "npm run asbuild && npm run asbuild:probe && npm run asbuild:governance-probe",
     "test": "node --test --test-reporter=spec test/*.test.mjs"
   },
   "devDependencies": {

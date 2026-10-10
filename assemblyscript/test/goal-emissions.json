@@ -1,0 +1,16 @@
+{
+  "emissions": [
+    {
+      "sdk": "assemblyscript",
+      "helper": "Governance.submitIntent",
+      "goal": {
+        "type": "CONTRACT_CALL",
+        "customParams": {
+          "contract": "acc://alice.acme/counter",
+          "function": "increment",
+          "args": "[]"
+        }
+      }
+    }
+  ]
+}
