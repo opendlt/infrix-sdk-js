@@ -18,8 +18,7 @@
         "type": "CONTRACT_CALL",
         "customParams": {
           "contract": "acc://alice.acme/counter",
-          "function": "increment",
-          "args": "[]"
+          "function": "increment"
         }
       }
     },

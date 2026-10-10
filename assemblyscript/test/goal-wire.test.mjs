@@ -131,7 +131,7 @@ test('submitIntent reaches the host through host_intent_submit, the import the p
 });
 
 test('submitIntent passes the goal type and the parameter map as separate host arguments, verbatim', async () => {
-  const params = '{"contract":"acc://alice.acme/counter","function":"increment","args":"[]"}';
+  const params = '{"contract":"acc://alice.acme/counter","function":"increment","args":"0xa1b2"}';
   const { calls, submit } = await instantiateProbe(() => ({ code: 0, id: 'intent-child-1' }));
   const id = submit('CONTRACT_CALL', params);
   assert.equal(id, 'intent-child-1');
@@ -148,7 +148,7 @@ test('submitIntent returns null when the host refuses the submission', async () 
 });
 
 test('what submitIntent emits satisfies the node declaration, and goal-emissions.json records it', async () => {
-  const params = { contract: 'acc://alice.acme/counter', function: 'increment', args: '[]' };
+  const params = { contract: 'acc://alice.acme/counter', function: 'increment', args: '0xa1b2' };
   const { calls, submit } = await instantiateProbe(() => ({ code: 0, id: 'intent-child-1' }));
   submit('CONTRACT_CALL', JSON.stringify(params));
   const emitted = { type: calls[0].goalType, customParams: JSON.parse(calls[0].paramsJSON) };

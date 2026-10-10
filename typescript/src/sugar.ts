@@ -85,17 +85,21 @@ export function withGovernanceSugar(client: InfrixClient) {
     /**
      * Call a contract function through the governed spine (canonical
      * CONTRACT_CALL: `customParams: { contract, function, args }`).
+     *
+     * `args` is the contract's ABI-encoded call data, as BYTES: a Uint8Array
+     * (sent as hex), a hex string (optional 0x), or a list of byte values
+     * 0..255. It is not JSON text - the node refuses that by name, because a
+     * JSON string is not call data. Omit it for a call that takes none.
      */
     async callContract(
       contractUrl: string,
       fn: string,
-      args: unknown[] = [],
+      args?: Uint8Array | number[] | string,
       opts?: GovernedOptions,
     ): Promise<GovernedResult> {
-      const goal: IntentGoal = {
-        type: 'CONTRACT_CALL' as IntentGoalType,
-        customParams: { contract: contractUrl, function: fn, args: JSON.stringify(args) },
-      };
+      const customParams: Record<string, unknown> = { contract: contractUrl, function: fn };
+      if (args !== undefined) customParams.args = args instanceof Uint8Array ? toHex(args) : args;
+      const goal: IntentGoal = { type: 'CONTRACT_CALL' as IntentGoalType, customParams };
       return this.submitAndWait(goal, opts);
     },
 

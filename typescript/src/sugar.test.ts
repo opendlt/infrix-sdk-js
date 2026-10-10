@@ -95,16 +95,25 @@ test('deployContract builds the canonical CONTRACT_DEPLOY wire shape and wires o
   assert.ok(r.outcome);
 });
 
-test('callContract JSON-encodes args into the canonical CONTRACT_CALL wire shape', async () => {
-  const fake = makeFake({ outcome: successOutcome });
-  const governed = withGovernanceSugar(fake);
+test('callContract sends args as call-data BYTES in the canonical CONTRACT_CALL wire shape', async () => {
+  const call = async (args?: Uint8Array | number[] | string) => {
+    const fake = makeFake({ outcome: successOutcome });
+    const governed = withGovernanceSugar(fake);
+    await governed.callContract('acc://alice.acme/counter', 'transfer', args);
+    return fake.submitted[0];
+  };
 
-  await governed.callContract('acc://alice.acme/counter', 'transfer', ['acc://bob.acme/tokens', 100]);
+  const bytes = await call(new Uint8Array([0xde, 0xad, 0xbe, 0xef]));
+  assert.equal(bytes.goalType, 'CONTRACT_CALL');
+  assert.equal(bytes.customParams?.contract, 'acc://alice.acme/counter');
+  assert.equal(bytes.customParams?.function, 'transfer');
+  assert.equal(bytes.customParams?.args, 'deadbeef', 'a Uint8Array travels as hex');
 
-  assert.equal(fake.submitted[0].goalType, 'CONTRACT_CALL');
-  assert.equal(fake.submitted[0].customParams?.contract, 'acc://alice.acme/counter');
-  assert.equal(fake.submitted[0].customParams?.function, 'transfer');
-  assert.equal(fake.submitted[0].customParams?.args, '["acc://bob.acme/tokens",100]');
+  assert.equal((await call('0xdeadbeef')).customParams?.args, '0xdeadbeef', 'a hex string is passed through verbatim');
+  assert.deepEqual((await call([1, 2, 255])).customParams?.args, [1, 2, 255], 'a list of byte values is passed through');
+
+  const none = await call();
+  assert.ok(!('args' in (none.customParams ?? {})), 'a call with no data omits args instead of sending JSON text');
 });
 
 test('upgradeContract builds the canonical CONTRACT_UPGRADE wire shape with newCode', async () => {

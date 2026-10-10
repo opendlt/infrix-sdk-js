@@ -157,7 +157,7 @@ async function collectEmissions(): Promise<Emission[]> {
   record('deployContract', sugarGoals, mark);
 
   mark = sugarGoals.length;
-  await governed.callContract('acc://alice.acme/counter', 'increment', [], wait);
+  await governed.callContract('acc://alice.acme/counter', 'increment', undefined, wait);
   record('callContract', sugarGoals, mark);
 
   mark = sugarGoals.length;

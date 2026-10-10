@@ -8,7 +8,7 @@
         "customParams": {
           "contract": "acc://alice.acme/counter",
           "function": "increment",
-          "args": "[]"
+          "args": "0xa1b2"
         }
       }
     }
