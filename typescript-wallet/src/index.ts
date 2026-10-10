@@ -15,9 +15,9 @@
  * const result = await wallet.submitIntent({
  *   type: 'CONTRACT_CALL',
  *   customParams: {
- *     contractAddress: 'acc://game.acme/counter',
+ *     contract: 'acc://game.acme/counter',
  *     function: 'increment',
- *     arguments: [],
+ *     args: '[]',
  *   },
  * });
  *
@@ -35,7 +35,13 @@ export type {
   RecoveryRequest,
   SponsorConfig,
   WalletAmountResult,
+  ApproveIntentOptions,
+  ApprovalSubmitResult,
 } from './wallet';
+
+// Canonical approval signing (session 37, S24)
+export { approvalSigningPreimage, approvalSigningDigest, bindApprovalSigningRequest, settlementApprovalPreimage } from './approval-signing';
+export type { ApprovalSigningRequest, SettlementApprovalStatement } from './approval-signing';
 
 // Key store
 export { MemoryKeyStore } from './keystore';

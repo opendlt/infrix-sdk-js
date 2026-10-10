@@ -3,6 +3,7 @@ import type { InfrixClient } from './index';
 import type {
   IntentGoal,
   IntentGoalType,
+  CapabilityGrantScope,
   GoverningObject,
   CapabilityGrant,
   RoleBinding,
@@ -84,17 +85,21 @@ export function withGovernanceSugar(client: InfrixClient) {
     /**
      * Call a contract function through the governed spine (canonical
      * CONTRACT_CALL: `customParams: { contract, function, args }`).
+     *
+     * `args` is the contract's ABI-encoded call data, as BYTES: a Uint8Array
+     * (sent as hex), a hex string (optional 0x), or a list of byte values
+     * 0..255. It is not JSON text - the node refuses that by name, because a
+     * JSON string is not call data. Omit it for a call that takes none.
      */
     async callContract(
       contractUrl: string,
       fn: string,
-      args: unknown[] = [],
+      args?: Uint8Array | number[] | string,
       opts?: GovernedOptions,
     ): Promise<GovernedResult> {
-      const goal: IntentGoal = {
-        type: 'CONTRACT_CALL' as IntentGoalType,
-        customParams: { contract: contractUrl, function: fn, args: JSON.stringify(args) },
-      };
+      const customParams: Record<string, unknown> = { contract: contractUrl, function: fn };
+      if (args !== undefined) customParams.args = args instanceof Uint8Array ? toHex(args) : args;
+      const goal: IntentGoal = { type: 'CONTRACT_CALL' as IntentGoalType, customParams };
       return this.submitAndWait(goal, opts);
     },
 
@@ -139,12 +144,11 @@ export function withGovernanceSugar(client: InfrixClient) {
       fields: Record<string, unknown>,
       opts?: GovernedOptions,
     ): Promise<GovernedResult<GoverningObject>> {
+      // OBJECT_CREATE declares objectType + fields (customParams); the node
+      // refuses a goal that carries only a targetState.
       const goal: IntentGoal = {
         type: 'OBJECT_CREATE',
-        targetState: {
-          stateType: type,
-          parameters: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, String(v)])),
-        },
+        customParams: { objectType: type, fields },
       };
       const result = await client.intents.submit(goal);
       return normalize<GoverningObject>(result as unknown as SubmittedLike, opts);
@@ -152,19 +156,37 @@ export function withGovernanceSugar(client: InfrixClient) {
 
     /**
      * Grant a capability via the intent pipeline.
+     *
+     * CAPABILITY_GRANT declares four required customParams — granteeId,
+     * capabilities, workflowStageScope and purpose — and the node refuses a grant
+     * missing any of them at admission. There is no default for the last two (a
+     * default would be an ambient grant: exercisable at every stage, for every
+     * purpose), so the caller states them in `scope`.
      */
     async grantCapability(
       grantee: string,
       capabilities: string[],
-      scope?: { contractUrl?: string; domain?: string },
+      scope: CapabilityGrantScope,
       opts?: GovernedOptions,
     ): Promise<GovernedResult<CapabilityGrant>> {
+      if (!scope || !scope.workflowStageScope || !scope.purpose) {
+        throw new Error(
+          "grantCapability: scope.workflowStageScope (a stage name, or '*' for every stage) and " +
+            'scope.purpose (audit | compliance | operational | investigation | counterparty) are ' +
+            'required; the node refuses a CAPABILITY_GRANT without them',
+        );
+      }
+      // The grant is scoped to a contract by targetScope (unscoped otherwise).
+      const customParams: Record<string, unknown> = {
+        granteeId: grantee,
+        capabilities,
+        workflowStageScope: scope.workflowStageScope,
+        purpose: scope.purpose,
+      };
+      if (scope.contractUrl) customParams.targetScope = scope.contractUrl;
       const goal: IntentGoal = {
         type: 'CAPABILITY_GRANT',
-        targetState: {
-          stateType: 'capability_grant',
-          parameters: { grantee, capabilities: capabilities.join(','), scope: JSON.stringify(scope ?? {}) },
-        },
+        customParams,
       };
       const result = await client.intents.submit(goal);
       return normalize<CapabilityGrant>(result as unknown as SubmittedLike, opts);

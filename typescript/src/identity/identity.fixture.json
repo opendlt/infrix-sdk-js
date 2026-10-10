@@ -26,7 +26,20 @@
   },
   "signatureRequest": {
     "action": "Release 100 ACME from escrow to acc://bob.acme",
-    "goalType": "SEND_TOKENS",
+    "goalType": "SETTLEMENT",
+    "customParams": {
+      "method": "atomic",
+      "legs": [
+        {
+          "kind": "direct",
+          "domain": "local",
+          "assetType": "ACME",
+          "amount": 100,
+          "fromVault": "acc://alice.acme/vault",
+          "toVault": "acc://bob.acme/vault"
+        }
+      ]
+    },
     "sourceAssets": [
       {
         "asset": "ACME",

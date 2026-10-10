@@ -17,12 +17,14 @@ npm install @infrix/sdk
 ```ts
 import { Governance } from "@infrix/sdk";
 
-// Submit a governed transfer intent — the canonical surface.
-Governance.submitIntent("GOVERNED_TRANSFER", {
-  from: "acc://alice.acme",
-  to: "acc://bob.acme",
-  amount: 100,
-});
+// Call a contract through the governed spine — the canonical surface. The goal
+// type is one of the node's goals; its parameters are that goal's customParams
+// (CONTRACT_CALL declares `contract` and `function`). The contract's manifest
+// must declare the "intent:submit" capability.
+const params = String.UTF8.encode(
+  '{"contract":"acc://alice.acme/counter","function":"increment"}',
+);
+const childIntentId = Governance.submitIntent("CONTRACT_CALL", Uint8Array.wrap(params));
 ```
 
 Low-level contract storage (executed under an approved plan):

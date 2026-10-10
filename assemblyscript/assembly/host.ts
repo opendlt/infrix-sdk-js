@@ -66,20 +66,20 @@ export declare function host_env_block_height(): u64;
 @external("infrix", "host_env_block_time")
 export declare function host_env_block_time(): u64;
 
-/** Get the value (tokens) sent with the call (32 bytes) */
+/** Get the value (tokens) sent with the call (32 bytes). Returns 32. */
 // @ts-ignore: decorator
 @external("infrix", "host_env_value")
-export declare function host_env_value(output_ptr: usize): void;
+export declare function host_env_value(output_ptr: usize): i32;
 
 /** Get the remaining gas */
 // @ts-ignore: decorator
 @external("infrix", "host_env_gas_remaining")
 export declare function host_env_gas_remaining(): u64;
 
-/** Get the transaction hash (32 bytes) */
+/** Get the transaction hash (32 bytes). Returns 32. */
 // @ts-ignore: decorator
 @external("infrix", "host_env_tx_hash")
-export declare function host_env_tx_hash(output_ptr: usize): void;
+export declare function host_env_tx_hash(output_ptr: usize): i32;
 
 // =============================================================================
 // L0 Account Operations
@@ -328,39 +328,47 @@ export declare function host_assert(
 // Governance Operations
 // =============================================================================
 
-/** Submit an intent. Returns result length or negative error. */
+/**
+ * Submit a CHILD INTENT — the one way a contract initiates governance. The goal
+ * type and its parameter map are two distinct arguments (the node validates the
+ * map as that goal's customParams). Returns the child intent id's byte length,
+ * written at out_id_ptr, or a negative ABI result code.
+ *
+ * This is the import the platform's "infrix" module exports for the purpose
+ * (pkg/executor/wazero_infrix_module.go, host_intent_submit); the signature is
+ * the one the Rust SDK declares. The earlier `host_governance_submit_intent`
+ * declaration named an import the platform has never exported, so a module that
+ * referenced it failed to LINK.
+ */
 // @ts-ignore: decorator
-@external("infrix", "host_governance_submit_intent")
-export declare function host_governance_submit_intent(
-  goal_ptr: usize,
-  goal_len: u32,
-  output_ptr: usize
+@external("infrix", "host_intent_submit")
+export declare function host_intent_submit(
+  goal_type_ptr: usize,
+  goal_type_len: u32,
+  params_ptr: usize,
+  params_len: u32,
+  out_id_ptr: usize,
+  out_id_max_len: u32
 ): i32;
 
-/** Get intent status. Returns result length or negative error. */
-// @ts-ignore: decorator
-@external("infrix", "host_governance_get_intent_status")
-export declare function host_governance_get_intent_status(
-  intent_id_ptr: usize,
-  intent_id_len: u32,
-  output_ptr: usize
-): i32;
+// -----------------------------------------------------------------------------
+// The governance reads the platform serves under its own names. These were
+// declared as host_governance_get_object / host_governance_evaluate_policy,
+// names the platform has never exported; the platform serves the same reads as
+// host_object_read and host_policy_evaluate (the names the Rust SDK declares),
+// and a second name for one function would be a second door.
+// -----------------------------------------------------------------------------
 
-/** Create a governed object. Returns ID length or negative error. */
+/**
+ * Read a governed object, disclosure-gated: the contract is the actor and the
+ * purpose is "operational", so fields it holds no grant for come back redacted.
+ * Returns the JSON length written at output_ptr, or -1 when absent. The result
+ * is at most 64 KiB (the buffer every SDK reserves); a larger one answers a
+ * negative code instead of overrunning it.
+ */
 // @ts-ignore: decorator
-@external("infrix", "host_governance_create_object")
-export declare function host_governance_create_object(
-  type_ptr: usize,
-  type_len: u32,
-  fields_ptr: usize,
-  fields_len: u32,
-  output_ptr: usize
-): i32;
-
-/** Get a governed object. Returns data length or negative error. */
-// @ts-ignore: decorator
-@external("infrix", "host_governance_get_object")
-export declare function host_governance_get_object(
+@external("infrix", "host_object_read")
+export declare function host_object_read(
   type_ptr: usize,
   type_len: u32,
   id_ptr: usize,
@@ -368,7 +376,61 @@ export declare function host_governance_get_object(
   output_ptr: usize
 ): i32;
 
-/** Transition an object state. Returns 0 on success or negative error. */
+/**
+ * Ask the policy registry for a decision about THIS CONTRACT'S OWN scope. The
+ * contract names a policy type and nothing else: the scope is pinned by the host
+ * and the evaluation context is the platform's. Returns the decision's JSON
+ * length, or a negative ABI result code.
+ */
+// @ts-ignore: decorator
+@external("infrix", "host_policy_evaluate")
+export declare function host_policy_evaluate(
+  type_ptr: usize,
+  type_len: u32,
+  output_ptr: usize
+): i32;
+
+// -----------------------------------------------------------------------------
+// The host_governance_* family, served by pkg/executor/wazero_infrix_governance.go.
+// Every write is a CHILD INTENT (it returns the child intent's id, not an
+// object); every read is bounded to what the calling contract may see.
+// -----------------------------------------------------------------------------
+
+/**
+ * Read the lifecycle status of an intent this contract submitted (or is
+ * executing under). Writes the bare status word at output_ptr and returns its
+ * length; negative on refusal (Unauthorized for anything it may not read).
+ */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_get_intent_status")
+export declare function host_governance_get_intent_status(
+  intent_id_ptr: usize,
+  intent_id_len: u32,
+  output_ptr: usize,
+  output_max: u32
+): i32;
+
+/**
+ * Submit an OBJECT_CREATE child intent. Returns the child intent id's length
+ * (written at output_ptr) or a negative ABI result code. Needs the intent:submit
+ * and object:create capabilities and a manifest object scope for the type.
+ */
+// @ts-ignore: decorator
+@external("infrix", "host_governance_create_object")
+export declare function host_governance_create_object(
+  type_ptr: usize,
+  type_len: u32,
+  fields_ptr: usize,
+  fields_len: u32,
+  output_ptr: usize,
+  output_max: u32
+): i32;
+
+/**
+ * Submit an OBJECT_TRANSITION child intent. Returns the child intent id's length
+ * or a negative ABI result code. Needs intent:submit, object:mutate and a write
+ * scope for the type.
+ */
 // @ts-ignore: decorator
 @external("infrix", "host_governance_transition_object")
 export declare function host_governance_transition_object(
@@ -377,10 +439,16 @@ export declare function host_governance_transition_object(
   id_ptr: usize,
   id_len: u32,
   state_ptr: usize,
-  state_len: u32
+  state_len: u32,
+  output_ptr: usize,
+  output_max: u32
 ): i32;
 
-/** Check if identity has capability. Returns 1 if yes, 0 if no. */
+/**
+ * Whether an identity holds a capability through an active, unexpired,
+ * unconditional grant in scope for this contract. 1 yes, 0 no; an empty identity
+ * is the caller. Needs capability:read.
+ */
 // @ts-ignore: decorator
 @external("infrix", "host_governance_has_capability")
 export declare function host_governance_has_capability(
@@ -390,7 +458,11 @@ export declare function host_governance_has_capability(
   cap_len: u32
 ): i32;
 
-/** Grant capability. Returns grant ID length or negative error. */
+/**
+ * Submit a CAPABILITY_GRANT child intent. Returns the child intent id's length or
+ * a negative ABI result code. Needs intent:submit, capability:grant and a write
+ * scope on capability_grant.
+ */
 // @ts-ignore: decorator
 @external("infrix", "host_governance_grant_capability")
 export declare function host_governance_grant_capability(
@@ -398,12 +470,17 @@ export declare function host_governance_grant_capability(
   grantee_len: u32,
   caps_ptr: usize,
   caps_len: u32,
-  scope_ptr: usize,
-  scope_len: u32,
-  output_ptr: usize
+  target_ptr: usize,
+  target_len: u32,
+  stage_ptr: usize,
+  stage_len: u32,
+  purpose_ptr: usize,
+  purpose_len: u32,
+  output_ptr: usize,
+  output_max: u32
 ): i32;
 
-/** Check if identity has role. Returns 1 if yes, 0 if no. */
+/** Whether an identity holds a role now. 1 yes, 0 no; an empty identity is the caller. Needs role:read. */
 // @ts-ignore: decorator
 @external("infrix", "host_governance_has_role")
 export declare function host_governance_has_role(
@@ -413,7 +490,12 @@ export declare function host_governance_has_role(
   role_len: u32
 ): i32;
 
-/** Require approval. Returns 0 on success, negative if approval not met. */
+/**
+ * Whether the approvals that authorised this execution include at least
+ * `threshold` distinct approvers in `role`, and are still valid. 1 met, 0 not
+ * met, negative when it could not be answered. It does not open an approval and
+ * does not suspend the call. Needs approval:read.
+ */
 // @ts-ignore: decorator
 @external("infrix", "host_governance_require_approval")
 export declare function host_governance_require_approval(
@@ -422,24 +504,16 @@ export declare function host_governance_require_approval(
   threshold: u32
 ): i32;
 
-/** Evaluate policy. Returns result length or negative error. */
-// @ts-ignore: decorator
-@external("infrix", "host_governance_evaluate_policy")
-export declare function host_governance_evaluate_policy(
-  scope_ptr: usize,
-  scope_len: u32,
-  type_ptr: usize,
-  type_len: u32,
-  operands_ptr: usize,
-  operands_len: u32,
-  output_ptr: usize
-): i32;
-
-/** Get evidence bundle. Returns data length or negative error. */
+/**
+ * The evidence bundle of an intent this contract may read, as JSON, in the
+ * disclosure-redacted form an operational reader gets. Returns its length or a
+ * negative ABI result code. Needs evidence:read.
+ */
 // @ts-ignore: decorator
 @external("infrix", "host_governance_get_evidence")
 export declare function host_governance_get_evidence(
   intent_id_ptr: usize,
   intent_id_len: u32,
-  output_ptr: usize
+  output_ptr: usize,
+  output_max: u32
 ): i32;

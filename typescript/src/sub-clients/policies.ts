@@ -101,9 +101,14 @@ export class PolicySubClient extends SubClient {
   }
 
   /**
-   * Get a specific policy rule by ID.
+   * Get a specific policy set or rule by ID.
+   *
+   * Searches ONE scope, defaulting to global. The node has no all-scopes
+   * lookup on purpose: an unscoped walk would tell any caller which contracts
+   * have policies bound. Pass `contract:<url>`, `obj:<url>` or `parent:<adi>`
+   * to search elsewhere; a miss names the scope that was searched.
    */
-  async get(ruleId: string): Promise<PolicyRule> {
-    return this.rpc<PolicyRule>('policy.get', { ruleId });
+  async get(ruleId: string, scope?: string): Promise<PolicyRule> {
+    return this.rpc<PolicyRule>('policy.get', { ruleId, scope });
   }
 }

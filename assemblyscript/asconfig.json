@@ -6,6 +6,18 @@
       "sourceMap": true,
       "debug": true
     },
+    "probe": {
+      "outFile": "build/submit-probe.wasm",
+      "textFile": "build/submit-probe.wat",
+      "optimizeLevel": 0,
+      "debug": true
+    },
+    "governanceProbe": {
+      "outFile": "build/governance-probe.wasm",
+      "textFile": "build/governance-probe.wat",
+      "optimizeLevel": 0,
+      "debug": true
+    },
     "release": {
       "outFile": "build/release.wasm",
       "textFile": "build/release.wat",

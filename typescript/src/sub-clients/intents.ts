@@ -1,5 +1,6 @@
 import { SubClient } from './base';
 import type {
+  GovernedApproveResult,
   Intent,
   IntentGoal,
   IntentResult,
@@ -36,7 +37,7 @@ export class IntentSubClient extends SubClient {
    *   customParams: {
    *     contract: 'acc://mytoken.acme',
    *     function: 'transfer',
-   *     args: ['acc://bob.acme/tokens', '100'],
+   *     args: JSON.stringify(['acc://bob.acme/tokens', '100']),
    *   },
    * });
    * ```
@@ -80,29 +81,34 @@ export class IntentSubClient extends SubClient {
   }
 
   /**
-   * Approve an intent's execution plan.
+   * Record a signed approval of a parked stage and resume the plan
+   * (intent.approve / governed.approve).
    *
-   * Submits a signed approval for the specified plan hash. If the plan
-   * has gathered enough approvals, execution proceeds automatically.
+   * `signature` is an Ed25519 signature over the canonical approval preimage
+   * published by `approvals.signing()` — sign with @infrix/wallet's
+   * bindApprovalSigningRequest, never over a caller-chosen payload. The node
+   * verifies it against `keyPageRef` on L0 (session 37, S24).
    *
-   * @param intentId - The intent to approve
-   * @param planHash - SHA-256 hash of the plan being approved
-   * @param opts - Optional: identity, role, conditions, scope
-   * @returns Updated IntentResult reflecting approval status
+   * @param intentId - The parked intent
+   * @param planHash - Hex plan hash (must equal the active plan's)
+   * @param opts - approver, role, keyPageRef, signature, signerPublicKey, stageId
    */
   async approve(
     intentId: string,
     planHash: string,
-    opts?: {
-      identity?: string;
+    opts: {
+      approver: string;
       role?: string;
-      conditions?: Record<string, unknown>;
-      scope?: Record<string, unknown>;
+      keyPageRef: string;
+      signature: string;
+      signerPublicKey: string;
+      stageId?: string;
     }
-  ): Promise<IntentResult> {
-    return this.rpc<IntentResult>('intent.approve', {
+  ): Promise<GovernedApproveResult> {
+    return this.rpc<GovernedApproveResult>('intent.approve', {
       intentId,
       planHash,
+      signatureAlgorithm: 'ed25519',
       ...opts,
     });
   }

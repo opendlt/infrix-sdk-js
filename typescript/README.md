@@ -12,16 +12,16 @@ npm install @infrix/client
 ## Usage
 
 ```ts
-import { Infrix } from "@infrix/client";
+import { InfrixClient, withGovernanceSugar } from "@infrix/client";
 
 // Submit a governed intent describing a desired outcome; plans, policies,
-// approvals, evidence, and anchoring are handled by the Infrix spine.
-const infrix = new Infrix({ endpoint: "https://…" });
-await infrix.submitIntent("GOVERNED_TRANSFER", {
-  from: "acc://alice.acme",
-  to: "acc://bob.acme",
-  amount: 100,
-});
+// approvals, evidence, and anchoring are handled by the Infrix spine. Every
+// goal type is one of the node's (see INTENT_GOAL_TYPES), and carries the
+// customParams that goal declares: CONTRACT_CALL needs `contract` and `function`.
+const client = withGovernanceSugar(
+  new InfrixClient("kermit", { actor: "acc://alice.acme", purpose: "demo" }),
+);
+const result = await client.callContract("acc://alice.acme/counter", "increment");
 ```
 
 The package also ships the `create-infrix-app` scaffolding CLI:

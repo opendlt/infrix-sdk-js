@@ -22,95 +22,134 @@ export interface Intent {
 }
 
 /**
- * Intent goal types matching Go IntentGoalType constants in
- * pkg/intent/types.go. The mediator dispatches by exact string match,
- * so this union MUST stay in perfect parity with ValidGoalTypes.
+ * Intent goal types: exactly the node's `ValidGoalTypes` (infrix-schema
+ * `intent.ValidGoalTypes`). The mediator dispatches by exact string match, so a
+ * goal missing here cannot be NAMED by a typed client and a goal that is not the
+ * node's is REFUSED at admission.
  *
- * P2-002 closure: the body of this union is generated from the Go
- * source of truth by `pkg/codegen/sdk_goals.go::Generate`. Run
- * `go run ./cmd/sdkgen` after changing the Go enum; the matching
- * fence test (`pkg/codegen/sdk_goals_test.go::
- * TestSDKGoals_GeneratedFilesUpToDate`) fails CI if this region drifts
- * from the canonical map. Hand-edit the markers' inner content at your
- * peril — codegen will overwrite it.
+ * The body of this union is generated, not written: `tools/sdkgen` rewrites the
+ * region between the SDKGEN markers from `goal-vocabulary.json` at the repo root,
+ * which infrix-core generates from the code its admission path runs
+ * (`go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary`).
+ * Run `go run .` in `tools/sdkgen` after refreshing that file. Three fences keep
+ * this honest: `tools/sdkgen`'s tests, `src/goalVocabulary.test.ts`, and
+ * infrix-core's `pkg/release` SDKGoalParity fence, which parses this union
+ * independently of the generator.
  *
  * The standalone single-leg transfer and escrow-create goal types were
  * removed in Gap 13 first-pass; those flows now route through
  * 'SETTLEMENT' with the appropriate method.
  */
 // SDKGEN-BEGIN(intent_goal_type)
-export type IntentGoalType =
-  | 'CONVERT'
-  | 'EARN_YIELD'
-  | 'BORROW'
-  | 'PROVIDE_LIQUIDITY'
-  | 'SWAP'
-  | 'STAKE'
-  | 'BRIDGE'
-  | 'COMPOUND'
-  | 'CUSTOM'
-  | 'OBJECT_CREATE'
-  | 'OBJECT_MUTATE'
-  | 'POLICY_BIND'
-  | 'CAPABILITY_GRANT'
-  | 'WORKFLOW_START'
-  | 'CREDENTIAL_ISSUE'
-  | 'CREDENTIAL_REVOKE'
-  | 'VAULT_CREATE'
-  | 'SETTLEMENT'
-  | 'SETTLEMENT_NETTING'
-  | 'OBJECT_TRANSITION'
-  | 'POLICY_CHANGE'
-  | 'CONTRACT_UPGRADE'
-  | 'PATCH_PROPAGATION'
-  | 'REVERT_TRANSACTION'
-  | 'ROLE_ASSIGN'
-  | 'ROLE_REVOKE'
-  | 'ROLE_SUSPEND'
-  | 'ROLE_EMERGENCY'
-  | 'ROLE_NORMALIZE'
-  | 'DISCLOSURE_GRANT'
-  | 'DISCLOSURE_REVOKE'
-  | 'DISCLOSURE_REGISTER_KEY'
-  | 'CONTRACT_DEPLOY'
-  | 'CONTRACT_CALL'
-  | 'EVM_DEPLOY'
-  | 'EVM_CALL'
-  | 'SWARM_CREATE'
-  | 'SWARM_JOIN'
-  | 'SWARM_COORDINATE'
-  | 'SWARM_DISSOLVE'
-  | 'SHAPE_TRANSITION'
-  | 'BRIDGE_SEND'
-  | 'BRIDGE_RECEIVE'
-  | 'CAPABILITY_REVOKE'
-  | 'POLICY_UNBIND'
-  | 'ANCHOR_FORCE'
-  | 'TRUST_PROFILE_CREATE'
-  | 'TRUST_PROFILE_UPDATE'
-  | 'BOOTSTRAP_ROLE'
-  | 'SYSTEM_ANCHOR_PERIODIC'
-  | 'APPROVAL_INVALIDATE'
-  | 'ROLE_EXPIRE'
-  | 'CAPABILITY_EXPIRE'
-  | 'SPONSOR_REGISTER'
-  | 'SPONSOR_UPDATE'
-  | 'SPONSOR_REVOKE'
-  | 'SPONSOR_PAUSE'
-  | 'SPONSOR_RESUME'
-  | 'DISPUTE_RESOLVE'
-  | 'RULE_PACK_EVAL'
-  | 'VERIFIER_RUN'
-  | 'EXTERNAL_ADAPTER_CALL'
-  | 'AGENT_RUN'
-  | 'CONFIDENTIAL_EXEC'
-  | 'SUBSYSTEM_ACTION'
-  | 'PLUGIN_UPGRADE'
-  | 'PLUGIN_REGISTER'
-  | 'GAS_SCHEDULE_UPDATE'
-  | 'RATE_LIMIT_UPDATE'
-  | 'SESSION_KEY_DELEGATE';
+export const INTENT_GOAL_TYPES = [
+  'AGENT_RUN',
+  'ANCHOR_FORCE',
+  'APPROVAL_INVALIDATE',
+  'BOOTSTRAP_CAPABILITY',
+  'BOOTSTRAP_ROLE',
+  'BORROW',
+  'BRIDGE',
+  'BRIDGE_RECEIVE',
+  'BRIDGE_SEND',
+  'CAPABILITY_EXPIRE',
+  'CAPABILITY_GRANT',
+  'CAPABILITY_REVOKE',
+  'COMPOUND',
+  'CONFIDENTIAL_EXEC',
+  'CONTRACT_CALL',
+  'CONTRACT_DEPLOY',
+  'CONTRACT_UPGRADE',
+  'CONVERT',
+  'COSMWASM_EXEC',
+  'CREDENTIAL_ISSUE',
+  'CREDENTIAL_REVOKE',
+  'CUSTOM',
+  'DISCLOSURE_APPROVE',
+  'DISCLOSURE_EXPIRE',
+  'DISCLOSURE_GRANT',
+  'DISCLOSURE_REGISTER_KEY',
+  'DISCLOSURE_REVOKE',
+  'DISPUTE_RESOLVE',
+  'EARN_YIELD',
+  'EBPF_EXEC',
+  'EVM_CALL',
+  'EVM_DEPLOY',
+  'EXTERNAL_ADAPTER_CALL',
+  'GAS_SCHEDULE_UPDATE',
+  'MOVE_EXEC',
+  'OBJECT_CREATE',
+  'OBJECT_MUTATE',
+  'OBJECT_TRANSITION',
+  'PATCH_PROPAGATION',
+  'PENDING_REAP',
+  'PLUGIN_REGISTER',
+  'PLUGIN_UPGRADE',
+  'POLICY_BIND',
+  'POLICY_CHANGE',
+  'POLICY_UNBIND',
+  'PROVIDE_LIQUIDITY',
+  'RATE_LIMIT_UPDATE',
+  'REVERT_TRANSACTION',
+  'ROLE_ASSIGN',
+  'ROLE_EMERGENCY',
+  'ROLE_EXPIRE',
+  'ROLE_NORMALIZE',
+  'ROLE_POLICY_RECHECK',
+  'ROLE_REVOKE',
+  'ROLE_SUSPEND',
+  'RULE_PACK_EVAL',
+  'SESSION_KEY_DELEGATE',
+  'SETTLEMENT',
+  'SETTLEMENT_FINALITY_SWEEP',
+  'SETTLEMENT_NETTING',
+  'SHAPE_TRANSITION',
+  'SPONSOR_PAUSE',
+  'SPONSOR_REGISTER',
+  'SPONSOR_RESUME',
+  'SPONSOR_REVOKE',
+  'SPONSOR_UPDATE',
+  'STAKE',
+  'SUBSYSTEM_ACTION',
+  'SVM_EXEC',
+  'SWAP',
+  'SWARM_COORDINATE',
+  'SWARM_CREATE',
+  'SWARM_DISSOLVE',
+  'SWARM_JOIN',
+  'SYSTEM_ANCHOR_PERIODIC',
+  'TRUST_FRESHNESS_SWEEP',
+  'TRUST_PROFILE_CREATE',
+  'TRUST_PROFILE_UPDATE',
+  'VAULT_CREATE',
+  'VERIFIER_RUN',
+  'WORKFLOW_START',
+] as const;
+export type IntentGoalType = (typeof INTENT_GOAL_TYPES)[number];
 // SDKGEN-END(intent_goal_type)
+
+const INTENT_GOAL_TYPE_SET: ReadonlySet<string> = new Set<string>(INTENT_GOAL_TYPES);
+
+/**
+ * True when `value` is a goal type the node accepts. Use it to validate a goal
+ * string that did not come from the typed union (CLI input, JSON, a prompt).
+ */
+export function isIntentGoalType(value: unknown): value is IntentGoalType {
+  return typeof value === 'string' && INTENT_GOAL_TYPE_SET.has(value);
+}
+
+/**
+ * The scope a CAPABILITY_GRANT states. The node declares `workflowStageScope`
+ * and `purpose` required and has no default for either: a default would be an
+ * ambient grant, exercisable at every stage and for every purpose.
+ */
+export interface CapabilityGrantScope {
+  /** A workflow stage name, or '*' to opt into every stage. */
+  workflowStageScope: string;
+  /** Why the capability is granted (a bounded set). */
+  purpose: DisclosurePurpose;
+  /** Scope the grant to one contract (`targetScope`); unscoped when omitted. */
+  contractUrl?: string;
+}
 
 /** The desired outcome of an intent. */
 export interface IntentGoal {
@@ -674,7 +713,8 @@ export interface ApprovalEnvelope {
   signature: string;
   signerPublicKey: string;
   signatureAlgorithm: 'ed25519';
-  signaturePayload: string;
+  /** @deprecated Approvals are signed over the canonical preimage; nodes do not return this. */
+  signaturePayload?: string;
   signedAt?: string;          // ISO 8601
   createdAt: string;
   expiresAt?: string;
@@ -729,12 +769,67 @@ export interface ApprovalSubmitOptions {
   role?: string;
   conditions?: Record<string, unknown>;
   scope?: ApprovalScope;
+  /**
+   * Hex Ed25519 signature over the CANONICAL approval preimage published by
+   * `approvals.signing()` (sign with @infrix/wallet's bindApprovalSigningRequest).
+   * The node verifies it in the approval store, against `keyPageRef` on L0.
+   */
   signature: string;
+  /** Hex Ed25519 public key; sha256 of it must be an entry on `keyPageRef`. */
   signerPublicKey: string;
   signatureAlgorithm: 'ed25519';
-  signaturePayload: string;
+  /** Accumulate key page holding the signing key (required by the node). */
+  keyPageRef: string;
+  /** Why the approval is given (>= 10 characters); required on the stage path. */
+  rationale?: string;
+  /**
+   * @deprecated Ignored. Approvals are signed over the canonical preimage, not
+   * over a caller-chosen payload (session 37, S24).
+   */
+  signaturePayload?: string;
   stageId?: string;
   expiresAt?: string;
+}
+
+/** Result of a signed stage approval (intent.approve / governed.approve / approval.submit). */
+export interface GovernedApproveResult {
+  intentId: string;
+  stageId: string;
+  approvalId: string;
+  status: 'resumed' | 'awaiting_more_approvals';
+  succeeded?: boolean;
+  outcomeId?: string;
+  evidenceId?: string;
+  anchorId?: string;
+  detail?: string;
+}
+
+/**
+ * What an approver must sign for a parked stage (approval.signing /
+ * GET /v4/intents/approval-signing). Recompute `digest` from the fields before
+ * signing — never sign a digest you did not derive.
+ */
+export interface ApprovalSigningRequest {
+  networkId?: string;
+  workflowId: string;
+  stageId: string;
+  planHash: number[] | string;
+  scope?: {
+    contractUrl?: string;
+    functions?: string[];
+    maxAmount?: number;
+    maxGas?: number;
+    targetAssets?: string[];
+  };
+  simulationHash: number[] | string;
+  ghostReceiptId?: string;
+  conditions?: { minBlockHeight?: number; maxBlockHeight?: number; requiredState?: string };
+  expiresAtBlock?: number;
+  signerIdentity: string;
+  signerRole?: string;
+  keyPageRef: string;
+  signerPublicKey?: string;
+  digest: string;
 }
 
 // =============================================================================
@@ -953,10 +1048,45 @@ export interface TrustProfile {
   minConfirmations?: number;
   validatorSetSize?: number;
   quorumThreshold?: string;
+  /**
+   * The GOVERNED validator set a bridge profile's quorum proofs are verified
+   * against. Set only by TRUST_PROFILE_CREATE / TRUST_PROFILE_UPDATE (each
+   * parks for admin approval); every change bumps the profile version.
+   */
+  bridgeValidators?: BridgeValidator[];
   cryptoAssumptions?: string[];
   bridgePausable?: boolean;
   upgradePolicy?: string;
   auditStatus?: string;
+}
+
+/** One member of a governed bridge validator set. */
+export interface BridgeValidator {
+  /** 32-byte validator id, hex. */
+  id: string;
+  /** Public key, hex: 32 bytes (ed25519) or 33/65 bytes (secp256k1). */
+  publicKey: string;
+  algorithm: 'ed25519' | 'secp256k1';
+  /** Stake weight, a positive decimal integer. */
+  stake: string;
+}
+
+/**
+ * Body of POST /v4/bridge/receive. It names the message and carries the
+ * proof; what the proof is verified against (verifier, validator set,
+ * threshold) comes from the node's governed bridge-<sourceChain> trust
+ * profile. A body carrying verifierId, expectedClaims, proof or proofType is
+ * refused by name (400): the proof has exactly one key, proofHex.
+ */
+export interface BridgeReceiveRequest {
+  sourceChain: string;
+  messageId: string;
+  /** Hex SHA-256 of the payload the validator quorum signed. */
+  payloadHash: string;
+  /** Hex JSON BridgeQuorumPresentation over the canonical bridge message. */
+  proofHex: string;
+  actor: string;
+  trustProfileId?: string;
 }
 
 export type BridgeProofType =

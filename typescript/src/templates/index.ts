@@ -157,7 +157,9 @@ ${printResult}
 const governed = withGovernanceSugar(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080'));
 // Await a fully hydrated result; export + offline-verify the proof in one call.
 const r = await governed.submitAndWait(
-  { type: 'SUBMIT_GOVERNED', customParams: { action: 'approve-budget' } },
+  // SUBMIT_GOVERNED is not a goal type; a governed approval record is an
+  // OBJECT_CREATE carrying the object type and its fields.
+  { type: 'OBJECT_CREATE', customParams: { objectType: 'budget_approval', fields: { action: 'approve-budget' } } },
   { exportProof: true, verifyProofLocal: true },
 );
 printGoverned('governed approval:', r);
@@ -203,7 +205,9 @@ ${printResult}
 
 const governed = withGovernanceSugar(new InfrixClient(process.env.INFRIX_URL ?? 'http://localhost:8080'));
 const r = await governed.submitAndWait(
-  { type: 'SUBMIT_GOVERNED', customParams: { confidential: true, action: 'approve' } },
+  // SUBMIT_GOVERNED is not a goal type; the governed record is an
+  // OBJECT_CREATE carrying the object type and its fields.
+  { type: 'OBJECT_CREATE', customParams: { objectType: 'confidential_approval', fields: { confidential: true, action: 'approve' } } },
   { exportProof: true, verifyProofLocal: true },
 );
 printGoverned('confidential governed intent:', r);

@@ -7,20 +7,27 @@
  */
 
 import {
-  host_governance_submit_intent,
+  host_intent_submit,
+  host_object_read,
+  host_policy_evaluate,
   host_governance_get_intent_status,
   host_governance_create_object,
-  host_governance_get_object,
   host_governance_transition_object,
   host_governance_has_capability,
   host_governance_grant_capability,
   host_governance_has_role,
   host_governance_require_approval,
-  host_governance_evaluate_policy,
   host_governance_get_evidence,
 } from "./host";
 
 const MAX_OUTPUT_SIZE: i32 = 65536;
+
+// An intent id is a bounded identifier; the host writes it into a buffer of this
+// size and refuses (rather than truncates) a longer one.
+const MAX_INTENT_ID_SIZE: i32 = 512;
+
+// An intent status is a single lifecycle word ("completed", ...).
+const MAX_STATUS_SIZE: i32 = 128;
 
 // =============================================================================
 // Gap 15: Cross-cutting governance type constants.
@@ -107,57 +114,62 @@ export namespace Governance {
   // =========================================================================
 
   /**
-   * Submit an intent from within a contract.
+   * Submit a CHILD INTENT from within a contract — the one way a contract
+   * initiates governance. The child runs the full spine (plan, approvals,
+   * execution, evidence), which is exactly what a direct mutation lacks. The
+   * contract's manifest must declare the "intent:submit" capability.
    *
-   * @param goalType - The intent goal type (e.g. "CONTRACT_CALL", "OBJECT_CREATE")
-   * @param params - Serialized intent parameters
-   * @returns Serialized IntentResult, or null on failure
+   * @param goalType - A node goal type: use the GOAL_* constants below (for
+   *   example `Governance.GOAL_CONTRACT_CALL`). The node refuses anything else.
+   * @param params - The goal's parameter map as UTF-8 JSON object bytes. It is
+   *   passed to the node as the goal's customParams, so it must carry the keys
+   *   that goal declares (CONTRACT_CALL: `contract` and `function`).
+   * @returns The child intent id, or null when the host refuses the submission.
    */
-  export function submitIntent(goalType: string, params: Uint8Array): Uint8Array | null {
-    // Build goal JSON: {"type":"<goalType>"}
-    const goalStr = '{"type":"' + goalType + '"}';
-    const goalBytes = String.UTF8.encode(goalStr);
-    const goalArray = new Uint8Array(goalBytes.byteLength);
-    memory.copy(goalArray.dataStart, changetype<usize>(goalBytes), goalBytes.byteLength);
-
-    const output = new Uint8Array(MAX_OUTPUT_SIZE);
-    const len = host_governance_submit_intent(
-      goalArray.dataStart,
-      goalArray.length,
-      output.dataStart
+  export function submitIntent(goalType: string, params: Uint8Array): string | null {
+    // The goal type and the parameter map are separate host arguments, never one
+    // envelope: the host validates the map as this goal's parameters.
+    const goalBytes = String.UTF8.encode(goalType);
+    const idBuf = new Uint8Array(MAX_INTENT_ID_SIZE);
+    const len = host_intent_submit(
+      changetype<usize>(goalBytes),
+      goalBytes.byteLength,
+      params.dataStart,
+      params.length,
+      idBuf.dataStart,
+      MAX_INTENT_ID_SIZE
     );
 
     if (len < 0) {
       return null;
     }
-
-    const result = new Uint8Array(len);
-    memory.copy(result.dataStart, output.dataStart, len);
-    return result;
+    return String.UTF8.decodeUnsafe(idBuf.dataStart, <usize>len);
   }
 
   /**
-   * Get the status of an intent.
+   * Get the lifecycle status of an intent this contract submitted (or is
+   * executing under): "resolved", "executing", "completed", "failed", ...
+   *
+   * Anything the contract may not read, including an intent that does not exist,
+   * is refused the same way, so it cannot probe for identifiers. The manifest
+   * must declare the "intent:read" capability.
    *
    * @param intentId - The intent ID
-   * @returns Status string, or empty string on failure
+   * @returns Status word, or empty string when the host refuses
    */
   export function getIntentStatus(intentId: string): string {
     const idBytes = String.UTF8.encode(intentId);
-    const output = new Uint8Array(MAX_OUTPUT_SIZE);
+    const output = new Uint8Array(MAX_STATUS_SIZE);
     const len = host_governance_get_intent_status(
       changetype<usize>(idBytes),
       idBytes.byteLength,
-      output.dataStart
+      output.dataStart,
+      MAX_STATUS_SIZE
     );
-
     if (len < 0) {
       return "";
     }
-
-    const resultBytes = new Uint8Array(len);
-    memory.copy(resultBytes.dataStart, output.dataStart, len);
-    return String.UTF8.decode(resultBytes.buffer);
+    return String.UTF8.decodeUnsafe(output.dataStart, <usize>len);
   }
 
   // =========================================================================
@@ -165,44 +177,52 @@ export namespace Governance {
   // =========================================================================
 
   /**
-   * Create a governed object.
+   * Create a governed object — as a CHILD INTENT.
+   *
+   * A contract may not write a governed object directly: that would be a
+   * governance act with no plan, no approvals and no evidence of its own. This
+   * submits an OBJECT_CREATE intent that runs the full spine, so what it returns
+   * is the CHILD INTENT's id, not an object id — the object exists once that
+   * intent has completed. Poll {@link getIntentStatus} to follow it.
+   *
+   * The manifest must declare the "intent:submit" and "object:create"
+   * capabilities and an object scope with write access to `objType`.
    *
    * @param objType - Object type (e.g. "credential", "vault")
-   * @param fields - Serialized object fields
-   * @returns Object ID string, or empty string on failure
+   * @param fields - The object's fields as UTF-8 JSON object bytes
+   * @returns The child intent id, or null when the host refuses
    */
-  export function createObject(objType: string, fields: Uint8Array): string {
+  export function createObject(objType: string, fields: Uint8Array): string | null {
     const typeBytes = String.UTF8.encode(objType);
-    const output = new Uint8Array(MAX_OUTPUT_SIZE);
+    const idBuf = new Uint8Array(MAX_INTENT_ID_SIZE);
     const len = host_governance_create_object(
       changetype<usize>(typeBytes),
       typeBytes.byteLength,
       fields.dataStart,
       fields.length,
-      output.dataStart
+      idBuf.dataStart,
+      MAX_INTENT_ID_SIZE
     );
-
     if (len < 0) {
-      return "";
+      return null;
     }
-
-    const resultBytes = new Uint8Array(len);
-    memory.copy(resultBytes.dataStart, output.dataStart, len);
-    return String.UTF8.decode(resultBytes.buffer);
+    return String.UTF8.decodeUnsafe(idBuf.dataStart, <usize>len);
   }
 
   /**
-   * Get a governed object by type and ID.
+   * Get a governed object by type and ID, disclosure-gated: the contract is the
+   * actor and the purpose is "operational", so fields it holds no grant for come
+   * back redacted. Served by host_object_read (the name the platform exports).
    *
    * @param objType - Object type
    * @param id - Object ID
-   * @returns Serialized object data, or null on failure
+   * @returns Serialized object JSON, or null when absent or refused
    */
   export function getObject(objType: string, id: string): Uint8Array | null {
     const typeBytes = String.UTF8.encode(objType);
     const idBytes = String.UTF8.encode(id);
     const output = new Uint8Array(MAX_OUTPUT_SIZE);
-    const len = host_governance_get_object(
+    const len = host_object_read(
       changetype<usize>(typeBytes),
       typeBytes.byteLength,
       changetype<usize>(idBytes),
@@ -220,26 +240,35 @@ export namespace Governance {
   }
 
   /**
-   * Transition an object to a new state.
+   * Move a governed object to a new state — as a CHILD INTENT (OBJECT_TRANSITION).
+   * Returns the child intent's id; the transition happens when that intent has
+   * run its plan. The manifest must declare "intent:submit" and "object:mutate"
+   * and an object scope with write access to `objType`.
    *
    * @param objType - Object type
    * @param id - Object ID
    * @param newState - Target state name
-   * @returns true on success
+   * @returns The child intent id, or null when the host refuses
    */
-  export function transitionObject(objType: string, id: string, newState: string): bool {
+  export function transitionObject(objType: string, id: string, newState: string): string | null {
     const typeBytes = String.UTF8.encode(objType);
     const idBytes = String.UTF8.encode(id);
     const stateBytes = String.UTF8.encode(newState);
-    const result = host_governance_transition_object(
+    const idBuf = new Uint8Array(MAX_INTENT_ID_SIZE);
+    const len = host_governance_transition_object(
       changetype<usize>(typeBytes),
       typeBytes.byteLength,
       changetype<usize>(idBytes),
       idBytes.byteLength,
       changetype<usize>(stateBytes),
-      stateBytes.byteLength
+      stateBytes.byteLength,
+      idBuf.dataStart,
+      MAX_INTENT_ID_SIZE
     );
-    return result >= 0;
+    if (len < 0) {
+      return null;
+    }
+    return String.UTF8.decodeUnsafe(idBuf.dataStart, <usize>len);
   }
 
   // =========================================================================
@@ -247,11 +276,17 @@ export namespace Governance {
   // =========================================================================
 
   /**
-   * Check if an identity has a specific capability.
+   * Check whether an identity holds a capability through an active, unexpired,
+   * UNCONDITIONAL grant that is in scope for this contract. A grant carrying a
+   * condition is not counted: its condition is evaluated when the capability is
+   * exercised, and reporting it held would let a contract act as though it were
+   * unconditional. The manifest must declare "capability:read".
+   *
+   * Any answer but a definite yes is false, including a refusal.
    *
    * @param identity - ADI URL or DID
    * @param capability - Capability string (e.g. "token:transfer")
-   * @returns true if the identity has the capability
+   * @returns true if the identity holds the capability
    */
   export function hasCapability(identity: string, capability: string): bool {
     const identityBytes = String.UTF8.encode(identity);
@@ -262,7 +297,7 @@ export namespace Governance {
       changetype<usize>(capBytes),
       capBytes.byteLength
     );
-    return result != 0;
+    return result == 1;
   }
 
   /**
@@ -274,39 +309,49 @@ export namespace Governance {
   }
 
   /**
-   * Grant a capability.
+   * Grant a capability — as a CHILD INTENT (CAPABILITY_GRANT). Returns the child
+   * intent's id; whether the grant is made is the spine's decision (the intent is
+   * approved like any other). The manifest must declare "intent:submit" and
+   * "capability:grant" and a write scope on "capability_grant".
    *
    * @param grantee - Grantee identity
    * @param capabilities - Comma-separated capability strings
-   * @param scope - Scope constraint
-   * @returns Grant ID, or empty string on failure
+   * @param targetScope - Contract the grant is scoped to, or "" for unscoped
+   * @param workflowStageScope - A workflow stage name, or "*" for every stage
+   * @param purpose - audit | compliance | operational | investigation | counterparty
+   * @returns The child intent id, or null when the host refuses
    */
   export function grantCapability(
     grantee: string,
     capabilities: string,
-    scope: string
-  ): string {
+    targetScope: string,
+    workflowStageScope: string,
+    purpose: string
+  ): string | null {
     const granteeBytes = String.UTF8.encode(grantee);
     const capsBytes = String.UTF8.encode(capabilities);
-    const scopeBytes = String.UTF8.encode(scope);
-    const output = new Uint8Array(MAX_OUTPUT_SIZE);
+    const targetBytes = String.UTF8.encode(targetScope);
+    const stageBytes = String.UTF8.encode(workflowStageScope);
+    const purposeBytes = String.UTF8.encode(purpose);
+    const idBuf = new Uint8Array(MAX_INTENT_ID_SIZE);
     const len = host_governance_grant_capability(
       changetype<usize>(granteeBytes),
       granteeBytes.byteLength,
       changetype<usize>(capsBytes),
       capsBytes.byteLength,
-      changetype<usize>(scopeBytes),
-      scopeBytes.byteLength,
-      output.dataStart
+      changetype<usize>(targetBytes),
+      targetBytes.byteLength,
+      changetype<usize>(stageBytes),
+      stageBytes.byteLength,
+      changetype<usize>(purposeBytes),
+      purposeBytes.byteLength,
+      idBuf.dataStart,
+      MAX_INTENT_ID_SIZE
     );
-
     if (len < 0) {
-      return "";
+      return null;
     }
-
-    const resultBytes = new Uint8Array(len);
-    memory.copy(resultBytes.dataStart, output.dataStart, len);
-    return String.UTF8.decode(resultBytes.buffer);
+    return String.UTF8.decodeUnsafe(idBuf.dataStart, <usize>len);
   }
 
   // =========================================================================
@@ -314,7 +359,8 @@ export namespace Governance {
   // =========================================================================
 
   /**
-   * Check if an identity has a specific role.
+   * Check if an identity holds a role now. An empty identity is the caller. The
+   * manifest must declare "role:read". Any answer but a definite yes is false.
    */
   export function hasRole(identity: string, role: string): bool {
     const identityBytes = String.UTF8.encode(identity);
@@ -325,7 +371,7 @@ export namespace Governance {
       changetype<usize>(roleBytes),
       roleBytes.byteLength
     );
-    return result != 0;
+    return result == 1;
   }
 
   // =========================================================================
@@ -333,13 +379,20 @@ export namespace Governance {
   // =========================================================================
 
   /**
-   * Declare that the current operation requires approval.
+   * Whether the approvals that AUTHORISED THIS EXECUTION include at least
+   * `threshold` distinct approvers in `role`, and are still valid.
    *
-   * If insufficient approvals exist, execution is suspended.
+   * This is a requirement the contract enforces on itself — refuse to proceed
+   * when it is false. It does not open an approval and it does not suspend the
+   * call: approvals are collected by the spine before a step runs, and a running
+   * WASM call cannot be paused. A contract that wants an act it is not authorised
+   * to do submits a child intent, which is approved like any other. The manifest
+   * must declare "approval:read".
    *
    * @param role - Role required for approvers
-   * @param threshold - Number of approvals needed
-   * @returns true if approval requirements are met
+   * @param threshold - Number of distinct approvers needed (at least 1)
+   * @returns true only when the requirement is met; false when it is not, and
+   *   also when the host could not answer
    */
   export function requireApproval(role: string, threshold: u32): bool {
     const roleBytes = String.UTF8.encode(role);
@@ -348,7 +401,7 @@ export namespace Governance {
       roleBytes.byteLength,
       threshold
     );
-    return result >= 0;
+    return result == 1;
   }
 
   // =========================================================================
@@ -356,28 +409,28 @@ export namespace Governance {
   // =========================================================================
 
   /**
-   * Evaluate a policy from within a contract.
+   * Ask the policy registry for a decision about THIS CONTRACT'S OWN scope.
    *
-   * @param scope - Policy scope
-   * @param opType - Operation type
-   * @param operands - Serialized operands
-   * @returns Serialized PolicyEvaluationResult, or null on failure
+   * Returns the decision as JSON: allowed, effect, matchedRule, stratum and
+   * auditMsg (the evaluation trace is withheld). It takes a policy TYPE and
+   * nothing else, on purpose: the scope is pinned to the calling contract by the
+   * host (a contract that could name any scope could probe policy it has no
+   * standing to see), and the operands are the platform's (a contract supplying
+   * them would be supplying answers, not a question). The earlier signature,
+   * evaluatePolicy(scope, opType, operands), named an import the platform never
+   * served and could not have been served as declared. The manifest must declare
+   * "policy:evaluate".
+   *
+   * @param policyType - Policy type, e.g. "contract:call"
+   * @returns Serialized decision JSON, or null when the host could not answer
+   *   (a denial is an answer: its `allowed` is false)
    */
-  export function evaluatePolicy(
-    scope: string,
-    opType: string,
-    operands: Uint8Array
-  ): Uint8Array | null {
-    const scopeBytes = String.UTF8.encode(scope);
-    const typeBytes = String.UTF8.encode(opType);
+  export function evaluatePolicy(policyType: string): Uint8Array | null {
+    const typeBytes = String.UTF8.encode(policyType);
     const output = new Uint8Array(MAX_OUTPUT_SIZE);
-    const len = host_governance_evaluate_policy(
-      changetype<usize>(scopeBytes),
-      scopeBytes.byteLength,
+    const len = host_policy_evaluate(
       changetype<usize>(typeBytes),
       typeBytes.byteLength,
-      operands.dataStart,
-      operands.length,
       output.dataStart
     );
 
@@ -438,88 +491,101 @@ export namespace Governance {
   export const TRUST_RESPONSE_BLOCK_FINALITY: string = "block_finality";
 
   // --- Intent Goal Types ---
-  // P2-002 closure: this block is generated from the Go source of
-  // truth (pkg/intent/types.go) by `pkg/codegen/sdk_goals.go::Generate`.
-  // Run `go run ./cmd/sdkgen` after changing the Go enum; the matching
-  // fence test fails CI if this region drifts. Keep TS and Rust SDK
-  // enums (sdk/typescript/src/types/governance.ts,
-  // sdk/rust/infrix-types/src/governance.rs) in lockstep — the same
-  // codegen tool maintains all three.
+  // Exactly the node's ValidGoalTypes (infrix-schema intent.ValidGoalTypes).
+  // This block is generated, not written: tools/sdkgen rewrites the region
+  // between the SDKGEN markers from goal-vocabulary.json at the repo root, which
+  // infrix-core generates from the code its admission path runs
+  // (`go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary`).
+  // Run `go run .` in tools/sdkgen after refreshing that file. Keep the
+  // TypeScript union (typescript/src/types/governance.ts) and the Rust enum
+  // (infrix-crates infrix-types/src/governance.rs) in lockstep — the same
+  // vocabulary file feeds all three.
   //
   // Gap 13 first-pass removed the standalone single-leg transfer and
   // escrow-create goal types — those flows route through
   // GOAL_SETTLEMENT with the appropriate method.
   // SDKGEN-BEGIN(intent_goal_type)
-  export const GOAL_CONVERT: string = "CONVERT";
-  export const GOAL_EARN_YIELD: string = "EARN_YIELD";
+  export const GOAL_AGENT_RUN: string = "AGENT_RUN";
+  export const GOAL_ANCHOR_FORCE: string = "ANCHOR_FORCE";
+  export const GOAL_APPROVAL_INVALIDATE: string = "APPROVAL_INVALIDATE";
+  export const GOAL_BOOTSTRAP_CAPABILITY: string = "BOOTSTRAP_CAPABILITY";
+  export const GOAL_BOOTSTRAP_ROLE: string = "BOOTSTRAP_ROLE";
   export const GOAL_BORROW: string = "BORROW";
-  export const GOAL_PROVIDE_LIQUIDITY: string = "PROVIDE_LIQUIDITY";
-  export const GOAL_SWAP: string = "SWAP";
-  export const GOAL_STAKE: string = "STAKE";
   export const GOAL_BRIDGE: string = "BRIDGE";
-  export const GOAL_COMPOUND: string = "COMPOUND";
-  export const GOAL_CUSTOM: string = "CUSTOM";
-  export const GOAL_OBJECT_CREATE: string = "OBJECT_CREATE";
-  export const GOAL_OBJECT_MUTATE: string = "OBJECT_MUTATE";
-  export const GOAL_POLICY_BIND: string = "POLICY_BIND";
+  export const GOAL_BRIDGE_RECEIVE: string = "BRIDGE_RECEIVE";
+  export const GOAL_BRIDGE_SEND: string = "BRIDGE_SEND";
+  export const GOAL_CAPABILITY_EXPIRE: string = "CAPABILITY_EXPIRE";
   export const GOAL_CAPABILITY_GRANT: string = "CAPABILITY_GRANT";
-  export const GOAL_WORKFLOW_START: string = "WORKFLOW_START";
+  export const GOAL_CAPABILITY_REVOKE: string = "CAPABILITY_REVOKE";
+  export const GOAL_COMPOUND: string = "COMPOUND";
+  export const GOAL_CONFIDENTIAL_EXEC: string = "CONFIDENTIAL_EXEC";
+  export const GOAL_CONTRACT_CALL: string = "CONTRACT_CALL";
+  export const GOAL_CONTRACT_DEPLOY: string = "CONTRACT_DEPLOY";
+  export const GOAL_CONTRACT_UPGRADE: string = "CONTRACT_UPGRADE";
+  export const GOAL_CONVERT: string = "CONVERT";
+  export const GOAL_COSMWASM_EXEC: string = "COSMWASM_EXEC";
   export const GOAL_CREDENTIAL_ISSUE: string = "CREDENTIAL_ISSUE";
   export const GOAL_CREDENTIAL_REVOKE: string = "CREDENTIAL_REVOKE";
-  export const GOAL_VAULT_CREATE: string = "VAULT_CREATE";
-  export const GOAL_SETTLEMENT: string = "SETTLEMENT";
-  export const GOAL_SETTLEMENT_NETTING: string = "SETTLEMENT_NETTING";
+  export const GOAL_CUSTOM: string = "CUSTOM";
+  export const GOAL_DISCLOSURE_APPROVE: string = "DISCLOSURE_APPROVE";
+  export const GOAL_DISCLOSURE_EXPIRE: string = "DISCLOSURE_EXPIRE";
+  export const GOAL_DISCLOSURE_GRANT: string = "DISCLOSURE_GRANT";
+  export const GOAL_DISCLOSURE_REGISTER_KEY: string = "DISCLOSURE_REGISTER_KEY";
+  export const GOAL_DISCLOSURE_REVOKE: string = "DISCLOSURE_REVOKE";
+  export const GOAL_DISPUTE_RESOLVE: string = "DISPUTE_RESOLVE";
+  export const GOAL_EARN_YIELD: string = "EARN_YIELD";
+  export const GOAL_EBPF_EXEC: string = "EBPF_EXEC";
+  export const GOAL_EVM_CALL: string = "EVM_CALL";
+  export const GOAL_EVM_DEPLOY: string = "EVM_DEPLOY";
+  export const GOAL_EXTERNAL_ADAPTER_CALL: string = "EXTERNAL_ADAPTER_CALL";
+  export const GOAL_GAS_SCHEDULE_UPDATE: string = "GAS_SCHEDULE_UPDATE";
+  export const GOAL_MOVE_EXEC: string = "MOVE_EXEC";
+  export const GOAL_OBJECT_CREATE: string = "OBJECT_CREATE";
+  export const GOAL_OBJECT_MUTATE: string = "OBJECT_MUTATE";
   export const GOAL_OBJECT_TRANSITION: string = "OBJECT_TRANSITION";
-  export const GOAL_POLICY_CHANGE: string = "POLICY_CHANGE";
-  export const GOAL_CONTRACT_UPGRADE: string = "CONTRACT_UPGRADE";
   export const GOAL_PATCH_PROPAGATION: string = "PATCH_PROPAGATION";
+  export const GOAL_PENDING_REAP: string = "PENDING_REAP";
+  export const GOAL_PLUGIN_REGISTER: string = "PLUGIN_REGISTER";
+  export const GOAL_PLUGIN_UPGRADE: string = "PLUGIN_UPGRADE";
+  export const GOAL_POLICY_BIND: string = "POLICY_BIND";
+  export const GOAL_POLICY_CHANGE: string = "POLICY_CHANGE";
+  export const GOAL_POLICY_UNBIND: string = "POLICY_UNBIND";
+  export const GOAL_PROVIDE_LIQUIDITY: string = "PROVIDE_LIQUIDITY";
+  export const GOAL_RATE_LIMIT_UPDATE: string = "RATE_LIMIT_UPDATE";
   export const GOAL_REVERT_TRANSACTION: string = "REVERT_TRANSACTION";
   export const GOAL_ROLE_ASSIGN: string = "ROLE_ASSIGN";
+  export const GOAL_ROLE_EMERGENCY: string = "ROLE_EMERGENCY";
+  export const GOAL_ROLE_EXPIRE: string = "ROLE_EXPIRE";
+  export const GOAL_ROLE_NORMALIZE: string = "ROLE_NORMALIZE";
+  export const GOAL_ROLE_POLICY_RECHECK: string = "ROLE_POLICY_RECHECK";
   export const GOAL_ROLE_REVOKE: string = "ROLE_REVOKE";
   export const GOAL_ROLE_SUSPEND: string = "ROLE_SUSPEND";
-  export const GOAL_ROLE_EMERGENCY: string = "ROLE_EMERGENCY";
-  export const GOAL_ROLE_NORMALIZE: string = "ROLE_NORMALIZE";
-  export const GOAL_DISCLOSURE_GRANT: string = "DISCLOSURE_GRANT";
-  export const GOAL_DISCLOSURE_REVOKE: string = "DISCLOSURE_REVOKE";
-  export const GOAL_DISCLOSURE_REGISTER_KEY: string = "DISCLOSURE_REGISTER_KEY";
-  export const GOAL_CONTRACT_DEPLOY: string = "CONTRACT_DEPLOY";
-  export const GOAL_CONTRACT_CALL: string = "CONTRACT_CALL";
-  export const GOAL_EVM_DEPLOY: string = "EVM_DEPLOY";
-  export const GOAL_EVM_CALL: string = "EVM_CALL";
-  export const GOAL_SWARM_CREATE: string = "SWARM_CREATE";
-  export const GOAL_SWARM_JOIN: string = "SWARM_JOIN";
-  export const GOAL_SWARM_COORDINATE: string = "SWARM_COORDINATE";
-  export const GOAL_SWARM_DISSOLVE: string = "SWARM_DISSOLVE";
+  export const GOAL_RULE_PACK_EVAL: string = "RULE_PACK_EVAL";
+  export const GOAL_SESSION_KEY_DELEGATE: string = "SESSION_KEY_DELEGATE";
+  export const GOAL_SETTLEMENT: string = "SETTLEMENT";
+  export const GOAL_SETTLEMENT_FINALITY_SWEEP: string = "SETTLEMENT_FINALITY_SWEEP";
+  export const GOAL_SETTLEMENT_NETTING: string = "SETTLEMENT_NETTING";
   export const GOAL_SHAPE_TRANSITION: string = "SHAPE_TRANSITION";
-  export const GOAL_BRIDGE_SEND: string = "BRIDGE_SEND";
-  export const GOAL_BRIDGE_RECEIVE: string = "BRIDGE_RECEIVE";
-  export const GOAL_CAPABILITY_REVOKE: string = "CAPABILITY_REVOKE";
-  export const GOAL_POLICY_UNBIND: string = "POLICY_UNBIND";
-  export const GOAL_ANCHOR_FORCE: string = "ANCHOR_FORCE";
+  export const GOAL_SPONSOR_PAUSE: string = "SPONSOR_PAUSE";
+  export const GOAL_SPONSOR_REGISTER: string = "SPONSOR_REGISTER";
+  export const GOAL_SPONSOR_RESUME: string = "SPONSOR_RESUME";
+  export const GOAL_SPONSOR_REVOKE: string = "SPONSOR_REVOKE";
+  export const GOAL_SPONSOR_UPDATE: string = "SPONSOR_UPDATE";
+  export const GOAL_STAKE: string = "STAKE";
+  export const GOAL_SUBSYSTEM_ACTION: string = "SUBSYSTEM_ACTION";
+  export const GOAL_SVM_EXEC: string = "SVM_EXEC";
+  export const GOAL_SWAP: string = "SWAP";
+  export const GOAL_SWARM_COORDINATE: string = "SWARM_COORDINATE";
+  export const GOAL_SWARM_CREATE: string = "SWARM_CREATE";
+  export const GOAL_SWARM_DISSOLVE: string = "SWARM_DISSOLVE";
+  export const GOAL_SWARM_JOIN: string = "SWARM_JOIN";
+  export const GOAL_SYSTEM_ANCHOR_PERIODIC: string = "SYSTEM_ANCHOR_PERIODIC";
+  export const GOAL_TRUST_FRESHNESS_SWEEP: string = "TRUST_FRESHNESS_SWEEP";
   export const GOAL_TRUST_PROFILE_CREATE: string = "TRUST_PROFILE_CREATE";
   export const GOAL_TRUST_PROFILE_UPDATE: string = "TRUST_PROFILE_UPDATE";
-  export const GOAL_BOOTSTRAP_ROLE: string = "BOOTSTRAP_ROLE";
-  export const GOAL_SYSTEM_ANCHOR_PERIODIC: string = "SYSTEM_ANCHOR_PERIODIC";
-  export const GOAL_APPROVAL_INVALIDATE: string = "APPROVAL_INVALIDATE";
-  export const GOAL_ROLE_EXPIRE: string = "ROLE_EXPIRE";
-  export const GOAL_CAPABILITY_EXPIRE: string = "CAPABILITY_EXPIRE";
-  export const GOAL_SPONSOR_REGISTER: string = "SPONSOR_REGISTER";
-  export const GOAL_SPONSOR_UPDATE: string = "SPONSOR_UPDATE";
-  export const GOAL_SPONSOR_REVOKE: string = "SPONSOR_REVOKE";
-  export const GOAL_SPONSOR_PAUSE: string = "SPONSOR_PAUSE";
-  export const GOAL_SPONSOR_RESUME: string = "SPONSOR_RESUME";
-  export const GOAL_DISPUTE_RESOLVE: string = "DISPUTE_RESOLVE";
-  export const GOAL_RULE_PACK_EVAL: string = "RULE_PACK_EVAL";
+  export const GOAL_VAULT_CREATE: string = "VAULT_CREATE";
   export const GOAL_VERIFIER_RUN: string = "VERIFIER_RUN";
-  export const GOAL_EXTERNAL_ADAPTER_CALL: string = "EXTERNAL_ADAPTER_CALL";
-  export const GOAL_AGENT_RUN: string = "AGENT_RUN";
-  export const GOAL_CONFIDENTIAL_EXEC: string = "CONFIDENTIAL_EXEC";
-  export const GOAL_SUBSYSTEM_ACTION: string = "SUBSYSTEM_ACTION";
-  export const GOAL_PLUGIN_UPGRADE: string = "PLUGIN_UPGRADE";
-  export const GOAL_PLUGIN_REGISTER: string = "PLUGIN_REGISTER";
-  export const GOAL_GAS_SCHEDULE_UPDATE: string = "GAS_SCHEDULE_UPDATE";
-  export const GOAL_RATE_LIMIT_UPDATE: string = "RATE_LIMIT_UPDATE";
-  export const GOAL_SESSION_KEY_DELEGATE: string = "SESSION_KEY_DELEGATE";
+  export const GOAL_WORKFLOW_START: string = "WORKFLOW_START";
   // SDKGEN-END(intent_goal_type)
 
   // =========================================================================
@@ -527,10 +593,14 @@ export namespace Governance {
   // =========================================================================
 
   /**
-   * Get the evidence bundle for an intent.
+   * Get the evidence bundle of an intent this contract submitted (or is executing
+   * under), as JSON, in the form the disclosure layer gives an operational
+   * reader: identities hashed, free text dropped, the hash chain intact. The
+   * bundle is sealed when the intent's execution completes; until then the host
+   * refuses. The manifest must declare "evidence:read".
    *
    * @param intentId - The intent ID
-   * @returns Serialized evidence bundle, or null on failure
+   * @returns Serialized evidence bundle, or null when the host refuses
    */
   export function getEvidence(intentId: string): Uint8Array | null {
     const idBytes = String.UTF8.encode(intentId);
@@ -538,7 +608,8 @@ export namespace Governance {
     const len = host_governance_get_evidence(
       changetype<usize>(idBytes),
       idBytes.byteLength,
-      output.dataStart
+      output.dataStart,
+      MAX_OUTPUT_SIZE
     );
 
     if (len < 0) {

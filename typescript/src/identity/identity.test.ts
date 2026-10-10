@@ -21,6 +21,7 @@ import {
   SessionScopeError,
 } from './index';
 import type { SignatureRequest, Explanation } from './index';
+import { INTENT_GOAL_TYPES } from '../types/governance';
 
 interface Fixture {
   connect: { challenge: string; signature: string; address: string };
@@ -51,12 +52,59 @@ test('the signature explainer matches the Go explanation (cross-language)', () =
 
 test('explain fails closed on an unexplainable request', () => {
   assert.throws(() => explainSignature({ signer: 'acc://a.acme/book/1', network: 'Kermit' } as SignatureRequest), SignatureUnexplainableError);
-  assert.throws(() => explainSignature({ goalType: 'SEND_TOKENS', network: 'Kermit' } as SignatureRequest), SignatureUnexplainableError);
-  assert.throws(() => explainSignature({ goalType: 'SEND_TOKENS', signer: 'acc://a.acme/book/1' } as SignatureRequest), SignatureUnexplainableError);
+  assert.throws(() => explainSignature({ goalType: 'SETTLEMENT', network: 'Kermit' } as SignatureRequest), SignatureUnexplainableError);
+  assert.throws(() => explainSignature({ goalType: 'SETTLEMENT', signer: 'acc://a.acme/book/1' } as SignatureRequest), SignatureUnexplainableError);
+});
+
+test('the explainer refuses a goal the node refuses (SEND_TOKENS, ADD_CREDITS, WRITE_DATA were names it carried)', () => {
+  for (const goal of ['SEND_TOKENS', 'ADD_CREDITS', 'WRITE_DATA', 'GOVERNED_TRANSFER', 'settlement']) {
+    assert.throws(
+      () => explainSignature({ goalType: goal, signer: 'acc://a.acme/book/1', network: 'Kermit' }),
+      (e: unknown) => e instanceof SignatureUnexplainableError && String((e as Error).message).includes(goal),
+      `${goal} must be refused, naming it`,
+    );
+  }
+});
+
+test('every node goal is explainable (refusing what the node refuses must not refuse what it accepts)', () => {
+  for (const goal of INTENT_GOAL_TYPES) {
+    const ex = explainSignature({ goalType: goal, signer: 'acc://a.acme/book/1', network: 'local' });
+    assert.ok(ex.action.trim() !== '' && ex.plain.trim() !== '', `${goal} produced a blank explanation`);
+  }
+  assert.ok(INTENT_GOAL_TYPES.length >= 81);
+});
+
+test('a settlement is explained by what its legs do, and always moves value', () => {
+  const legs = (...kinds: string[]) => ({ legs: kinds.map((kind) => ({ kind })) });
+  const cases: Array<[string, Record<string, unknown> | undefined, string]> = [
+    ['direct transfer', legs('direct'), 'Send tokens'],
+    ['credit purchase', legs('credit_issue'), 'Add credits'],
+    ['credit transfer', legs('credit_transfer'), 'Transfer credits'],
+    ['credit burn', legs('credit_burn'), 'Burn credits'],
+    ['escrow', legs('escrow'), 'Escrow funds'],
+    ['bridge', legs('bridge'), 'Bridge tokens'],
+    ['two credit purchases', legs('credit_issue', 'credit_issue'), 'Add credits'],
+    ['mixed kinds', legs('direct', 'credit_issue'), 'Settle value (2 legs of mixed kinds)'],
+    ['no legs named', undefined, 'Settle value'],
+    ['a leg of no recognised kind', legs('mystery'), 'Settle value'],
+  ];
+  for (const [name, customParams, action] of cases) {
+    const ex = explainSignature({ goalType: 'SETTLEMENT', customParams, signer: 'acc://a.acme/book/1', network: 'local' });
+    assert.equal(ex.action, action, name);
+    assert.equal(ex.fundsOrCreditsMove, true, `${name}: a settlement moves value even when no assets are listed`);
+  }
+});
+
+test('data-recording and disclosing goals are flagged as disclosing data; a swap is not', () => {
+  for (const goal of ['DISCLOSURE_GRANT', 'DISCLOSURE_APPROVE', 'DISCLOSURE_REGISTER_KEY', 'OBJECT_CREATE', 'OBJECT_MUTATE']) {
+    const ex = explainSignature({ goalType: goal, signer: 'acc://a.acme/book/1', network: 'local' });
+    assert.equal(ex.dataDisclosed, true, `${goal} must be flagged as disclosing data`);
+  }
+  assert.equal(explainSignature({ goalType: 'SWAP', signer: 'acc://a.acme/book/1', network: 'local' }).dataDisclosed, false);
 });
 
 test('a mainnet signature is warned', () => {
-  const ex = explainSignature({ goalType: 'SEND_TOKENS', signer: 'acc://a.acme/book/1', network: 'mainnet' });
+  const ex = explainSignature({ goalType: 'SETTLEMENT', signer: 'acc://a.acme/book/1', network: 'mainnet' });
   assert.ok(ex.warnings.some((w) => /MAINNET/i.test(w)));
 });
 

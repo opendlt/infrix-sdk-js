@@ -22,15 +22,16 @@
  * const result = await wallet.submitIntent({
  *   type: 'CONTRACT_CALL',
  *   customParams: {
- *     contractAddress: 'acc://game.acme/counter',
+ *     contract: 'acc://game.acme/counter',
  *     function: 'increment',
- *     arguments: [],
+ *     args: '[]',
  *   },
  * });
  * ```
  */
 
 import { toHex } from './crypto';
+import { ApprovalSigningRequest, bindApprovalSigningRequest, hash32Hex } from './approval-signing';
 import { MemoryKeyStore, KeyStore, KeyInfo } from './keystore';
 import { SessionManager, SessionScope, SessionKey } from './session';
 import type {
@@ -79,6 +80,30 @@ export interface SponsorConfig {
   callers?: string[];
   maxGasPerTx?: number;
   dailyLimit?: number;
+}
+
+/** Options for approveIntent / signApproval. */
+export interface ApproveIntentOptions {
+  /** Accumulate key page whose entry is sha256(active public key). */
+  keyPageRef: string;
+  /** Why the approval is given (>= 10 characters); recorded with it. */
+  rationale: string;
+  /** Approval stage; defaults to the plan's only required stage. */
+  stageId?: string;
+  /** Role signed as; defaults to the stage's only eligible role. */
+  role?: string;
+}
+
+/** approval.submit's stage-path result. */
+export interface ApprovalSubmitResult {
+  approvalId: string;
+  rationaleNoteId?: string;
+  status: 'resumed' | 'awaiting_more_approvals';
+  succeeded?: boolean;
+  outcomeId?: string;
+  evidenceId?: string;
+  anchorId?: string;
+  detail?: string;
 }
 
 export class InfrixWallet {
@@ -330,65 +355,68 @@ export class InfrixWallet {
   }
 
   /**
-   * Approve an intent's execution plan with a signed ApprovalEnvelope.
+   * Approve a parked intent's approval stage with a signature the node's
+   * approval store verifies.
    *
-   * @param intentId - Intent to approve
-   * @param planHash - Hash of the plan being approved (hex). If omitted, fetches the plan automatically.
-   * @returns The signed ApprovalEnvelope
+   * Fetches the canonical signing material for this wallet's ADI
+   * (`approval.signing`), recomputes the node's digest from the published
+   * fields and refuses to sign on a mismatch, binds the active key, signs the
+   * canonical approval preimage, and submits it through `approval.submit`.
+   * The node verifies the signature against `keyPageRef` on Accumulate L0:
+   * sha256(active public key) must be an entry on that page, the page must
+   * belong to this ADI, and the ADI must hold the role.
+   *
+   * @param intentId - The parked intent
+   * @param opts - keyPageRef (required), rationale (required, >= 10 chars),
+   *               stageId / role (optional when the plan has exactly one)
    */
-  async approveIntent(
-    intentId: string,
-    planHash?: string
-  ): Promise<ApprovalEnvelope> {
-    // If planHash not provided, fetch the plan and compute it
-    if (!planHash) {
-      const plan = await this.rpc('intent.plan', { intentId });
-      planHash = (plan as Record<string, unknown>).planHash as string;
-    }
-
-    return this.signApproval(intentId, planHash!);
+  async approveIntent(intentId: string, opts: ApproveIntentOptions): Promise<ApprovalSubmitResult> {
+    return this.signApproval(intentId, opts);
   }
 
   /**
-   * Create and submit a signed ApprovalEnvelope.
+   * Sign and submit an approval for a parked stage (see approveIntent).
    *
-   * Signs the plan hash with the wallet's active key and submits
-   * the approval to the network.
-   *
-   * @param targetId - ID of the target being approved
-   * @param planHash - Hash of the plan/state being approved
-   * @param opts - Optional: role, conditions, scope
+   * Session 37 (S24): this used to sign "infrix-approval-v1:<id>:<planHash>:<adi>"
+   * — a payload no approval store verifies — so no wallet approval could ever
+   * unpark a plan.
    */
-  async signApproval(
-    targetId: string,
-    planHash: string,
-    opts?: { role?: string; conditions?: Record<string, unknown> }
-  ): Promise<ApprovalEnvelope> {
+  async signApproval(intentId: string, opts: ApproveIntentOptions): Promise<ApprovalSubmitResult> {
     if (!this.activeKey) {
       throw new Error('No active key. Call generateKey() first.');
     }
+    if (!opts || !opts.keyPageRef) {
+      throw new Error('keyPageRef is required: the Accumulate key page whose entry is the signing key hash');
+    }
+    if (!opts.rationale || opts.rationale.trim().length < 10) {
+      throw new Error('rationale is required (at least 10 characters): the node records why every approval was signed');
+    }
+    const disclosure = { actor: this.adi, purpose: 'approval', workflowInstance: intentId };
+    const material = (await this.rpc('approval.signing', {
+      ...disclosure,
+      intentId,
+      keyPageRef: opts.keyPageRef,
+      ...(opts.stageId ? { stageId: opts.stageId } : {}),
+      ...(opts.role ? { role: opts.role } : {}),
+    })) as unknown as ApprovalSigningRequest;
+    if (material.signerIdentity !== this.adi) {
+      throw new Error(`the node bound the signing material to ${material.signerIdentity}, not to ${this.adi} — refusing to sign`);
+    }
+    const { bound, preimage } = await bindApprovalSigningRequest(material, this.activeKey);
+    const signature = await this.keyStore.sign(this.activeKey, preimage);
 
-    const signaturePayload = approvalSignaturePayload(targetId, planHash, this.adi);
-    const message = new TextEncoder().encode(signaturePayload);
-    const signature = await this.keyStore.sign(this.activeKey, message);
-
-    const params: Record<string, unknown> = {
-      intentId: targetId,
-      targetType: 'intent',
-      targetId,
-      planHash,
-      actor: this.adi,
-      identity: this.adi,
-      purpose: 'approval',
-      workflowInstance: targetId,
+    return (await this.rpc('approval.submit', {
+      ...disclosure,
+      intentId,
+      stageId: bound.stageId,
+      planHash: hash32Hex(bound.planHash),
+      role: bound.signerRole ?? '',
+      keyPageRef: bound.keyPageRef,
       signature: toHex(signature),
       signerPublicKey: toHex(this.activeKey),
       signatureAlgorithm: 'ed25519',
-      signaturePayload,
-      ...opts,
-    };
-
-    return this.rpc('approval.submit', params) as unknown as ApprovalEnvelope;
+      rationale: opts.rationale,
+    })) as unknown as ApprovalSubmitResult;
   }
 
   /**
@@ -469,9 +497,3 @@ function toBigIntOrNull(raw: unknown): bigint | null {
   return null;
 }
 
-function approvalSignaturePayload(targetId: string, planHash: string, identity: string): string {
-  if (!targetId) throw new Error('approval signature requires targetId');
-  if (!planHash) throw new Error('approval signature requires planHash');
-  if (!identity) throw new Error('approval signature requires identity');
-  return ['infrix-approval-v1', targetId, planHash, identity].join(':');
-}
