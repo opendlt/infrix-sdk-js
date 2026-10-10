@@ -42,7 +42,7 @@
  *     customParams: {
  *       contract: 'acc://mytoken.acme',
  *       function: 'transfer',
- *       args: ['acc://bob.acme/tokens', '100'],
+ *       args: JSON.stringify(['acc://bob.acme/tokens', '100']),
  *     },
  *   });
  */

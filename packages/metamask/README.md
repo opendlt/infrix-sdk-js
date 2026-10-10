@@ -23,7 +23,7 @@ await mm.connect();                                  // window.ethereum
 const result = await mm.submitGovernedIntent({
   signer: 'acc://alice.acme/book/1',
   signerVersion: 1,
-  goal: { type: 'TOKEN_TRANSFER', targetAssets: [{ asset: 'ACME', amount: '5' }] },
+  goal: { type: 'CONTRACT_CALL', customParams: { contract: 'acc://alice.acme/counter', function: 'increment', args: '[]' } },
 });
 
 console.log(result.intentId, result.l0KeyPageVerified);

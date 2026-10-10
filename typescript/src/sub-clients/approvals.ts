@@ -2,6 +2,7 @@ import { SubClient } from './base';
 import type {
   ApprovalEnvelope,
   ApprovalListFilter,
+  ApprovalSigningRequest,
   ApprovalSubmitOptions,
 } from '../types/governance';
 
@@ -15,7 +16,8 @@ export class ApprovalSubClient extends SubClient {
    * @param targetType - The target domain being approved (intent, object, settlement, etc.)
    * @param targetId - The ID of the target being approved (intentId, objectId, etc.)
    * @param planHash - SHA-256 hash of the plan/state being approved
-   * @param opts - Identity, role, conditions, scope, and Ed25519 proof fields
+   * @param opts - Identity, role, key page, rationale, and the Ed25519 signature over
+   *               the canonical preimage from {@link signing}
    */
   async submit(
     targetType: string,
@@ -28,6 +30,28 @@ export class ApprovalSubClient extends SubClient {
       targetId,
       planHash,
       ...opts,
+    });
+  }
+
+  /**
+   * Fetch what the caller must sign to approve a parked stage. The approving
+   * identity is the asserted actor; the material is bound to it, the role and
+   * the key page. Recompute the digest from the fields before signing
+   * (@infrix/wallet bindApprovalSigningRequest does this).
+   *
+   * @param intentId - The parked intent
+   * @param keyPageRef - Your key page whose entry is sha256(signing public key)
+   * @param opts - stageId / role, when the plan has more than one
+   */
+  async signing(
+    intentId: string,
+    keyPageRef: string,
+    opts?: { stageId?: string; role?: string }
+  ): Promise<ApprovalSigningRequest> {
+    return this.rpc<ApprovalSigningRequest>('approval.signing', {
+      intentId,
+      keyPageRef,
+      ...(opts ?? {}),
     });
   }
 

@@ -67,18 +67,19 @@ export class ObjectSubClient extends SubClient {
    *
    * @param type - Object type
    * @param id - Object ID
-   * @param targetState - Target state name
+   * @param newState - The state the object moves to (the one key
+   *   OBJECT_TRANSITION declares)
    * @param opts - Optional: reason, metadata
    */
   async transition(
     type: string,
     id: string,
-    targetState: string,
+    newState: string,
     opts?: ObjectTransitionOptions
   ): Promise<{ intentId: string; status: string }> {
     return this.rpc<{ intentId: string; status: string }>(
       'object.transition',
-      { type, id, targetState, ...opts }
+      { type, id, newState, ...opts }
     );
   }
 

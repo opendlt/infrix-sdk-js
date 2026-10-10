@@ -1,0 +1,89 @@
+{
+  "emissions": [
+    {
+      "sdk": "typescript",
+      "helper": "deployContract",
+      "goal": {
+        "type": "CONTRACT_DEPLOY",
+        "customParams": {
+          "authority": "acc://alice.acme",
+          "bytecode": "0061736d"
+        }
+      }
+    },
+    {
+      "sdk": "typescript",
+      "helper": "callContract",
+      "goal": {
+        "type": "CONTRACT_CALL",
+        "customParams": {
+          "contract": "acc://alice.acme/counter",
+          "function": "increment",
+          "args": "[]"
+        }
+      }
+    },
+    {
+      "sdk": "typescript",
+      "helper": "upgradeContract",
+      "goal": {
+        "type": "CONTRACT_UPGRADE",
+        "customParams": {
+          "contract": "acc://alice.acme/counter",
+          "newCode": "0061736d"
+        }
+      }
+    },
+    {
+      "sdk": "typescript",
+      "helper": "createObject",
+      "goal": {
+        "type": "OBJECT_CREATE",
+        "customParams": {
+          "objectType": "budget_approval",
+          "fields": {
+            "action": "approve-budget"
+          }
+        }
+      }
+    },
+    {
+      "sdk": "typescript",
+      "helper": "grantCapability",
+      "goal": {
+        "type": "CAPABILITY_GRANT",
+        "customParams": {
+          "granteeId": "acc://bob.acme",
+          "capabilities": [
+            "token:transfer"
+          ],
+          "workflowStageScope": "*",
+          "purpose": "operational",
+          "targetScope": "acc://alice.acme/counter"
+        }
+      }
+    },
+    {
+      "sdk": "typescript",
+      "helper": "evm.deploy",
+      "goal": {
+        "type": "EVM_DEPLOY",
+        "customParams": {
+          "authority": "acc://alice.acme",
+          "bytecode": "60806040"
+        }
+      }
+    },
+    {
+      "sdk": "typescript",
+      "helper": "evm.call",
+      "goal": {
+        "type": "EVM_CALL",
+        "customParams": {
+          "contract": "acc://alice.acme/evm-1",
+          "calldata": "70a08231"
+        }
+      }
+    }
+  ]
+}

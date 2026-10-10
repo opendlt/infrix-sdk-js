@@ -51,7 +51,7 @@ test('one call connects and submits a governed intent through a mock', async () 
   const mm = createInfrixMetaMask({ api: mockApi() });
   const conn = await mm.connect(mockProvider());
   assert.equal(conn.address, '0x1111111111111111111111111111111111111111');
-  const result = await mm.submitGovernedIntent({ signer: 'acc://alice.acme/book/1', signerVersion: 1, goal: { type: 'TOKEN_TRANSFER' } });
+  const result = await mm.submitGovernedIntent({ signer: 'acc://alice.acme/book/1', signerVersion: 1, goal: { type: 'CONTRACT_CALL', customParams: { contract: 'acc://alice.acme/counter', function: 'increment', args: '[]' } } });
   assert.equal(result.intentId, 'intent-mm-1');
   assert.equal(result.l0KeyPageVerified, true);
 });

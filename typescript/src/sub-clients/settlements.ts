@@ -41,15 +41,29 @@ export class SettlementSubClient extends SubClient {
   /**
    * Approve a pending settlement instruction.
    *
+   * The signature is over the canonical settlement-approval statement bound
+   * to the node's approval network — @infrix/wallet settlementApprovalPreimage
+   * ({networkId, settlementId, signerIdentity, signerRole, keyPageRef,
+   * signerPublicKey}). The node verifies it under `signerPublicKey` AND
+   * requires that key to be an entry on `keyPageRef` in L0, owned by the
+   * approver. A signature made for another network is refused
+   * (session 37, S24).
+   *
    * @param id - Settlement ID
-   * @param opts - Optional: identity, role
+   * @param opts - role, keyPageRef, signature, signerPublicKey
    */
   async approve(
     id: string,
-    opts?: { identity?: string; role?: string }
+    opts: {
+      role?: string;
+      keyPageRef: string;
+      signature: string;
+      signerPublicKey: string;
+    }
   ): Promise<{ status: string }> {
     return this.rpc<{ status: string }>('settlement.approve', {
       id,
+      signatureAlgorithm: 'ed25519',
       ...opts,
     });
   }
