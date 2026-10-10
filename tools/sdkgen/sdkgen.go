@@ -4,23 +4,34 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-// Command sdkgen keeps this repo's IntentGoalType constants in lock-step with
-// the canonical Go source of truth in the PUBLISHED infrix-schema contract
-// module (intent/types.go). It rewrites only the bytes between the
+// Command sdkgen keeps this repo's IntentGoalType constants in lock-step with the
+// NODE's goal vocabulary. It rewrites only the bytes between the
 //
 //	// SDKGEN-BEGIN(intent_goal_type)
 //	...generated body...
 //	// SDKGEN-END(intent_goal_type)
 //
 // markers in each governed SDK file; hand-written code outside the markers is
-// preserved. `sdkgen -check` (run by the parity test + CI) fails if any target
-// would be rewritten — that is the cross-repo guarantee that a goal added to the
-// schema without regenerating the SDKs cannot ship. This is the TS/AS half of
-// the generator that used to live in the monorepo (pkg/codegen); the Rust half
-// lives in opendlt/infrix-crates.
+// preserved.
+//
+// WHERE THE VOCABULARY COMES FROM. The generator reads the vendored
+// goal-vocabulary.json at the repo root. That file is written by infrix-core
+// (`go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary`)
+// from the code the node's admission path runs, and infrix-core's fence fails
+// when it disagrees with the node. It used to be read from the infrix-schema
+// version pinned in THIS module's go.mod, which was a published release and so
+// lagged the node: `sdkgen -check` agreed with a stale schema while the SDK was
+// eleven goals short. The pinned schema is now a floor, not the source: every
+// goal it declares must be in the vendored vocabulary, so a published release
+// can never add a goal this SDK silently lacks.
+//
+// `sdkgen -check` (run by the parity test + CI) fails if any target would be
+// rewritten or the floor is breached. The Rust half of the generator lives in
+// opendlt/infrix-crates.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -28,6 +39,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -41,7 +54,7 @@ import (
 // schemaModulePath is the published contract module the goal vocabulary comes
 // from. schemaGoalSourceRel is the source-of-truth file inside it.
 const (
-	schemaModulePath   = "github.com/opendlt/infrix-schema"
+	schemaModulePath    = "github.com/opendlt/infrix-schema"
 	schemaGoalSourceRel = "intent/types.go"
 )
 
@@ -186,15 +199,16 @@ func allTargets() []target {
 }
 
 func renderTypeScript(goals []goalConst, indent string) string {
+	// One list, with the type DERIVED from it: the runtime list and the union
+	// cannot disagree, and a client can validate a goal string against the same
+	// source the compiler checks.
 	var b strings.Builder
-	fmt.Fprintf(&b, "%sexport type IntentGoalType =\n", indent)
-	for i, g := range goals {
-		term := ""
-		if i == len(goals)-1 {
-			term = ";"
-		}
-		fmt.Fprintf(&b, "%s  | '%s'%s\n", indent, g.Wire, term)
+	fmt.Fprintf(&b, "%sexport const INTENT_GOAL_TYPES = [\n", indent)
+	for _, g := range goals {
+		fmt.Fprintf(&b, "%s  '%s',\n", indent, g.Wire)
 	}
+	fmt.Fprintf(&b, "%s] as const;\n", indent)
+	fmt.Fprintf(&b, "%sexport type IntentGoalType = (typeof INTENT_GOAL_TYPES)[number];\n", indent)
 	return b.String()
 }
 
@@ -211,15 +225,86 @@ const (
 	endMarker   = "// SDKGEN-END(intent_goal_type)"
 )
 
+// vocabularyRel is the vendored vocabulary file, relative to the repo root.
+const vocabularyRel = "goal-vocabulary.json"
+
+var wireShape = regexp.MustCompile(`^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$`)
+
+// loadVocabulary reads the vendored goal vocabulary: the node's goal set as
+// infrix-core's fence last generated it. Wire strings are validated, because
+// they are emitted verbatim into source code.
+func loadVocabulary(repoRoot string) ([]goalConst, error) {
+	raw, err := os.ReadFile(filepath.Join(repoRoot, vocabularyRel))
+	if err != nil {
+		return nil, fmt.Errorf("read the vendored goal vocabulary: %w (generate it with `go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary` in infrix-core)", err)
+	}
+	var doc struct {
+		Count int `json:"count"`
+		Goals []struct {
+			Goal string `json:"goal"`
+		} `json:"goals"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("%s is not valid JSON: %w", vocabularyRel, err)
+	}
+	if len(doc.Goals) == 0 {
+		return nil, fmt.Errorf("%s lists no goals", vocabularyRel)
+	}
+	if doc.Count != len(doc.Goals) {
+		return nil, fmt.Errorf("%s declares count %d but lists %d goals", vocabularyRel, doc.Count, len(doc.Goals))
+	}
+	seen := map[string]bool{}
+	goals := make([]goalConst, 0, len(doc.Goals))
+	for _, g := range doc.Goals {
+		if !wireShape.MatchString(g.Goal) {
+			return nil, fmt.Errorf("%s: %q is not an UPPER_SNAKE_CASE goal wire string", vocabularyRel, g.Goal)
+		}
+		if seen[g.Goal] {
+			return nil, fmt.Errorf("%s lists %s twice", vocabularyRel, g.Goal)
+		}
+		seen[g.Goal] = true
+		goals = append(goals, goalConst{Wire: g.Goal})
+	}
+	return goals, nil
+}
+
+// assertPublishedFloor fails when the pinned, published infrix-schema declares a
+// goal the vendored vocabulary lacks.
+func assertPublishedFloor(vocab []goalConst, published []goalConst) error {
+	have := make(map[string]bool, len(vocab))
+	for _, g := range vocab {
+		have[g.Wire] = true
+	}
+	var missing []string
+	for _, g := range published {
+		if !have[g.Wire] {
+			missing = append(missing, g.Wire)
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	sort.Strings(missing)
+	return fmt.Errorf("the pinned infrix-schema declares %d goal(s) the vendored %s lacks: %v — refresh it from infrix-core "+
+		"(`go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary`) and re-run sdkgen", len(missing), vocabularyRel, missing)
+}
+
 // generate runs every target. When check is true it writes nothing and returns
 // the labels that WOULD change; otherwise it rewrites in place.
 func generate(repoRoot string, check bool) ([]string, error) {
+	goals, err := loadVocabulary(repoRoot)
+	if err != nil {
+		return nil, err
+	}
 	src, err := resolveSchemaGoalSource()
 	if err != nil {
 		return nil, err
 	}
-	goals, err := parseGoals(src)
+	published, err := parseGoals(src)
 	if err != nil {
+		return nil, err
+	}
+	if err := assertPublishedFloor(goals, published); err != nil {
 		return nil, err
 	}
 	var changed []string
