@@ -13,6 +13,12 @@ export { DisclosureSubClient } from './disclosures';
 export { AnchorSubClient } from './anchors';
 export { ContractSubClient } from './contracts';
 export { EvmSubClient } from './evm';
+export { NodeSubClient } from './node';
+export type { NodeRoot, AssuranceMatrix, SubsystemTaxonomy } from './node';
+export { BillingSubClient } from './billing';
+export type { BillingConsumption, IntentBillingEntry } from './billing';
+export { CommitteeSubClient, EmergencySubClient } from './governanceBodies';
+export type { CommitteeList, CommitteeMotions, EmergencyCaseList } from './governanceBodies';
 export { PredicateSubClient } from './predicates';
 export type {
   PredicateCatalog,

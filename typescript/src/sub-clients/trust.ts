@@ -5,6 +5,23 @@ import type {
   TrustListFilter,
 } from '../types/governance';
 
+/** One row of GET /v4/trust/dashboard. `score` is a two-decimal string. */
+export interface TrustDashboardEntry {
+  profileId: string;
+  domain: string;
+  label: string;
+  state: string;
+  proofType: string;
+  score: string;
+}
+
+/** What GET /v4/trust/requirements/{scope} answers: the policy sets governing the scope. */
+export interface TrustRequirements {
+  scope: string;
+  policies: Array<Record<string, unknown>>;
+  count: number;
+}
+
 /**
  * TrustSubClient provides trust profile management and evaluation.
  */
@@ -60,5 +77,22 @@ export class TrustSubClient extends SubClient {
       profileIdA,
       profileIdB,
     });
+  }
+
+  /**
+   * The universal trust dashboard: every external dependency across all trust domains with its
+   * state and evaluation score (REST GET /v4/trust/dashboard).
+   */
+  async dashboard(): Promise<{ profiles: TrustDashboardEntry[]; count: number }> {
+    return this.rpc<{ profiles: TrustDashboardEntry[]; count: number }>('trust.dashboard', {});
+  }
+
+  /**
+   * The policy sets that set trust requirements in a scope (REST GET /v4/trust/requirements/{scope}).
+   *
+   * @param scope - `global`, `contract:<url>`, `obj:<url>` or `parent:<adi>`; a malformed scope is refused
+   */
+  async requirements(scope: string): Promise<TrustRequirements> {
+    return this.rest<TrustRequirements>('GET', `/v4/trust/requirements/${encodeURIComponent(scope)}`);
   }
 }

@@ -162,6 +162,10 @@ export {
   CredentialSubClient,
   DID_METHOD_INFRIX,
   EIP712SubClient,
+  NodeSubClient,
+  BillingSubClient,
+  CommitteeSubClient,
+  EmergencySubClient,
 } from './sub-clients';
 export type {
   VerifiableCredential,
@@ -176,6 +180,16 @@ export type {
   PredicateVerifyResult,
   PredicateProveRequest,
   PredicateProver,
+} from './sub-clients';
+export type {
+  NodeRoot,
+  AssuranceMatrix,
+  SubsystemTaxonomy,
+  BillingConsumption,
+  IntentBillingEntry,
+  CommitteeList,
+  CommitteeMotions,
+  EmergencyCaseList,
 } from './sub-clients';
 
 // ---- Direct imports for internal use ----
@@ -209,6 +223,10 @@ import {
   PredicateSubClient,
   CredentialSubClient,
   EIP712SubClient,
+  NodeSubClient,
+  BillingSubClient,
+  CommitteeSubClient,
+  EmergencySubClient,
 } from './sub-clients';
 
 // ---- Onboarding telemetry (adoption-12) ----
@@ -382,6 +400,18 @@ export class InfrixClient {
   /** MetaMask EIP-712 intent signing -> Accumulate submission (prepare, submit). */
   readonly eip712: EIP712SubClient;
 
+  /** What the node says about itself: root, assurance matrix, subsystem taxonomy. */
+  readonly node: NodeSubClient;
+
+  /** The calling actor's IU billing: consumption for a period and the entry for one intent. */
+  readonly billing: BillingSubClient;
+
+  /** Committee state, visible to members only: list, motions. */
+  readonly committees: CommitteeSubClient;
+
+  /** Emergency cases, visible to emergency authorities only: cases. */
+  readonly emergency: EmergencySubClient;
+
   // ---- Read-only Contract Inspection ----
 
   /**
@@ -499,6 +529,10 @@ export class InfrixClient {
     this.predicates = new PredicateSubClient(rpcFn, restFn);
     this.credentials = new CredentialSubClient(rpcFn, restFn);
     this.eip712 = new EIP712SubClient(rpcFn, restFn);
+    this.node = new NodeSubClient(rpcFn, restFn);
+    this.billing = new BillingSubClient(rpcFn, restFn);
+    this.committees = new CommitteeSubClient(rpcFn, restFn);
+    this.emergency = new EmergencySubClient(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);
