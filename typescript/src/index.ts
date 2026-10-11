@@ -181,7 +181,8 @@ export type {
 // ---- Direct imports for internal use ----
 
 import type { DevnetEvent } from './types/contract';
-import { parseUserError, InfrixUserError } from './userError';
+import { parseUserError, InfrixUserError, nodeAuthRequired, nodeRequestRefused } from './userError';
+export { nodeAuthRequired, nodeRequestRefused } from './userError';
 
 export {
   InfrixUserError,
@@ -251,26 +252,34 @@ export interface InfrixClientOptions {
   token?: string;
 }
 
-/**
- * The typed error for a 401 from a node that enforces `api.auth`. Same stable code as the CLI's
- * `NODE_AUTH_REQUIRED` (docs/errors/node-auth.md); thrown BEFORE the body is parsed, because a
- * 401 carries nothing the caller could act on better than this does.
- */
-export function nodeAuthRequired(sentToken: boolean): InfrixUserError {
-  return new InfrixUserError({
-    code: 'NODE_AUTH_REQUIRED',
-    title: 'The node requires an API bearer token',
-    message: sentToken
-      ? 'The node answered 401: the token this client sent was not accepted.'
-      : 'The node answered 401: it enforces api.auth and this client sent no token.',
-    impact: 'Nothing was read or changed. Every governed surface of a node that enforces api.auth refuses a request without its token.',
-    fixes: [
-      { label: 'Pass the token when constructing the client', command: "new InfrixClient(url, { token: process.env.INFRIX_API_TOKEN })", safeToRun: false },
-    ],
-    docs: 'docs/errors/node-auth.md',
-    retryable: false,
-  });
+/** True when running under Node (where a WebSocket can send request headers). */
+function runsOnNode(): boolean {
+  return typeof (globalThis as { process?: { versions?: { node?: string } } }).process?.versions?.node === 'string';
 }
+
+/**
+ * How a WebSocket authenticates to a node that enforces `api.auth`: Node's `ws` and undici's WebSocket
+ * take request headers; a browser WebSocket cannot send any, so it cannot authenticate and says so
+ * rather than connecting without the token and being refused with nothing to read.
+ */
+export function webSocketAuthPlan(token: string | undefined, isNode: boolean): { headers?: Record<string, string> } {
+  if (!token) return {};
+  if (!isNode) {
+    throw new InfrixUserError({
+      code: 'NODE_AUTH_REQUIRED',
+      title: 'The node requires an API bearer token',
+      message:
+        'A browser WebSocket cannot send an Authorization header, so subscribe() cannot authenticate here. Subscribe from Node, or through a proxy that adds the token.',
+      fixes: [],
+      docs: 'docs/errors/node-auth.md',
+      retryable: false,
+    });
+  }
+  return { headers: { Authorization: `Bearer ${token}` } };
+}
+
+/** Bearer tokens by client, out of reach of enumeration. See InfrixClient.apiToken. */
+const apiTokens = new WeakMap<object, string>();
 
 /**
  * Named network presets so callers connect without hard-coding a node URL.
@@ -392,8 +401,13 @@ export class InfrixClient {
 
   private restBase: string;
   private telemetry?: SdkTelemetry;
-  /** The bearer token, kept off every error and event. */
-  private readonly apiToken?: string;
+  /**
+   * The bearer token is NOT a property: it lives in a module-level WeakMap keyed by the client, so
+   * JSON.stringify(client), util.inspect(client) and Object.keys(client) cannot show it.
+   */
+  private get apiToken(): string | undefined {
+    return apiTokens.get(this);
+  }
   private defaultDisclosure: {
     actor?: string;
     purpose?: string;
@@ -452,7 +466,7 @@ export class InfrixClient {
     this.restBase = base;
     this.telemetry = options?.telemetry;
     const token = options?.token?.trim();
-    this.apiToken = token ? token : undefined;
+    if (token) apiTokens.set(this, token);
 
     // Fold a disclosure context passed at construction into the default so the
     // first governed call already carries actor/purpose (P0-3).
@@ -521,8 +535,19 @@ export class InfrixClient {
       const translated = parseUserError(json.error);
       const errorCode =
         translated?.code ?? (typeof json.error.code === 'string' ? json.error.code : undefined);
+      if (translated) {
+        this.emit({ event: 'rpc.call', method, result: 'failure', errorCode });
+        throw translated;
+      }
+      // The node's bridge answers HTTP 200 with {"error":{"code":400,...}} for a request the route
+      // refused: a 4xx numeric code is the node's refusal, typed like the CLI types it.
+      if (typeof json.error.code === 'number' && json.error.code >= 400 && json.error.code < 500) {
+        this.emit({ event: 'rpc.call', method, result: 'failure', errorCode: 'NODE_REQUEST_REFUSED' });
+        throw json.error.code === 401
+          ? nodeAuthRequired(this.apiToken !== undefined)
+          : nodeRequestRefused(json.error.code, undefined, String(json.error.message ?? ''));
+      }
       this.emit({ event: 'rpc.call', method, result: 'failure', errorCode });
-      if (translated) throw translated;
       throw new InfrixRPCError(json.error.code, json.error.message);
     }
     this.emit({ event: 'rpc.call', method, result: 'success' });
@@ -565,8 +590,12 @@ export class InfrixClient {
       // shows. Fall back to InfrixRPCError for legacy numeric-coded errors.
       const translated = parseUserError(json.error);
       if (translated) throw translated;
-      const code = typeof json.error.code === 'number' ? json.error.code : -32603;
       const msg = typeof json.error.message === 'string' ? json.error.message : 'rest error';
+      // A v4 refusal carries the node's own string code (BAD_REQUEST, ...) and an HTTP 4xx.
+      if (res.status >= 400 && res.status < 500) {
+        throw nodeRequestRefused(res.status, typeof json.error.code === 'string' ? json.error.code : undefined, msg);
+      }
+      const code = typeof json.error.code === 'number' ? json.error.code : -32603;
       throw new InfrixRPCError(code, msg);
     }
     return (json && json.data !== undefined ? json.data : json) as T;
@@ -590,7 +619,10 @@ export class InfrixClient {
     // Use dynamic import of 'ws' in Node, or native WebSocket in browser.
     const g = globalThis as { WebSocket?: typeof WebSocket; require?: (m: string) => unknown };
     const WS: typeof WebSocket = g.WebSocket ?? (g.require ? (g.require('ws') as typeof WebSocket) : (undefined as unknown as typeof WebSocket));
-    const ws = new WS(this.wsUrl);
+    const plan = webSocketAuthPlan(this.apiToken, runsOnNode());
+    const ws: WebSocket = plan.headers
+      ? new (WS as unknown as new (url: string, opts: { headers: Record<string, string> }) => WebSocket)(this.wsUrl, { headers: plan.headers })
+      : new WS(this.wsUrl);
 
     ws.onopen = () => {
       if (eventType) {

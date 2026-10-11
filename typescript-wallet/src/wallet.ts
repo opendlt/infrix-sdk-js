@@ -49,7 +49,16 @@ export interface WalletOptions {
   rpcUrl?: string;
   /** Custom key store implementation. Default: MemoryKeyStore */
   keyStore?: KeyStore;
+  /**
+   * Bearer token for a node that enforces `api.auth`; sent as `Authorization: Bearer <token>`. A node
+   * that enforces it answers 401 to every wallet call without it. Held out of reach of enumeration
+   * (JSON.stringify(wallet) does not show it).
+   */
+  token?: string;
 }
+
+/** Bearer tokens by wallet, out of reach of enumeration. */
+const walletTokens = new WeakMap<object, string>();
 
 /** Social recovery request. */
 export interface RecoveryRequest {
@@ -121,6 +130,8 @@ export class InfrixWallet {
   constructor(adi: string, options?: WalletOptions) {
     this.adi = adi;
     this.rpcUrl = options?.rpcUrl || 'http://localhost:8080/rpc';
+    const token = options?.token?.trim();
+    if (token) walletTokens.set(this, token);
     this.keyStore = options?.keyStore || new MemoryKeyStore();
     this.sessionMgr = new SessionManager(adi, this.keyStore);
   }
@@ -474,11 +485,20 @@ export class InfrixWallet {
 
   private async rpc(method: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
     const body = JSON.stringify({ jsonrpc: '2.0', method, params, id: Date.now() });
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = walletTokens.get(this);
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(this.rpcUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body,
     });
+    if (res.status === 401) {
+      throw new Error(
+        'NODE_AUTH_REQUIRED: the node answered 401: it enforces api.auth and ' +
+          (token ? 'the token this wallet sent was not accepted' : 'this wallet sent no token (pass `token` in WalletOptions)'),
+      );
+    }
     const json = await res.json();
     if (json.error) throw new Error(json.error.message);
     return json.result as Record<string, unknown>;

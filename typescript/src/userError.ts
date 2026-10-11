@@ -115,3 +115,41 @@ export function parseUserError(errObj: unknown): InfrixUserError | null {
   }
   return null;
 }
+
+/**
+ * The typed error for any other 4xx: the node read the request and refused it. Same stable code as the
+ * CLI's `NODE_REQUEST_REFUSED`; the node's own code and message are kept (`supportData.nodeCode`).
+ */
+export function nodeRequestRefused(httpStatus: number, nodeCode: string | undefined, message: string): InfrixUserError {
+  return new InfrixUserError({
+    code: 'NODE_REQUEST_REFUSED',
+    title: 'The node refused the request',
+    message: message || `The node answered ${httpStatus}.`,
+    impact: 'Nothing was changed by this request.',
+    fixes: [],
+    docs: 'docs/errors/node-auth.md',
+    retryable: false,
+    supportData: { httpStatus: String(httpStatus), ...(nodeCode ? { nodeCode } : {}) },
+  });
+}
+
+/**
+ * The typed error for a 401 from a node that enforces `api.auth`. Same stable code as the CLI's
+ * `NODE_AUTH_REQUIRED` (docs/errors/node-auth.md); thrown BEFORE the body is parsed, because a
+ * 401 carries nothing the caller could act on better than this does.
+ */
+export function nodeAuthRequired(sentToken: boolean): InfrixUserError {
+  return new InfrixUserError({
+    code: 'NODE_AUTH_REQUIRED',
+    title: 'The node requires an API bearer token',
+    message: sentToken
+      ? 'The node answered 401: the token this client sent was not accepted.'
+      : 'The node answered 401: it enforces api.auth and this client sent no token.',
+    impact: 'Nothing was read or changed. Every governed surface of a node that enforces api.auth refuses a request without its token.',
+    fixes: [
+      { label: 'Pass the token when constructing the client', command: "new InfrixClient(url, { token: process.env.INFRIX_API_TOKEN })", safeToRun: false },
+    ],
+    docs: 'docs/errors/node-auth.md',
+    retryable: false,
+  });
+}
