@@ -440,8 +440,8 @@ export class InfrixClient {
   readonly contracts: ContractSubClient;
 
   /**
-   * The governed Solidity/EVM deploy door (DX P6-5): `evm.deploy(bytecode)`
-   * and `evm.call(addr, calldata)`. These wrap raw EVM bytecode/calldata as
+   * The governed Solidity/EVM deploy door (DX P6-5): `evm.deploy(bytecode, { authority, creation })`
+   * and `evm.call(addr, calldata)` (`creation: true` for a `solc --bin` file). These wrap raw EVM bytecode/calldata as
    * governed `EVM_DEPLOY` / `EVM_CALL` intents — the supported low-level EVM
    * door, still routed through the full spine (no raw-transaction bypass).
    */

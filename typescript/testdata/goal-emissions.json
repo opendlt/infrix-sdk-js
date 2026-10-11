@@ -83,6 +83,19 @@
           "calldata": "70a08231"
         }
       }
+    },
+    {
+      "sdk": "typescript",
+      "helper": "evm.deploy(creation)",
+      "goal": {
+        "type": "EVM_DEPLOY",
+        "customParams": {
+          "authority": "acc://alice.acme",
+          "bytecode": "60806040",
+          "creation": true,
+          "constructorArgs": "0064"
+        }
+      }
     }
   ]
 }

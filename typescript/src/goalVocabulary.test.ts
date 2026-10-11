@@ -189,11 +189,13 @@ async function collectEmissions(): Promise<Emission[]> {
     const c = new InfrixClient('http://node.test', { actor: 'acc://alice.acme', purpose: 'test' });
     await c.evm.deploy('0x60806040', { authority: 'acc://alice.acme' });
     await c.evm.call('acc://alice.acme/evm-1', '0x70a08231');
+    await c.evm.deploy('0x60806040', { authority: 'acc://alice.acme', creation: true, constructorArgs: '0x0064' });
   } finally {
     (globalThis as { fetch?: FetchLike }).fetch = realFetch;
   }
   out.push({ sdk: 'typescript', helper: 'evm.deploy', goal: { type: wire[0].goalType, customParams: wire[0].customParams } });
   out.push({ sdk: 'typescript', helper: 'evm.call', goal: { type: wire[1].goalType, customParams: wire[1].customParams } });
+  out.push({ sdk: 'typescript', helper: 'evm.deploy(creation)', goal: { type: wire[2].goalType, customParams: wire[2].customParams } });
   return out;
 }
 
