@@ -1775,14 +1775,46 @@ export interface PolicyAnalysis {
   unusedOperands?: string[];
 }
 
+/** One rule as the structural conflict detector reports it. */
+export interface PolicyConflictRule {
+  ruleId: string;
+  priority: number;
+  effect: string;
+  auditMsg?: string;
+}
+
 /**
- * What GET /v4/policies/conflicts answers: one analysis per policy set bound in the scope. A
- * finding is an unreachable or redundant rule or a warning; there is no cross-rule `conflicts`
- * list on the wire.
+ * The structural conflict detector's report for one policy set: duplicate rule ids, identical
+ * conditions with opposing effects, a rule whose type is not its set's, contradictions on one priority
+ * band, and conflicts between strata (which the higher stratum wins).
+ */
+export interface PolicyConflictReport {
+  hasConflict: boolean;
+  matchingRules?: PolicyConflictRule[];
+  conflictPairs?: Array<{ ruleA: PolicyConflictRule; ruleB: PolicyConflictRule }>;
+  crossStratumConflicts?: Array<{
+    higherStratumRule: string;
+    higherEffect: string;
+    lowerStratumRule: string;
+    lowerEffect: string;
+    resolution: string;
+  }>;
+}
+
+/**
+ * What GET /v4/policies/conflicts answers: for each policy set bound in the scope, TWO analyses. `analysis`
+ * is the shadowing analysis (unreachable and redundant rules, coverage, warnings). `conflicts` is the
+ * structural conflict detector's report; `conflictsError` replaces it when the detector could not run.
+ * A set is conflict-free only when `conflicts.hasConflict` is false.
  */
 export interface PolicyScopeAnalysis {
   scope: string;
-  results: Array<{ policySetId: string; analysis: PolicyAnalysis }>;
+  results: Array<{
+    policySetId: string;
+    analysis: PolicyAnalysis;
+    conflicts?: PolicyConflictReport;
+    conflictsError?: string;
+  }>;
 }
 
 export interface PolicyEvaluationResult {
