@@ -2,7 +2,7 @@ import { SubClient } from './base';
 import type {
   PolicyRule,
   PolicyDecision,
-  PolicyConflict,
+  PolicyScopeAnalysis,
   PolicyEvaluationResult,
   PolicySimulationResult,
 } from '../types/governance';
@@ -92,12 +92,8 @@ export class PolicySubClient extends SubClient {
    *
    * @param scope - Scope to analyze
    */
-  async conflicts(scope: string): Promise<PolicyConflict[]> {
-    const result = await this.rpc<{ conflicts: PolicyConflict[] }>(
-      'policy.conflicts',
-      { scope }
-    );
-    return result.conflicts;
+  async conflicts(scope: string): Promise<PolicyScopeAnalysis> {
+    return this.rpc<PolicyScopeAnalysis>('policy.conflicts', { scope });
   }
 
   /**

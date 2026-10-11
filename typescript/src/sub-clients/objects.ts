@@ -101,8 +101,8 @@ export class ObjectSubClient extends SubClient {
   /**
    * List all registered object types.
    */
-  async types(): Promise<{ types: string[]; schemas: Record<string, unknown> }> {
-    return this.rpc<{ types: string[]; schemas: Record<string, unknown> }>(
+  async types(): Promise<{ types: string[]; total: number; detail: string }> {
+    return this.rpc<{ types: string[]; total: number; detail: string }>(
       'object.types',
       {}
     );

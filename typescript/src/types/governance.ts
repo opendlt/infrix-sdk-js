@@ -1756,6 +1756,35 @@ export interface PolicyConflict {
   severity: 'critical' | 'warning' | 'info';
 }
 
+/** One finding of a policy set's static analysis (GET /v4/policies/conflicts). */
+export interface PolicyAnalysisWarning {
+  severity: string;
+  ruleId?: string;
+  message: string;
+}
+
+/** The static analysis of one policy set. Lists are omitted when empty. */
+export interface PolicyAnalysis {
+  policySetId: string;
+  policyClass?: string;
+  coverageScore?: number;
+  unreachableRules?: string[];
+  redundantRules?: string[];
+  warnings?: PolicyAnalysisWarning[];
+  referencedOperands?: string[];
+  unusedOperands?: string[];
+}
+
+/**
+ * What GET /v4/policies/conflicts answers: one analysis per policy set bound in the scope. A
+ * finding is an unreachable or redundant rule or a warning; there is no cross-rule `conflicts`
+ * list on the wire.
+ */
+export interface PolicyScopeAnalysis {
+  scope: string;
+  results: Array<{ policySetId: string; analysis: PolicyAnalysis }>;
+}
+
 export interface PolicyEvaluationResult {
   allowed: boolean;
   matchedRules: PolicyDecision[];
