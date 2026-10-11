@@ -17,6 +17,8 @@ export { NodeSubClient } from './node';
 export type { NodeRoot, AssuranceMatrix, SubsystemTaxonomy, NetworkInfo, NetworkStatus, IssuerDidDocument, ClaimManifest } from './node';
 export { BlockSubClient, TransactionSubClient } from './chain';
 export type { PageInfo, BlockList, LatestBlock, Block, TransactionList, Transaction, TransactionStatus } from './chain';
+export { AccountSubClient } from './accounts';
+export type { AccountList, Account, AccountBalance } from './accounts';
 export { BillingSubClient } from './billing';
 export type { BillingConsumption, IntentBillingEntry } from './billing';
 export { CommitteeSubClient, EmergencySubClient } from './governanceBodies';

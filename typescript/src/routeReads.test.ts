@@ -265,3 +265,58 @@ test('transactions.list, get and status GET their routes and escape the hash', a
   await assert.rejects(() => against({}, (c) => c.transactions.get('  ')), /hash is required/);
   await assert.rejects(() => against({}, (c) => c.transactions.status('')), /hash is required/);
 });
+
+test('accounts.list sends parentAdi only when given and refuses a blank one', async () => {
+  const all = await against(
+    { items: [{ url: 'acc://alice.acme', recognised: true }], pagination: { offset: 0, limit: 50, total: 1 } },
+    (c) => c.accounts.list()
+  );
+  assert.equal(all.seen.method, 'GET');
+  assert.equal(all.seen.path, '/v4/accounts');
+  assert.deepEqual(all.seen.query, {});
+  assert.equal(all.result.pagination.total, 1);
+
+  const under = await against(
+    { items: [], pagination: { offset: 0, limit: 50, total: 0 } },
+    (c) => c.accounts.list({ parentAdi: ' acc://alice.acme ' })
+  );
+  assert.equal(under.seen.path, '/v4/accounts');
+  assert.deepEqual(under.seen.query, { parentAdi: 'acc://alice.acme' });
+  assert.equal(under.result.items.length, 0);
+
+  for (const bad of ['', '   ']) {
+    await assert.rejects(() => against({}, (c) => c.accounts.list({ parentAdi: bad })), /parentAdi/);
+  }
+});
+
+test('accounts.get and balance GET their routes with the URL as one escaped segment', async () => {
+  const g = await against({ l0Type: 'identity', recognised: true, url: 'acc://alice.acme' }, (c) => c.accounts.get('acc://alice.acme'));
+  assert.equal(g.seen.method, 'GET');
+  assert.equal(g.seen.path, '/v4/accounts/acc%3A%2F%2Falice.acme');
+  assert.deepEqual(g.seen.query, {});
+  assert.equal(g.result.l0Type, 'identity');
+  assert.equal(g.result.recognised, true);
+  assert.equal(g.seen.headers['X-Actor'], 'acc://reader.acme');
+
+  const t = await against({ l0Type: 'tokenAccount', recognised: false, url: 'acc://alice.acme/tokens' }, (c) => c.accounts.get(' acc://alice.acme/tokens '));
+  assert.equal(t.seen.path, '/v4/accounts/acc%3A%2F%2Falice.acme%2Ftokens');
+  assert.equal(t.result.recognised, false);
+
+  const b = await against(
+    { balances: [{ account: 'acc://alice.acme/tokens', tokenUrl: 'acc://ACME', balance: '250' }], l0Type: 'tokenAccount', url: 'acc://alice.acme/tokens' },
+    (c) => c.accounts.balance('acc://alice.acme/tokens')
+  );
+  assert.equal(b.seen.path, '/v4/accounts/acc%3A%2F%2Falice.acme%2Ftokens/balance');
+  assert.deepEqual(b.seen.query, {});
+  assert.equal(b.result.l0Type, 'tokenAccount');
+  assert.equal(Array.isArray(b.result.balances) ? b.result.balances.length : -1, 1);
+
+  const m = await against({ balances: {}, l0Type: 'identity', url: 'acc://alice.acme' }, (c) => c.accounts.balance('acc://alice.acme'));
+  assert.equal(m.seen.path, '/v4/accounts/acc%3A%2F%2Falice.acme/balance');
+  assert.deepEqual(m.result.balances, {});
+
+  for (const bad of ['', '  ']) {
+    await assert.rejects(() => against({}, (c) => c.accounts.get(bad)), /account URL is required/);
+    await assert.rejects(() => against({}, (c) => c.accounts.balance(bad)), /account URL is required/);
+  }
+});
