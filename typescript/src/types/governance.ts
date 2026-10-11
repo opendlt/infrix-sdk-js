@@ -1786,7 +1786,8 @@ export interface PolicyConflictRule {
 /**
  * The structural conflict detector's report for one policy set: duplicate rule ids, identical
  * conditions with opposing effects, a rule whose type is not its set's, contradictions on one priority
- * band, and conflicts between strata (which the higher stratum wins).
+ * band, and conflicts between strata (the higher stratum wins) among the policy sets bound in the scope.
+ * A cross-stratum conflict is reported on the OVERRIDDEN set (`lowerSetId`).
  */
 export interface PolicyConflictReport {
   hasConflict: boolean;
@@ -1794,9 +1795,13 @@ export interface PolicyConflictReport {
   conflictPairs?: Array<{ ruleA: PolicyConflictRule; ruleB: PolicyConflictRule }>;
   crossStratumConflicts?: Array<{
     higherStratumRule: string;
+    higherStratum?: number;
     higherEffect: string;
+    higherSetId?: string;
     lowerStratumRule: string;
+    lowerStratum?: number;
     lowerEffect: string;
+    lowerSetId?: string;
     resolution: string;
   }>;
 }
