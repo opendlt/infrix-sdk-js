@@ -50,3 +50,19 @@ test('objects.types hands back the type names, the total and the detail the rout
   assert.equal(got.detail, 'governance-authoritative object types');
   assert.equal((got as { schemas?: unknown }).schemas, undefined, 'the route returns no `schemas`');
 });
+
+test('mission.global is reachable from the client and hands back the nested system metrics', async () => {
+  const route = {
+    scope: 'system-wide (privileged)',
+    contractCount: 7,
+    system: {
+      block_height: 1234567, contracts_total: 7, contracts_healthy: 5, contracts_quarantined: 1,
+      contracts_throttled: 0, contracts_paused: 1, contracts_frozen: 0, swarms_total: 0,
+      shape_shifting_contracts: 0, total_calls_this_block: 3, total_gas_this_block: 900,
+    },
+  };
+  const got = await answering(route, (c) => c.mission.global());
+  assert.deepEqual(got, route);
+  assert.equal((got as typeof route).system.block_height, 1234567);
+});
+

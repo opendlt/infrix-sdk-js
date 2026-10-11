@@ -308,6 +308,9 @@ export class InfrixClient {
   /** Approval management: submit, list, pending, revoke. */
   readonly approvals: ApprovalSubClient;
 
+  /** Production observability: metrics, SLOs, alerts, cost, logs and the system-wide view. */
+  readonly mission: MissionClient;
+
   /** Evidence chain access: get, verify, export, anchor. */
   readonly evidence: EvidenceSubClient;
 
@@ -437,6 +440,7 @@ export class InfrixClient {
     this.objects = new ObjectSubClient(rpcFn, restFn);
     this.policies = new PolicySubClient(rpcFn, restFn);
     this.approvals = new ApprovalSubClient(rpcFn, restFn);
+    this.mission = new MissionClient(rpcFn);
     this.evidence = new EvidenceSubClient(rpcFn, restFn);
     this.trust = new TrustSubClient(rpcFn, restFn);
     this.capabilities = new CapabilitySubClient(rpcFn, restFn);
@@ -808,6 +812,27 @@ export class SwarmClient {
 
 // ---- Mission Control Types ----
 
+/** What GET /v4/mission/system answers: the system-wide metrics nested under `system`. */
+export interface MissionSystemMetrics {
+  block_height: number;
+  contracts_total: number;
+  contracts_healthy: number;
+  contracts_quarantined: number;
+  contracts_throttled: number;
+  contracts_paused: number;
+  contracts_frozen: number;
+  swarms_total: number;
+  shape_shifting_contracts: number;
+  total_calls_this_block: number;
+  total_gas_this_block: number;
+}
+
+export interface MissionSystemAnswer {
+  system: MissionSystemMetrics;
+  contractCount: number;
+  scope: string;
+}
+
 export interface MissionMetrics {
   contract_url: string;
   block_height: number;
@@ -905,8 +930,12 @@ export class MissionClient {
     const r = await this.rpc<{ logs: MissionLogEntry[] }>('mission.logs', { contract, ...opts });
     return r.logs;
   }
-  async global(): Promise<Record<string, unknown>> {
-    return this.rpc<Record<string, unknown>>('mission.global', {});
+  /**
+   * The system-wide metrics. Audit/investigation purposes only — the node answers NOT-FOUND to any
+   * other disclosure purpose, so construct the client with `purpose: 'audit'`.
+   */
+  async global(): Promise<MissionSystemAnswer> {
+    return this.rpc<MissionSystemAnswer>('mission.global', {});
   }
 }
 
