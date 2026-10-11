@@ -241,6 +241,35 @@ export interface InfrixClientOptions {
   purpose?: string;
   workflowInstance?: string;
   identity?: string;
+  /**
+   * Bearer token for a node that enforces `api.auth`. Such a node answers 401 to every governed
+   * request without it (REST, `/rpc` and `/v4/jsonrpc` alike), and a public-profile node must
+   * enforce it. The token is sent as `Authorization: Bearer <token>`; it is never included in an
+   * error, an event, or telemetry. Read it from your own secret store, e.g.
+   * `{ token: process.env.INFRIX_API_TOKEN }`.
+   */
+  token?: string;
+}
+
+/**
+ * The typed error for a 401 from a node that enforces `api.auth`. Same stable code as the CLI's
+ * `NODE_AUTH_REQUIRED` (docs/errors/node-auth.md); thrown BEFORE the body is parsed, because a
+ * 401 carries nothing the caller could act on better than this does.
+ */
+export function nodeAuthRequired(sentToken: boolean): InfrixUserError {
+  return new InfrixUserError({
+    code: 'NODE_AUTH_REQUIRED',
+    title: 'The node requires an API bearer token',
+    message: sentToken
+      ? 'The node answered 401: the token this client sent was not accepted.'
+      : 'The node answered 401: it enforces api.auth and this client sent no token.',
+    impact: 'Nothing was read or changed. Every governed surface of a node that enforces api.auth refuses a request without its token.',
+    fixes: [
+      { label: 'Pass the token when constructing the client', command: "new InfrixClient(url, { token: process.env.INFRIX_API_TOKEN })", safeToRun: false },
+    ],
+    docs: 'docs/errors/node-auth.md',
+    retryable: false,
+  });
 }
 
 /**
@@ -363,6 +392,8 @@ export class InfrixClient {
 
   private restBase: string;
   private telemetry?: SdkTelemetry;
+  /** The bearer token, kept off every error and event. */
+  private readonly apiToken?: string;
   private defaultDisclosure: {
     actor?: string;
     purpose?: string;
@@ -420,6 +451,8 @@ export class InfrixClient {
     this.wsUrl = base.replace(/^http/, 'ws') + '/ws';
     this.restBase = base;
     this.telemetry = options?.telemetry;
+    const token = options?.token?.trim();
+    this.apiToken = token ? token : undefined;
 
     // Fold a disclosure context passed at construction into the default so the
     // first governed call already carries actor/purpose (P0-3).
@@ -472,11 +505,17 @@ export class InfrixClient {
       }
     }
     const body = JSON.stringify({ jsonrpc: '2.0', method, params: mergedParams, id });
+    const rpcHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiToken) rpcHeaders['Authorization'] = `Bearer ${this.apiToken}`;
     const res = await fetch(this.rpcUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: rpcHeaders,
       body,
     });
+    if (res.status === 401) {
+      this.emit({ event: 'rpc.call', method, result: 'failure', errorCode: 'NODE_AUTH_REQUIRED' });
+      throw nodeAuthRequired(this.apiToken !== undefined);
+    }
     const json = await res.json();
     if (json.error) {
       const translated = parseUserError(json.error);
@@ -508,6 +547,7 @@ export class InfrixClient {
     // default-context injection so REST sub-clients need no per-call
     // header plumbing.
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiToken) headers['Authorization'] = `Bearer ${this.apiToken}`;
     if (this.defaultDisclosure.actor) headers['X-Actor'] = this.defaultDisclosure.actor;
     if (this.defaultDisclosure.purpose) headers['X-Purpose'] = this.defaultDisclosure.purpose;
     if (this.defaultDisclosure.workflowInstance)
@@ -517,6 +557,7 @@ export class InfrixClient {
       init.body = JSON.stringify(body);
     }
     const res = await fetch(url, init);
+    if (res.status === 401) throw nodeAuthRequired(this.apiToken !== undefined);
     const json = await res.json();
     if (json && json.error) {
       // v4 errors carry a stable string code (adoption-08) — surface the typed,
