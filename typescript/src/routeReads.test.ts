@@ -198,3 +198,70 @@ test('committees.list, committees.motions and emergency.cases GET their routes',
   assert.equal(e.seen.path, '/v4/emergency/cases');
   assert.equal(e.result.total, 1);
 });
+
+test('node.network, networkStatus, issuerDid and claims GET their routes and send no query', async () => {
+  const n = await against({ apiVersion: 'v4', blockHeight: 812, chainId: 'infrix-7', network: 'kermit' }, (c) => c.node.network());
+  assert.equal(n.seen.method, 'GET');
+  assert.equal(n.seen.path, '/v4/network');
+  assert.deepEqual(n.seen.query, {});
+  assert.equal(n.result.chainId, 'infrix-7');
+
+  const s = await against({ apiVersion: 'v4' }, (c) => c.node.networkStatus());
+  assert.equal(s.seen.path, '/v4/network/status');
+  assert.equal(s.result.apiVersion, 'v4');
+
+  const d = await against({ '@context': ['https://www.w3.org/ns/did/v1'], id: 'did:acc:issuer.acme' }, (c) => c.node.issuerDid());
+  assert.equal(d.seen.path, '/v4/network/issuer-did');
+  assert.equal(d.result.id, 'did:acc:issuer.acme');
+
+  const cl = await against({ selectedProfile: 'public_production', supportedCapabilities: ['anchor'] }, (c) => c.node.claims());
+  assert.equal(cl.seen.path, '/v4/claims');
+  assert.deepEqual(cl.result.supportedCapabilities, ['anchor']);
+  assert.equal(cl.seen.headers['X-Actor'], 'acc://reader.acme');
+});
+
+test('blocks.list, latest and get GET their routes, and get refuses a height the node would refuse', async () => {
+  const l = await against({ items: [{ height: 3 }], pagination: { offset: 0, limit: 50, total: 3 } }, (c) => c.blocks.list());
+  assert.equal(l.seen.method, 'GET');
+  assert.equal(l.seen.path, '/v4/blocks');
+  assert.deepEqual(l.seen.query, {});
+  assert.equal(l.result.pagination.total, 3);
+
+  const h = await against({ height: 812 }, (c) => c.blocks.latest());
+  assert.equal(h.seen.path, '/v4/blocks/latest');
+  assert.equal(h.result.height, 812);
+
+  const b = await against({ height: 42, transactions: 2, txCount: 2, unit: 'u' }, (c) => c.blocks.get(42));
+  assert.equal(b.seen.path, '/v4/blocks/42');
+  assert.deepEqual(b.seen.query, {});
+  assert.equal(b.result.txCount, 2);
+
+  const zero = await against({ height: 0, transactions: [], txCount: 0, unit: 'u' }, (c) => c.blocks.get(0));
+  assert.equal(zero.seen.path, '/v4/blocks/0');
+
+  for (const bad of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    await assert.rejects(() => against({}, (c) => c.blocks.get(bad)), /height/);
+  }
+});
+
+test('transactions.list, get and status GET their routes and escape the hash', async () => {
+  const l = await against({ items: [{ txHash: 'h1' }], pagination: { offset: 0, limit: 50, total: 1 } }, (c) => c.transactions.list());
+  assert.equal(l.seen.method, 'GET');
+  assert.equal(l.seen.path, '/v4/transactions');
+  assert.deepEqual(l.seen.query, {});
+  assert.equal(l.result.items.length, 1);
+
+  const g = await against(
+    { txHash: 'a/b', status: 'confirmed', blockHeight: 4, gasUsed: 9, planId: 'p', timestamp: 't' },
+    (c) => c.transactions.get('a/b')
+  );
+  assert.equal(g.seen.path, '/v4/transactions/a%2Fb');
+  assert.equal(g.result.gasUsed, 9);
+
+  const s = await against({ hash: 'a/b', status: 'pending', blockHeight: 0, gasUsed: 0 }, (c) => c.transactions.status('a/b'));
+  assert.equal(s.seen.path, '/v4/transactions/a%2Fb/status');
+  assert.equal(s.result.status, 'pending');
+
+  await assert.rejects(() => against({}, (c) => c.transactions.get('  ')), /hash is required/);
+  await assert.rejects(() => against({}, (c) => c.transactions.status('')), /hash is required/);
+});

@@ -10,6 +10,10 @@ import type { RestMethod } from './base';
 const ROUTE_ROOT = 'GET /v4/';
 const ROUTE_ASSURANCE = 'GET /v4/assurance';
 const ROUTE_SUBSYSTEMS = 'GET /v4/network/subsystems';
+const ROUTE_NETWORK = 'GET /v4/network';
+const ROUTE_NETWORK_STATUS = 'GET /v4/network/status';
+const ROUTE_ISSUER_DID = 'GET /v4/network/issuer-did';
+const ROUTE_CLAIMS = 'GET /v4/claims';
 
 /** What GET /v4/ answers. */
 export interface NodeRoot {
@@ -48,6 +52,31 @@ export interface SubsystemTaxonomy {
   }>;
 }
 
+/** What GET /v4/network answers. */
+export interface NetworkInfo {
+  apiVersion: string;
+  blockHeight: number;
+  chainId: string;
+  network: string;
+}
+
+/** What GET /v4/network/status answers. The node adds counters of its own (height, uptime). */
+export interface NetworkStatus {
+  apiVersion: string;
+}
+
+/** What GET /v4/network/issuer-did answers: the DID document of the node's credential issuer. */
+export interface IssuerDidDocument {
+  '@context': string | string[];
+  id: string;
+}
+
+/** What GET /v4/claims answers: the profile the node stands behind and what it supports. */
+export interface ClaimManifest {
+  selectedProfile: string;
+  supportedCapabilities: string[];
+}
+
 /**
  * NodeSubClient reads what a node says about itself. None of it is per-actor data.
  */
@@ -70,5 +99,25 @@ export class NodeSubClient extends SubClient {
   /** The subsystem taxonomy, the spine's owners and the packages awaiting a tier graduation. */
   async subsystems(): Promise<SubsystemTaxonomy> {
     return this.read<SubsystemTaxonomy>(ROUTE_SUBSYSTEMS);
+  }
+
+  /** The network the node serves: its name, chain id and head block height. */
+  async network(): Promise<NetworkInfo> {
+    return this.read<NetworkInfo>(ROUTE_NETWORK);
+  }
+
+  /** The node's network status. */
+  async networkStatus(): Promise<NetworkStatus> {
+    return this.read<NetworkStatus>(ROUTE_NETWORK_STATUS);
+  }
+
+  /** The DID document of the node's credential issuer; 503 on a node that issues no credentials. */
+  async issuerDid(): Promise<IssuerDidDocument> {
+    return this.read<IssuerDidDocument>(ROUTE_ISSUER_DID);
+  }
+
+  /** The claim manifest: the profile the node stands behind and the capabilities it supports. */
+  async claims(): Promise<ClaimManifest> {
+    return this.read<ClaimManifest>(ROUTE_CLAIMS);
   }
 }

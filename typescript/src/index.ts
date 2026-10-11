@@ -166,6 +166,8 @@ export {
   BillingSubClient,
   CommitteeSubClient,
   EmergencySubClient,
+  BlockSubClient,
+  TransactionSubClient,
 } from './sub-clients';
 export type {
   VerifiableCredential,
@@ -227,6 +229,8 @@ import {
   BillingSubClient,
   CommitteeSubClient,
   EmergencySubClient,
+  BlockSubClient,
+  TransactionSubClient,
 } from './sub-clients';
 
 // ---- Onboarding telemetry (adoption-12) ----
@@ -412,6 +416,12 @@ export class InfrixClient {
   /** Emergency cases, visible to emergency authorities only: cases. */
   readonly emergency: EmergencySubClient;
 
+  /** The node's blocks: list, latest, get. */
+  readonly blocks: BlockSubClient;
+
+  /** The node's transactions: list, get, status. */
+  readonly transactions: TransactionSubClient;
+
   // ---- Read-only Contract Inspection ----
 
   /**
@@ -533,6 +543,8 @@ export class InfrixClient {
     this.billing = new BillingSubClient(rpcFn, restFn);
     this.committees = new CommitteeSubClient(rpcFn, restFn);
     this.emergency = new EmergencySubClient(rpcFn, restFn);
+    this.blocks = new BlockSubClient(rpcFn, restFn);
+    this.transactions = new TransactionSubClient(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);
