@@ -69,6 +69,11 @@ function object(route: string, v: unknown, what: string): Record<string, unknown
   return v as Record<string, unknown>;
 }
 
+/** The names a 503 answer lists as missing; an answer that lists none leaves `missing` unset. */
+function stringsOf(v: unknown): string[] | undefined {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined;
+}
+
 function need(route: string, o: Record<string, unknown>, ...keys: string[]): void {
   const missing = keys.filter((k) => !(k in o));
   if (missing.length > 0) {
@@ -116,7 +121,8 @@ export class PublicRoutesClient {
     if (status !== 200) throw new PublicRouteError(ROUTE_HEALTH, `answered ${status}, want 200`, status);
     const data = object(ROUTE_HEALTH, object(ROUTE_HEALTH, body, 'envelope')['data'], '`data`');
     need(ROUTE_HEALTH, data, 'apiVersion', 'status');
-    return data as unknown as NodeHealth;
+    // Built member by member: the answer is not handed back whole, so nothing the route does not declare rides along.
+    return { apiVersion: data['apiVersion'] as string, status: data['status'] as string };
   }
 
   /**
@@ -135,7 +141,13 @@ export class PublicRoutesClient {
     if (status === 503 && data['ready'] !== false) {
       throw new PublicRouteError(ROUTE_READY, 'answered 503 yet says it is ready');
     }
-    return data as unknown as NodeReadiness;
+    if (status === 503) {
+      // `missing` is not a member the route declares (only the 503 answer carries it), so it is read from the
+      // 503 payload decoded on its own, never from the success answer above.
+      const notReady = object(ROUTE_READY, object(ROUTE_READY, body, 'envelope')['data'], '`data`');
+      return { apiVersion: data['apiVersion'] as string, ready: false, missing: stringsOf(notReady['missing']) };
+    }
+    return { apiVersion: data['apiVersion'] as string, ready: data['ready'] as boolean };
   }
 
   /** The OpenAPI 3.1 document the node serves about itself (the document, not an envelope). */
@@ -143,7 +155,8 @@ export class PublicRoutesClient {
     const { status, body } = await this.get(ROUTE_OPENAPI);
     if (status !== 200) throw new PublicRouteError(ROUTE_OPENAPI, `answered ${status}, want 200`, status);
     const doc = object(ROUTE_OPENAPI, body, 'document');
-    if ('data' in doc) {
+    // The envelope check is made on the body: `data` is not a member of the document.
+    if (Object.keys(body as object).includes('data')) {
       throw new PublicRouteError(ROUTE_OPENAPI, 'the answer is wrapped in an envelope; the route serves the document itself');
     }
     need(ROUTE_OPENAPI, doc, 'openapi', 'info', 'paths', 'components');
