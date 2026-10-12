@@ -3,25 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/trust answers: every member the route declares. */
-export interface TrustRootAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** What GET /v4/trust/{id} answers: every member the route declares. */
-export interface TrustForIdAnswer {
-  readonly audit: unknown;
-  readonly created: unknown;
-  readonly fields: unknown;
-  readonly id: unknown;
-  readonly state: unknown;
-  readonly type: unknown;
-  readonly updated: unknown;
-  readonly url: unknown;
-  readonly version: unknown;
-}
-
 /** What GET /v4/trust/{id}/history answers: every member the route declares. */
 export interface TrustForIdHistoryAnswer {
   readonly history: unknown;
@@ -30,32 +11,6 @@ export interface TrustForIdHistoryAnswer {
 
 /** Typed reads of the node's /v4/trust routes, generated from the route census. */
 export class TrustReads extends SubClient {
-  /** Read GET /v4/trust. */
-  async root(): Promise<TrustRootAnswer> {
-    const r = await this.rest<Partial<TrustRootAnswer>>('GET', '/v4/trust');
-    return {
-      items: genDeclared('GET /v4/trust', 'items', r.items),
-      pagination: genDeclared('GET /v4/trust', 'pagination', r.pagination),
-    };
-  }
-
-  /** Read GET /v4/trust/{id}. */
-  async forId(id: string): Promise<TrustForIdAnswer> {
-    genPathValue('GET /v4/trust/{id}', 'id', id, 'string');
-    const r = await this.rest<Partial<TrustForIdAnswer>>('GET', `/v4/trust/${encodeURIComponent(id)}`);
-    return {
-      audit: genDeclared('GET /v4/trust/{id}', 'audit', r.audit),
-      created: genDeclared('GET /v4/trust/{id}', 'created', r.created),
-      fields: genDeclared('GET /v4/trust/{id}', 'fields', r.fields),
-      id: genDeclared('GET /v4/trust/{id}', 'id', r.id),
-      state: genDeclared('GET /v4/trust/{id}', 'state', r.state),
-      type: genDeclared('GET /v4/trust/{id}', 'type', r.type),
-      updated: genDeclared('GET /v4/trust/{id}', 'updated', r.updated),
-      url: genDeclared('GET /v4/trust/{id}', 'url', r.url),
-      version: genDeclared('GET /v4/trust/{id}', 'version', r.version),
-    };
-  }
-
   /** Read GET /v4/trust/{id}/history. */
   async forIdHistory(id: string): Promise<TrustForIdHistoryAnswer> {
     genPathValue('GET /v4/trust/{id}/history', 'id', id, 'string');

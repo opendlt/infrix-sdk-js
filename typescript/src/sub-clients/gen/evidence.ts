@@ -49,49 +49,6 @@ export interface EvidenceListQuery {
   readonly limit?: number;
 }
 
-/** What GET /v4/evidence/{id} answers: every member the route declares. */
-export interface EvidenceForIdAnswer {
-  readonly audit: unknown;
-  readonly created: unknown;
-  readonly fields: unknown;
-  readonly id: unknown;
-  readonly state: unknown;
-  readonly type: unknown;
-  readonly updated: unknown;
-  readonly url: unknown;
-  readonly version: unknown;
-}
-
-/** What GET /v4/evidence/{id}/anchor answers: every member the route declares. */
-export interface EvidenceForIdAnchorAnswer {
-  readonly anchorBlock: unknown;
-  readonly anchorDataIdx: unknown;
-  readonly anchorStatus: unknown;
-  readonly anchorTxHash: unknown;
-  readonly bundleId: unknown;
-  readonly stateRoot: unknown;
-}
-
-/** What GET /v4/evidence/{id}/export answers: every member the route declares. */
-export interface EvidenceForIdExportAnswer {
-  readonly bundle: unknown;
-  readonly bundleId: unknown;
-  readonly bytes: unknown;
-  readonly exportHash: unknown;
-  readonly format: unknown;
-}
-
-/** The query parameters GET /v4/evidence/{id}/export declares. */
-export interface EvidenceForIdExportQuery {
-  readonly format?: 'json' | 'portable';
-}
-
-/** What GET /v4/evidence/{id}/verify answers: every member the route declares. */
-export interface EvidenceForIdVerifyAnswer {
-  readonly bundleId: unknown;
-  readonly chainVerified: unknown;
-}
-
 /** Typed reads of the node's /v4/evidence routes, generated from the route census. */
 export class EvidenceReads extends SubClient {
   /** Read GET /v4/evidence. */
@@ -137,61 +94,6 @@ export class EvidenceReads extends SubClient {
       items: genDeclared('GET /v4/evidence/list', 'items', r.items),
       pagination: genDeclared('GET /v4/evidence/list', 'pagination', r.pagination),
       scope: genDeclared('GET /v4/evidence/list', 'scope', r.scope),
-    };
-  }
-
-  /** Read GET /v4/evidence/{id}. */
-  async forId(id: string): Promise<EvidenceForIdAnswer> {
-    genPathValue('GET /v4/evidence/{id}', 'id', id, 'string');
-    const r = await this.rest<Partial<EvidenceForIdAnswer>>('GET', `/v4/evidence/${encodeURIComponent(id)}`);
-    return {
-      audit: genDeclared('GET /v4/evidence/{id}', 'audit', r.audit),
-      created: genDeclared('GET /v4/evidence/{id}', 'created', r.created),
-      fields: genDeclared('GET /v4/evidence/{id}', 'fields', r.fields),
-      id: genDeclared('GET /v4/evidence/{id}', 'id', r.id),
-      state: genDeclared('GET /v4/evidence/{id}', 'state', r.state),
-      type: genDeclared('GET /v4/evidence/{id}', 'type', r.type),
-      updated: genDeclared('GET /v4/evidence/{id}', 'updated', r.updated),
-      url: genDeclared('GET /v4/evidence/{id}', 'url', r.url),
-      version: genDeclared('GET /v4/evidence/{id}', 'version', r.version),
-    };
-  }
-
-  /** Read GET /v4/evidence/{id}/anchor. */
-  async forIdAnchor(id: string): Promise<EvidenceForIdAnchorAnswer> {
-    genPathValue('GET /v4/evidence/{id}/anchor', 'id', id, 'string');
-    const r = await this.rest<Partial<EvidenceForIdAnchorAnswer>>('GET', `/v4/evidence/${encodeURIComponent(id)}/anchor`);
-    return {
-      anchorBlock: genDeclared('GET /v4/evidence/{id}/anchor', 'anchorBlock', r.anchorBlock),
-      anchorDataIdx: genDeclared('GET /v4/evidence/{id}/anchor', 'anchorDataIdx', r.anchorDataIdx),
-      anchorStatus: genDeclared('GET /v4/evidence/{id}/anchor', 'anchorStatus', r.anchorStatus),
-      anchorTxHash: genDeclared('GET /v4/evidence/{id}/anchor', 'anchorTxHash', r.anchorTxHash),
-      bundleId: genDeclared('GET /v4/evidence/{id}/anchor', 'bundleId', r.bundleId),
-      stateRoot: genDeclared('GET /v4/evidence/{id}/anchor', 'stateRoot', r.stateRoot),
-    };
-  }
-
-  /** Read GET /v4/evidence/{id}/export. */
-  async forIdExport(id: string, opts: EvidenceForIdExportQuery = {}): Promise<EvidenceForIdExportAnswer> {
-    genPathValue('GET /v4/evidence/{id}/export', 'id', id, 'string');
-    const query = genQuery('GET /v4/evidence/{id}/export', [['format', opts.format, 'enum', ['json', 'portable']]]);
-    const r = await this.rest<Partial<EvidenceForIdExportAnswer>>('GET', `/v4/evidence/${encodeURIComponent(id)}/export${query}`);
-    return {
-      bundle: genDeclared('GET /v4/evidence/{id}/export', 'bundle', r.bundle),
-      bundleId: genDeclared('GET /v4/evidence/{id}/export', 'bundleId', r.bundleId),
-      bytes: genDeclared('GET /v4/evidence/{id}/export', 'bytes', r.bytes),
-      exportHash: genDeclared('GET /v4/evidence/{id}/export', 'exportHash', r.exportHash),
-      format: genDeclared('GET /v4/evidence/{id}/export', 'format', r.format),
-    };
-  }
-
-  /** Read GET /v4/evidence/{id}/verify. */
-  async forIdVerify(id: string): Promise<EvidenceForIdVerifyAnswer> {
-    genPathValue('GET /v4/evidence/{id}/verify', 'id', id, 'string');
-    const r = await this.rest<Partial<EvidenceForIdVerifyAnswer>>('GET', `/v4/evidence/${encodeURIComponent(id)}/verify`);
-    return {
-      bundleId: genDeclared('GET /v4/evidence/{id}/verify', 'bundleId', r.bundleId),
-      chainVerified: genDeclared('GET /v4/evidence/{id}/verify', 'chainVerified', r.chainVerified),
     };
   }
 }

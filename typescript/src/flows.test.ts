@@ -9,8 +9,11 @@ import type { InfrixClient } from './index';
 
 function fakeClient(pkg: Record<string, unknown>): InfrixClient {
   return {
+    intents: {
+      // GET /v4/intents/{id}/evidence: the bundles linked to the intent, each carrying its id.
+      evidence: async (intentId: string) => ({ bundles: [{ id: 'ev-1' }], count: 1, intent: { id: intentId }, intentId }),
+    },
     evidence: {
-      get: async (_intentId: string) => ({ id: 'ev-1' }),
       exportPortable: async (_id: string) => pkg,
     },
   } as unknown as InfrixClient;

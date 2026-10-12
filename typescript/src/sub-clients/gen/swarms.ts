@@ -3,20 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/swarms/{id} answers: every member the route declares. */
-export interface SwarmsForIdAnswer {
-  readonly createdAt: unknown;
-  readonly gasBudget: unknown;
-  readonly id: unknown;
-  readonly lifecycle: unknown;
-  readonly maxMembers: unknown;
-  readonly members: unknown;
-  readonly name: unknown;
-  readonly state: unknown;
-  readonly updatedAt: unknown;
-  readonly version: unknown;
-}
-
 /** What GET /v4/swarms/{id}/channel answers: every member the route declares. */
 export interface SwarmsForIdChannelAnswer {
   readonly count: unknown;
@@ -30,39 +16,8 @@ export interface SwarmsForIdChannelQuery {
   readonly memberAlias?: string;
 }
 
-/** What GET /v4/swarms/{id}/channel/{key} answers: every member the route declares. */
-export interface SwarmsForIdChannelForKeyAnswer {
-  readonly gas: unknown;
-  readonly key: unknown;
-  readonly swarmId: unknown;
-  readonly value: unknown;
-}
-
-/** The query parameters GET /v4/swarms/{id}/channel/{key} declares. */
-export interface SwarmsForIdChannelForKeyQuery {
-  readonly memberAlias?: string;
-}
-
 /** Typed reads of the node's /v4/swarms routes, generated from the route census. */
 export class SwarmsReads extends SubClient {
-  /** Read GET /v4/swarms/{id}. */
-  async forId(id: string): Promise<SwarmsForIdAnswer> {
-    genPathValue('GET /v4/swarms/{id}', 'id', id, 'string');
-    const r = await this.rest<Partial<SwarmsForIdAnswer>>('GET', `/v4/swarms/${encodeURIComponent(id)}`);
-    return {
-      createdAt: genDeclared('GET /v4/swarms/{id}', 'createdAt', r.createdAt),
-      gasBudget: genDeclared('GET /v4/swarms/{id}', 'gasBudget', r.gasBudget),
-      id: genDeclared('GET /v4/swarms/{id}', 'id', r.id),
-      lifecycle: genDeclared('GET /v4/swarms/{id}', 'lifecycle', r.lifecycle),
-      maxMembers: genDeclared('GET /v4/swarms/{id}', 'maxMembers', r.maxMembers),
-      members: genDeclared('GET /v4/swarms/{id}', 'members', r.members),
-      name: genDeclared('GET /v4/swarms/{id}', 'name', r.name),
-      state: genDeclared('GET /v4/swarms/{id}', 'state', r.state),
-      updatedAt: genDeclared('GET /v4/swarms/{id}', 'updatedAt', r.updatedAt),
-      version: genDeclared('GET /v4/swarms/{id}', 'version', r.version),
-    };
-  }
-
   /** Read GET /v4/swarms/{id}/channel. */
   async forIdChannel(id: string, opts: SwarmsForIdChannelQuery = {}): Promise<SwarmsForIdChannelAnswer> {
     genPathValue('GET /v4/swarms/{id}/channel', 'id', id, 'string');
@@ -73,20 +28,6 @@ export class SwarmsReads extends SubClient {
       gas: genDeclared('GET /v4/swarms/{id}/channel', 'gas', r.gas),
       keys: genDeclared('GET /v4/swarms/{id}/channel', 'keys', r.keys),
       swarmId: genDeclared('GET /v4/swarms/{id}/channel', 'swarmId', r.swarmId),
-    };
-  }
-
-  /** Read GET /v4/swarms/{id}/channel/{key}. */
-  async forIdChannelForKey(id: string, key: string, opts: SwarmsForIdChannelForKeyQuery = {}): Promise<SwarmsForIdChannelForKeyAnswer> {
-    genPathValue('GET /v4/swarms/{id}/channel/{key}', 'id', id, 'string');
-    genPathValue('GET /v4/swarms/{id}/channel/{key}', 'key', key, 'string');
-    const query = genQuery('GET /v4/swarms/{id}/channel/{key}', [['memberAlias', opts.memberAlias, 'resolved_id']]);
-    const r = await this.rest<Partial<SwarmsForIdChannelForKeyAnswer>>('GET', `/v4/swarms/${encodeURIComponent(id)}/channel/${encodeURIComponent(key)}${query}`);
-    return {
-      gas: genDeclared('GET /v4/swarms/{id}/channel/{key}', 'gas', r.gas),
-      key: genDeclared('GET /v4/swarms/{id}/channel/{key}', 'key', r.key),
-      swarmId: genDeclared('GET /v4/swarms/{id}/channel/{key}', 'swarmId', r.swarmId),
-      value: genDeclared('GET /v4/swarms/{id}/channel/{key}', 'value', r.value),
     };
   }
 }

@@ -1,26 +1,37 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import {
+  LIST_MEMBERS,
+  REGISTRY_OBJECT_MEMBERS,
+  checkPathValue,
+  declaredMembers,
+} from './routeShapes';
+import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 import type {
-  SettlementInstruction,
   SettlementListFilter,
   SettlementCreateOptions,
 } from '../types/governance';
+
+const LIST_ROUTE = 'GET /v4/settlements';
+const GET_ROUTE = 'GET /v4/settlements/{id}';
 
 /**
  * SettlementSubClient provides settlement instruction management.
  */
 export class SettlementSubClient extends SubClient {
   /**
-   * List settlement instructions.
+   * List the settlement instructions the caller can see (REST GET /v4/settlements).
    *
-   * @param filter - Filter by status, parties, date range
+   * @param filter - Only the filters the route accepts: `state` and `id`.
+   * @returns `items` and `pagination`.
    */
-  async list(
-    filter?: SettlementListFilter
-  ): Promise<{ settlements: SettlementInstruction[]; total: number }> {
-    return this.rpc<{ settlements: SettlementInstruction[]; total: number }>(
-      'settlement.list',
-      (filter ?? {}) as Record<string, unknown>
-    );
+  async list(filter: SettlementListFilter = {}): Promise<ListAnswer> {
+    const query = genQuery(LIST_ROUTE, [
+      ['id', filter.id, 'string'],
+      ['state', filter.state, 'string'],
+    ]);
+    const answer = await this.rest<unknown>('GET', `/v4/settlements${query}`);
+    return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**
@@ -69,9 +80,12 @@ export class SettlementSubClient extends SubClient {
   }
 
   /**
-   * Get a specific settlement instruction.
+   * Get one settlement instruction (REST GET /v4/settlements/{id}); the instruction's own record is
+   * in `fields`.
    */
-  async get(id: string): Promise<SettlementInstruction> {
-    return this.rpc<SettlementInstruction>('settlement.get', { id });
+  async get(id: string): Promise<RegistryObjectAnswer> {
+    checkPathValue(GET_ROUTE, 'id', id);
+    const answer = await this.rest<unknown>('GET', `/v4/settlements/${encodeURIComponent(id)}`);
+    return declaredMembers<RegistryObjectAnswer>(GET_ROUTE, answer, REGISTRY_OBJECT_MEMBERS);
   }
 }

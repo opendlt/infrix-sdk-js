@@ -9,31 +9,6 @@ export interface CapabilitiesRootAnswer {
   readonly count: unknown;
 }
 
-/** What GET /v4/capabilities/check answers: every member the route declares. */
-export interface CapabilitiesCheckAnswer {
-  readonly capability: unknown;
-  readonly granted: unknown;
-  readonly grants: unknown;
-  readonly identity: unknown;
-}
-
-/** The query parameters GET /v4/capabilities/check declares. */
-export interface CapabilitiesCheckQuery {
-  readonly capability?: string;
-  readonly identity?: string;
-}
-
-/** What GET /v4/capabilities/grants answers: every member the route declares. */
-export interface CapabilitiesGrantsAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** The query parameters GET /v4/capabilities/grants declares. */
-export interface CapabilitiesGrantsQuery {
-  readonly state?: string;
-}
-
 /** What GET /v4/capabilities/grants/{id} answers: every member the route declares. */
 export interface CapabilitiesGrantsForIdAnswer {
   readonly audit: unknown;
@@ -71,28 +46,6 @@ export class CapabilitiesReads extends SubClient {
     return {
       capabilities: genDeclared('GET /v4/capabilities', 'capabilities', r.capabilities),
       count: genDeclared('GET /v4/capabilities', 'count', r.count),
-    };
-  }
-
-  /** Read GET /v4/capabilities/check. */
-  async check(opts: CapabilitiesCheckQuery = {}): Promise<CapabilitiesCheckAnswer> {
-    const query = genQuery('GET /v4/capabilities/check', [['capability', opts.capability, 'string'], ['identity', opts.identity, 'string']]);
-    const r = await this.rest<Partial<CapabilitiesCheckAnswer>>('GET', `/v4/capabilities/check${query}`);
-    return {
-      capability: genDeclared('GET /v4/capabilities/check', 'capability', r.capability),
-      granted: genDeclared('GET /v4/capabilities/check', 'granted', r.granted),
-      grants: genDeclared('GET /v4/capabilities/check', 'grants', r.grants),
-      identity: genDeclared('GET /v4/capabilities/check', 'identity', r.identity),
-    };
-  }
-
-  /** Read GET /v4/capabilities/grants. */
-  async grants(opts: CapabilitiesGrantsQuery = {}): Promise<CapabilitiesGrantsAnswer> {
-    const query = genQuery('GET /v4/capabilities/grants', [['state', opts.state, 'string']]);
-    const r = await this.rest<Partial<CapabilitiesGrantsAnswer>>('GET', `/v4/capabilities/grants${query}`);
-    return {
-      items: genDeclared('GET /v4/capabilities/grants', 'items', r.items),
-      pagination: genDeclared('GET /v4/capabilities/grants', 'pagination', r.pagination),
     };
   }
 

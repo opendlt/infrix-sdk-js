@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { InfrixClient } from './index';
-import { GENERATED_ROUTES, genCheckValue, genDeclared, genQuery } from './sub-clients';
+import { GENERATED_ROUTES, genCheckValue, genDeclared, genPathValue, genQuery } from './sub-clients';
 import type { GeneratedRouteInfo } from './sub-clients';
 
 type FetchLike = (...args: unknown[]) => Promise<unknown>;
@@ -192,12 +192,9 @@ test('the runtime refuses what each declared kind cannot take and sends what it 
   assert.equal(genDeclared('GET /v4/x', 'm', null), null);
 });
 
-test('an enum path value outside its declared set is refused', async () => {
-  const info = GENERATED_ROUTES.find((r) => r.pathValues.some((p) => p.kind === 'enum'))!;
-  const args = pathArgs(info);
-  const at = info.pathValues.findIndex((p) => p.kind === 'enum');
-  args[at] = 'not-an-accepted-value';
-  await assert.rejects(() => against(fullAnswer(info), (c) => reader(c, info)(...args)), /is not one of/);
+test('an enum path value outside its declared set is refused', () => {
+  assert.throws(() => genPathValue('GET /v4/x/{t}', 't', 'not-a-type', 'enum', ['vault', 'swarm']), /is not one of vault, swarm/);
+  assert.doesNotThrow(() => genPathValue('GET /v4/x/{t}', 't', 'vault', 'enum', ['vault', 'swarm']));
 });
 
 test('a path value is escaped into the route, not interpreted', async () => {

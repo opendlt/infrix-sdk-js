@@ -3,25 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/roles answers: every member the route declares. */
-export interface RolesRootAnswer {
-  readonly count: unknown;
-  readonly roles: unknown;
-}
-
-/** What GET /v4/roles/check answers: every member the route declares. */
-export interface RolesCheckAnswer {
-  readonly hasRole: unknown;
-  readonly identity: unknown;
-  readonly role: unknown;
-}
-
-/** The query parameters GET /v4/roles/check declares. */
-export interface RolesCheckQuery {
-  readonly identity?: string;
-  readonly role?: string;
-}
-
 /** What GET /v4/roles/holders/{role} answers: every member the route declares. */
 export interface RolesHoldersForRoleAnswer {
   readonly count: unknown;
@@ -29,35 +10,8 @@ export interface RolesHoldersForRoleAnswer {
   readonly role: unknown;
 }
 
-/** What GET /v4/roles/{identity} answers: every member the route declares. */
-export interface RolesForIdentityAnswer {
-  readonly count: unknown;
-  readonly identity: unknown;
-  readonly roles: unknown;
-}
-
 /** Typed reads of the node's /v4/roles routes, generated from the route census. */
 export class RolesReads extends SubClient {
-  /** Read GET /v4/roles. */
-  async root(): Promise<RolesRootAnswer> {
-    const r = await this.rest<Partial<RolesRootAnswer>>('GET', '/v4/roles');
-    return {
-      count: genDeclared('GET /v4/roles', 'count', r.count),
-      roles: genDeclared('GET /v4/roles', 'roles', r.roles),
-    };
-  }
-
-  /** Read GET /v4/roles/check. */
-  async check(opts: RolesCheckQuery = {}): Promise<RolesCheckAnswer> {
-    const query = genQuery('GET /v4/roles/check', [['identity', opts.identity, 'string'], ['role', opts.role, 'string']]);
-    const r = await this.rest<Partial<RolesCheckAnswer>>('GET', `/v4/roles/check${query}`);
-    return {
-      hasRole: genDeclared('GET /v4/roles/check', 'hasRole', r.hasRole),
-      identity: genDeclared('GET /v4/roles/check', 'identity', r.identity),
-      role: genDeclared('GET /v4/roles/check', 'role', r.role),
-    };
-  }
-
   /** Read GET /v4/roles/holders/{role}. */
   async holdersForRole(role: string): Promise<RolesHoldersForRoleAnswer> {
     genPathValue('GET /v4/roles/holders/{role}', 'role', role, 'string');
@@ -66,17 +20,6 @@ export class RolesReads extends SubClient {
       count: genDeclared('GET /v4/roles/holders/{role}', 'count', r.count),
       holders: genDeclared('GET /v4/roles/holders/{role}', 'holders', r.holders),
       role: genDeclared('GET /v4/roles/holders/{role}', 'role', r.role),
-    };
-  }
-
-  /** Read GET /v4/roles/{identity}. */
-  async forIdentity(identity: string): Promise<RolesForIdentityAnswer> {
-    genPathValue('GET /v4/roles/{identity}', 'identity', identity, 'string');
-    const r = await this.rest<Partial<RolesForIdentityAnswer>>('GET', `/v4/roles/${encodeURIComponent(identity)}`);
-    return {
-      count: genDeclared('GET /v4/roles/{identity}', 'count', r.count),
-      identity: genDeclared('GET /v4/roles/{identity}', 'identity', r.identity),
-      roles: genDeclared('GET /v4/roles/{identity}', 'roles', r.roles),
     };
   }
 }

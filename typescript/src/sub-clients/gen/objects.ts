@@ -3,41 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/objects/{type} answers: every member the route declares. */
-export interface ObjectsForTypeAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** The query parameters GET /v4/objects/{type} declares. */
-export interface ObjectsForTypeQuery {
-  readonly field?: string;
-  readonly filterLimit?: number;
-  readonly id?: string;
-  readonly state?: string;
-  readonly value?: string;
-}
-
-/** What GET /v4/objects/{type}/{id} answers: every member the route declares. */
-export interface ObjectsForTypeForIdAnswer {
-  readonly audit: unknown;
-  readonly created: unknown;
-  readonly fields: unknown;
-  readonly id: unknown;
-  readonly state: unknown;
-  readonly type: unknown;
-  readonly updated: unknown;
-  readonly url: unknown;
-  readonly version: unknown;
-}
-
-/** What GET /v4/objects/{type}/{id}/audit answers: every member the route declares. */
-export interface ObjectsForTypeForIdAuditAnswer {
-  readonly audit: unknown;
-  readonly objectId: unknown;
-  readonly objectType: unknown;
-}
-
 /** What GET /v4/objects/{type}/{id}/provenance answers: every member the route declares. */
 export interface ObjectsForTypeForIdProvenanceAnswer {
   readonly createdAt: unknown;
@@ -52,47 +17,6 @@ export interface ObjectsForTypeForIdProvenanceAnswer {
 
 /** Typed reads of the node's /v4/objects routes, generated from the route census. */
 export class ObjectsReads extends SubClient {
-  /** Read GET /v4/objects/{type}. */
-  async forType(type: string, opts: ObjectsForTypeQuery = {}): Promise<ObjectsForTypeAnswer> {
-    genPathValue('GET /v4/objects/{type}', 'type', type, 'enum', ['actor_binding', 'adapter', 'agent_module', 'anchored_record', 'approval', 'arbitration_case', 'asset', 'attestation', 'authority', 'billing_account', 'billing_entry', 'bridge_proof', 'capability_grant', 'compatibility_report', 'confidential_module', 'contract', 'control_mutation', 'credential', 'credential_revocation', 'credential_status_list', 'data_record', 'did_document', 'disclosure_envelope', 'disclosure_grant', 'disclosure_key', 'dispute_resolution', 'emergency_review', 'evidence_bundle', 'execution_plan', 'execution_plugin', 'gas_schedule', 'genome_component', 'genome_inheritance', 'genome_patch', 'identity', 'intent', 'intent_draft', 'intent_handoff', 'intent_note', 'netting_group', 'outcome_record', 'pending_state', 'permission_set', 'plan_step', 'plugin_result', 'policy_binding', 'policy_change_record', 'predicate_nullifier', 'rate_limit_profile', 'relationship', 'reservation', 'role_binding', 'rule_pack', 'settlement_instruction', 'shape_transition', 'sponsor_config', 'swarm', 'swarm_state_transition', 'trust_profile', 'vault', 'verifier', 'workflow_instance']);
-    const query = genQuery('GET /v4/objects/{type}', [['field', opts.field, 'string'], ['filterLimit', opts.filterLimit, 'int'], ['id', opts.id, 'string'], ['state', opts.state, 'string'], ['value', opts.value, 'string']]);
-    const r = await this.rest<Partial<ObjectsForTypeAnswer>>('GET', `/v4/objects/${encodeURIComponent(type)}${query}`);
-    return {
-      items: genDeclared('GET /v4/objects/{type}', 'items', r.items),
-      pagination: genDeclared('GET /v4/objects/{type}', 'pagination', r.pagination),
-    };
-  }
-
-  /** Read GET /v4/objects/{type}/{id}. */
-  async forTypeForId(type: string, id: string): Promise<ObjectsForTypeForIdAnswer> {
-    genPathValue('GET /v4/objects/{type}/{id}', 'type', type, 'string');
-    genPathValue('GET /v4/objects/{type}/{id}', 'id', id, 'string');
-    const r = await this.rest<Partial<ObjectsForTypeForIdAnswer>>('GET', `/v4/objects/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);
-    return {
-      audit: genDeclared('GET /v4/objects/{type}/{id}', 'audit', r.audit),
-      created: genDeclared('GET /v4/objects/{type}/{id}', 'created', r.created),
-      fields: genDeclared('GET /v4/objects/{type}/{id}', 'fields', r.fields),
-      id: genDeclared('GET /v4/objects/{type}/{id}', 'id', r.id),
-      state: genDeclared('GET /v4/objects/{type}/{id}', 'state', r.state),
-      type: genDeclared('GET /v4/objects/{type}/{id}', 'type', r.type),
-      updated: genDeclared('GET /v4/objects/{type}/{id}', 'updated', r.updated),
-      url: genDeclared('GET /v4/objects/{type}/{id}', 'url', r.url),
-      version: genDeclared('GET /v4/objects/{type}/{id}', 'version', r.version),
-    };
-  }
-
-  /** Read GET /v4/objects/{type}/{id}/audit. */
-  async forTypeForIdAudit(type: string, id: string): Promise<ObjectsForTypeForIdAuditAnswer> {
-    genPathValue('GET /v4/objects/{type}/{id}/audit', 'type', type, 'string');
-    genPathValue('GET /v4/objects/{type}/{id}/audit', 'id', id, 'string');
-    const r = await this.rest<Partial<ObjectsForTypeForIdAuditAnswer>>('GET', `/v4/objects/${encodeURIComponent(type)}/${encodeURIComponent(id)}/audit`);
-    return {
-      audit: genDeclared('GET /v4/objects/{type}/{id}/audit', 'audit', r.audit),
-      objectId: genDeclared('GET /v4/objects/{type}/{id}/audit', 'objectId', r.objectId),
-      objectType: genDeclared('GET /v4/objects/{type}/{id}/audit', 'objectType', r.objectType),
-    };
-  }
-
   /** Read GET /v4/objects/{type}/{id}/provenance. */
   async forTypeForIdProvenance(type: string, id: string): Promise<ObjectsForTypeForIdProvenanceAnswer> {
     genPathValue('GET /v4/objects/{type}/{id}/provenance', 'type', type, 'string');

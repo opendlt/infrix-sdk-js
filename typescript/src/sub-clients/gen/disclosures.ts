@@ -3,17 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/disclosures answers: every member the route declares. */
-export interface DisclosuresRootAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** The query parameters GET /v4/disclosures declares. */
-export interface DisclosuresRootQuery {
-  readonly state?: string;
-}
-
 /** What GET /v4/disclosures/{id}/proof answers: every member the route declares. */
 export interface DisclosuresForIdProofAnswer {
   readonly canonical: unknown;
@@ -26,16 +15,6 @@ export interface DisclosuresForIdProofAnswer {
 
 /** Typed reads of the node's /v4/disclosures routes, generated from the route census. */
 export class DisclosuresReads extends SubClient {
-  /** Read GET /v4/disclosures. */
-  async root(opts: DisclosuresRootQuery = {}): Promise<DisclosuresRootAnswer> {
-    const query = genQuery('GET /v4/disclosures', [['state', opts.state, 'string']]);
-    const r = await this.rest<Partial<DisclosuresRootAnswer>>('GET', `/v4/disclosures${query}`);
-    return {
-      items: genDeclared('GET /v4/disclosures', 'items', r.items),
-      pagination: genDeclared('GET /v4/disclosures', 'pagination', r.pagination),
-    };
-  }
-
   /** Read GET /v4/disclosures/{id}/proof. */
   async forIdProof(id: string): Promise<DisclosuresForIdProofAnswer> {
     genPathValue('GET /v4/disclosures/{id}/proof', 'id', id, 'string');

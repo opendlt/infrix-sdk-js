@@ -79,7 +79,10 @@ function mockClient() {
     },
     intents: {
       async get() {
-        return { status: 'completed', planId: 'plan-1', outcomeId: 'out-1' };
+        return { intent: { id: 'int-1' }, status: 'completed' };
+      },
+      async evidence() {
+        return { bundles: [{ id: 'ev-1' }], count: 1, intent: { id: 'int-1' }, intentId: 'int-1' };
       },
       async outcome() {
         return {
@@ -94,9 +97,6 @@ function mockClient() {
       },
     },
     evidence: {
-      async get() {
-        return { id: 'ev-1' };
-      },
       async exportPortable() {
         return { version: '4', portable: true };
       },

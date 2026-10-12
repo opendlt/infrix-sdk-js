@@ -52,4 +52,5 @@ export type {
   SubmittedEIP712Intent,
   Eip1193Provider,
 } from './eip712';
+export type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 export * from './gen';

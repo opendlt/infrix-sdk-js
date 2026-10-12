@@ -3,17 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/mission/contracts/{contract} answers: every member the route declares. */
-export interface MissionContractsForContractAnswer {
-  readonly contract: unknown;
-  readonly metrics: unknown;
-}
-
-/** What GET /v4/mission/contracts/{contract}/cost answers: every member the route declares. */
-export interface MissionContractsForContractCostAnswer {
-  readonly contract: unknown;
-}
-
 /** What GET /v4/mission/contracts/{contract}/dashboard answers: every member the route declares. */
 export interface MissionContractsForContractDashboardAnswer {
   readonly contract: unknown;
@@ -24,26 +13,6 @@ export interface MissionContractsForContractDashboardAnswer {
 /** The query parameters GET /v4/mission/contracts/{contract}/dashboard declares. */
 export interface MissionContractsForContractDashboardQuery {
   readonly template?: string;
-}
-
-/** What GET /v4/mission/contracts/{contract}/logs answers: every member the route declares. */
-export interface MissionContractsForContractLogsAnswer {
-  readonly contract: unknown;
-  readonly entries: unknown;
-  readonly level: unknown;
-}
-
-/** The query parameters GET /v4/mission/contracts/{contract}/logs declares. */
-export interface MissionContractsForContractLogsQuery {
-  readonly level?: string;
-  readonly limit?: number;
-}
-
-/** What GET /v4/mission/contracts/{contract}/slos answers: every member the route declares. */
-export interface MissionContractsForContractSlosAnswer {
-  readonly contract: unknown;
-  readonly definitions: unknown;
-  readonly status: unknown;
 }
 
 /** What GET /v4/mission/traces answers: every member the route declares. */
@@ -66,25 +35,6 @@ export interface MissionTracesForTxHashAnswer {
 
 /** Typed reads of the node's /v4/mission routes, generated from the route census. */
 export class MissionReads extends SubClient {
-  /** Read GET /v4/mission/contracts/{contract}. */
-  async contractsForContract(contract: string): Promise<MissionContractsForContractAnswer> {
-    genPathValue('GET /v4/mission/contracts/{contract}', 'contract', contract, 'string');
-    const r = await this.rest<Partial<MissionContractsForContractAnswer>>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}`);
-    return {
-      contract: genDeclared('GET /v4/mission/contracts/{contract}', 'contract', r.contract),
-      metrics: genDeclared('GET /v4/mission/contracts/{contract}', 'metrics', r.metrics),
-    };
-  }
-
-  /** Read GET /v4/mission/contracts/{contract}/cost. */
-  async contractsForContractCost(contract: string): Promise<MissionContractsForContractCostAnswer> {
-    genPathValue('GET /v4/mission/contracts/{contract}/cost', 'contract', contract, 'string');
-    const r = await this.rest<Partial<MissionContractsForContractCostAnswer>>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}/cost`);
-    return {
-      contract: genDeclared('GET /v4/mission/contracts/{contract}/cost', 'contract', r.contract),
-    };
-  }
-
   /** Read GET /v4/mission/contracts/{contract}/dashboard. */
   async contractsForContractDashboard(contract: string, opts: MissionContractsForContractDashboardQuery = {}): Promise<MissionContractsForContractDashboardAnswer> {
     genPathValue('GET /v4/mission/contracts/{contract}/dashboard', 'contract', contract, 'string');
@@ -94,29 +44,6 @@ export class MissionReads extends SubClient {
       contract: genDeclared('GET /v4/mission/contracts/{contract}/dashboard', 'contract', r.contract),
       dashboard: genDeclared('GET /v4/mission/contracts/{contract}/dashboard', 'dashboard', r.dashboard),
       grafana: genDeclared('GET /v4/mission/contracts/{contract}/dashboard', 'grafana', r.grafana),
-    };
-  }
-
-  /** Read GET /v4/mission/contracts/{contract}/logs. */
-  async contractsForContractLogs(contract: string, opts: MissionContractsForContractLogsQuery = {}): Promise<MissionContractsForContractLogsAnswer> {
-    genPathValue('GET /v4/mission/contracts/{contract}/logs', 'contract', contract, 'string');
-    const query = genQuery('GET /v4/mission/contracts/{contract}/logs', [['level', opts.level, 'string'], ['limit', opts.limit, 'int']]);
-    const r = await this.rest<Partial<MissionContractsForContractLogsAnswer>>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}/logs${query}`);
-    return {
-      contract: genDeclared('GET /v4/mission/contracts/{contract}/logs', 'contract', r.contract),
-      entries: genDeclared('GET /v4/mission/contracts/{contract}/logs', 'entries', r.entries),
-      level: genDeclared('GET /v4/mission/contracts/{contract}/logs', 'level', r.level),
-    };
-  }
-
-  /** Read GET /v4/mission/contracts/{contract}/slos. */
-  async contractsForContractSlos(contract: string): Promise<MissionContractsForContractSlosAnswer> {
-    genPathValue('GET /v4/mission/contracts/{contract}/slos', 'contract', contract, 'string');
-    const r = await this.rest<Partial<MissionContractsForContractSlosAnswer>>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}/slos`);
-    return {
-      contract: genDeclared('GET /v4/mission/contracts/{contract}/slos', 'contract', r.contract),
-      definitions: genDeclared('GET /v4/mission/contracts/{contract}/slos', 'definitions', r.definitions),
-      status: genDeclared('GET /v4/mission/contracts/{contract}/slos', 'status', r.status),
     };
   }
 

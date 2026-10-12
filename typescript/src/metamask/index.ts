@@ -22,6 +22,7 @@
  */
 import type { InfrixClient } from '../index';
 import { InfrixRPCError } from '../index';
+import { evidenceIdForIntent } from '../evidenceId';
 import { waitForCompletion } from '../sugar';
 import type { GovernedResult } from '../sugar';
 import type { EIP712IntentRequest, Eip1193Provider, AssetAmount } from '../sub-clients/eip712';
@@ -324,14 +325,12 @@ export class MetaMaskApi {
 
   /** Export a portable, independently-verifiable proof for an admitted intent. */
   async exportProof(intentId: string): Promise<unknown> {
-    let bundle: unknown;
+    let evidenceId: string | undefined;
     try {
-      bundle = await this.client.evidence.get(intentId);
+      evidenceId = await evidenceIdForIntent(this.client, intentId);
     } catch (e) {
       throw new MetaMaskProofUnavailable('evidence bundle not available: ' + msg(e), e);
     }
-    const evidenceId =
-      (bundle as { id?: string; bundleId?: string }).id ?? (bundle as { id?: string; bundleId?: string }).bundleId;
     if (!evidenceId) throw new MetaMaskProofUnavailable('evidence bundle has no id to export');
     return this.client.evidence.exportPortable(evidenceId);
   }

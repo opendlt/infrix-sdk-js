@@ -1,9 +1,15 @@
 import { SubClient } from './base';
-import type {
-  TrustProfile,
-  TrustEvaluation,
-  TrustListFilter,
-} from '../types/governance';
+import {
+  LIST_MEMBERS,
+  REGISTRY_OBJECT_MEMBERS,
+  checkPathValue,
+  declaredMembers,
+} from './routeShapes';
+import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
+import type { TrustEvaluation } from '../types/governance';
+
+const LIST_ROUTE = 'GET /v4/trust';
+const GET_ROUTE = 'GET /v4/trust/{id}';
 
 /** One row of GET /v4/trust/dashboard. `score` is a two-decimal string. */
 export interface TrustDashboardEntry {
@@ -27,27 +33,24 @@ export interface TrustRequirements {
  */
 export class TrustSubClient extends SubClient {
   /**
-   * List trust profiles for a domain.
+   * List the trust profiles the caller can see (REST GET /v4/trust). The route takes no parameters.
    *
-   * @param domain - Domain to query (e.g. 'ethereum', 'accumulate', 'all')
+   * @returns `items` and `pagination`.
    */
-  async list(
-    domain?: string,
-    filter?: TrustListFilter
-  ): Promise<{ profiles: TrustProfile[]; total: number }> {
-    return this.rpc<{ profiles: TrustProfile[]; total: number }>(
-      'trust.list',
-      { domain, ...(filter ?? {}) }
-    );
+  async list(): Promise<ListAnswer> {
+    const answer = await this.rest<unknown>('GET', '/v4/trust');
+    return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**
-   * Get a specific trust profile.
+   * Get one trust profile (REST GET /v4/trust/{id}); the profile's own record is in `fields`.
    *
    * @param profileId - The trust profile ID (typically adapterId)
    */
-  async get(profileId: string): Promise<TrustProfile> {
-    return this.rpc<TrustProfile>('trust.get', { profileId });
+  async get(profileId: string): Promise<RegistryObjectAnswer> {
+    checkPathValue(GET_ROUTE, 'id', profileId);
+    const answer = await this.rest<unknown>('GET', `/v4/trust/${encodeURIComponent(profileId)}`);
+    return declaredMembers<RegistryObjectAnswer>(GET_ROUTE, answer, REGISTRY_OBJECT_MEMBERS);
   }
 
   /**

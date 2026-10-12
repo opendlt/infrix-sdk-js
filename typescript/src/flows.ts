@@ -12,6 +12,7 @@
  *   withHostedDevnet  — point a client at a hosted devnet + L0 endpoint
  */
 import type { InfrixClient } from './index';
+import { evidenceIdForIntent } from './evidenceId';
 import { nodeAuthRequired } from './userError';
 import { verifyLocalProof, hasReplayCapsule } from './proofs/verifyLocal';
 import type { PortableProof, VerifyRequire, ProofVerifyResult } from './proofs/verifyLocal';
@@ -27,8 +28,7 @@ export function withProofs(client: InfrixClient) {
     proofs: {
       /** Export a portable proof for an intent's evidence bundle. */
       async export(params: { intentId: string; profile?: string }): Promise<PortableProof> {
-        const bundle = (await client.evidence.get(params.intentId)) as unknown as Record<string, unknown>;
-        const evidenceId = (bundle.id ?? bundle.bundleId) as string | undefined;
+        const evidenceId = await evidenceIdForIntent(client, params.intentId);
         if (!evidenceId) {
           throw new Error('withProofs: evidence bundle has no id to export');
         }

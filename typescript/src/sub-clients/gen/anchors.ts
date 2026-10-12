@@ -3,18 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/anchors answers: every member the route declares. */
-export interface AnchorsRootAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** The query parameters GET /v4/anchors declares. */
-export interface AnchorsRootQuery {
-  readonly intentId?: string;
-  readonly state?: string;
-}
-
 /** What GET /v4/anchors/chain/{startId} answers: every member the route declares. */
 export interface AnchorsChainForStartIdAnswer {
   readonly chain: unknown;
@@ -22,45 +10,8 @@ export interface AnchorsChainForStartIdAnswer {
   readonly startId: unknown;
 }
 
-/** What GET /v4/anchors/stats answers: every member the route declares. */
-export interface AnchorsStatsAnswer {
-  readonly byState: unknown;
-  readonly byType: unknown;
-  readonly scope: unknown;
-  readonly totalAnchors: unknown;
-}
-
-/** What GET /v4/anchors/{id} answers: every member the route declares. */
-export interface AnchorsForIdAnswer {
-  readonly anchor: unknown;
-  readonly id: unknown;
-  readonly state: unknown;
-  readonly txHash: unknown;
-}
-
-/** What GET /v4/anchors/{id}/verify answers: every member the route declares. */
-export interface AnchorsForIdVerifyAnswer {
-  readonly anchor: unknown;
-  readonly dataUrl: unknown;
-  readonly digest: unknown;
-  readonly id: unknown;
-  readonly state: unknown;
-  readonly txHash: unknown;
-  readonly verified: unknown;
-}
-
 /** Typed reads of the node's /v4/anchors routes, generated from the route census. */
 export class AnchorsReads extends SubClient {
-  /** Read GET /v4/anchors. */
-  async root(opts: AnchorsRootQuery = {}): Promise<AnchorsRootAnswer> {
-    const query = genQuery('GET /v4/anchors', [['intentId', opts.intentId, 'string'], ['state', opts.state, 'string']]);
-    const r = await this.rest<Partial<AnchorsRootAnswer>>('GET', `/v4/anchors${query}`);
-    return {
-      items: genDeclared('GET /v4/anchors', 'items', r.items),
-      pagination: genDeclared('GET /v4/anchors', 'pagination', r.pagination),
-    };
-  }
-
   /** Read GET /v4/anchors/chain/{startId}. */
   async chainForStartId(startId: string): Promise<AnchorsChainForStartIdAnswer> {
     genPathValue('GET /v4/anchors/chain/{startId}', 'startId', startId, 'string');
@@ -69,44 +20,6 @@ export class AnchorsReads extends SubClient {
       chain: genDeclared('GET /v4/anchors/chain/{startId}', 'chain', r.chain),
       depth: genDeclared('GET /v4/anchors/chain/{startId}', 'depth', r.depth),
       startId: genDeclared('GET /v4/anchors/chain/{startId}', 'startId', r.startId),
-    };
-  }
-
-  /** Read GET /v4/anchors/stats. */
-  async stats(): Promise<AnchorsStatsAnswer> {
-    const r = await this.rest<Partial<AnchorsStatsAnswer>>('GET', '/v4/anchors/stats');
-    return {
-      byState: genDeclared('GET /v4/anchors/stats', 'byState', r.byState),
-      byType: genDeclared('GET /v4/anchors/stats', 'byType', r.byType),
-      scope: genDeclared('GET /v4/anchors/stats', 'scope', r.scope),
-      totalAnchors: genDeclared('GET /v4/anchors/stats', 'totalAnchors', r.totalAnchors),
-    };
-  }
-
-  /** Read GET /v4/anchors/{id}. */
-  async forId(id: string): Promise<AnchorsForIdAnswer> {
-    genPathValue('GET /v4/anchors/{id}', 'id', id, 'string');
-    const r = await this.rest<Partial<AnchorsForIdAnswer>>('GET', `/v4/anchors/${encodeURIComponent(id)}`);
-    return {
-      anchor: genDeclared('GET /v4/anchors/{id}', 'anchor', r.anchor),
-      id: genDeclared('GET /v4/anchors/{id}', 'id', r.id),
-      state: genDeclared('GET /v4/anchors/{id}', 'state', r.state),
-      txHash: genDeclared('GET /v4/anchors/{id}', 'txHash', r.txHash),
-    };
-  }
-
-  /** Read GET /v4/anchors/{id}/verify. */
-  async forIdVerify(id: string): Promise<AnchorsForIdVerifyAnswer> {
-    genPathValue('GET /v4/anchors/{id}/verify', 'id', id, 'string');
-    const r = await this.rest<Partial<AnchorsForIdVerifyAnswer>>('GET', `/v4/anchors/${encodeURIComponent(id)}/verify`);
-    return {
-      anchor: genDeclared('GET /v4/anchors/{id}/verify', 'anchor', r.anchor),
-      dataUrl: genDeclared('GET /v4/anchors/{id}/verify', 'dataUrl', r.dataUrl),
-      digest: genDeclared('GET /v4/anchors/{id}/verify', 'digest', r.digest),
-      id: genDeclared('GET /v4/anchors/{id}/verify', 'id', r.id),
-      state: genDeclared('GET /v4/anchors/{id}/verify', 'state', r.state),
-      txHash: genDeclared('GET /v4/anchors/{id}/verify', 'txHash', r.txHash),
-      verified: genDeclared('GET /v4/anchors/{id}/verify', 'verified', r.verified),
     };
   }
 }

@@ -3,17 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/approvals answers: every member the route declares. */
-export interface ApprovalsRootAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** The query parameters GET /v4/approvals declares. */
-export interface ApprovalsRootQuery {
-  readonly status?: string;
-}
-
 /** What GET /v4/approvals/by-id answers: every member the route declares. */
 export interface ApprovalsByIdAnswer {
   readonly audit: unknown;
@@ -41,12 +30,6 @@ export interface ApprovalsByTargetForTypeForIdAnswer {
   readonly targetType: unknown;
 }
 
-/** What GET /v4/approvals/pending answers: every member the route declares. */
-export interface ApprovalsPendingAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
 /** What GET /v4/approvals/verify answers: every member the route declares. */
 export interface ApprovalsVerifyAnswer {
   readonly algorithm: unknown;
@@ -67,37 +50,8 @@ export interface ApprovalsVerifyQuery {
   readonly id?: string;
 }
 
-/** What GET /v4/approvals/{id} answers: every member the route declares. */
-export interface ApprovalsForIdAnswer {
-  readonly audit: unknown;
-  readonly created: unknown;
-  readonly fields: unknown;
-  readonly id: unknown;
-  readonly state: unknown;
-  readonly type: unknown;
-  readonly updated: unknown;
-  readonly url: unknown;
-  readonly version: unknown;
-}
-
-/** The query parameters GET /v4/approvals/{id} declares. */
-export interface ApprovalsForIdQuery {
-  readonly approvalId?: string;
-  readonly id?: string;
-}
-
 /** Typed reads of the node's /v4/approvals routes, generated from the route census. */
 export class ApprovalsReads extends SubClient {
-  /** Read GET /v4/approvals. */
-  async root(opts: ApprovalsRootQuery = {}): Promise<ApprovalsRootAnswer> {
-    const query = genQuery('GET /v4/approvals', [['status', opts.status, 'string']]);
-    const r = await this.rest<Partial<ApprovalsRootAnswer>>('GET', `/v4/approvals${query}`);
-    return {
-      items: genDeclared('GET /v4/approvals', 'items', r.items),
-      pagination: genDeclared('GET /v4/approvals', 'pagination', r.pagination),
-    };
-  }
-
   /** Read GET /v4/approvals/by-id. */
   async byId(opts: ApprovalsByIdQuery = {}): Promise<ApprovalsByIdAnswer> {
     const query = genQuery('GET /v4/approvals/by-id', [['approvalId', opts.approvalId, 'string'], ['id', opts.id, 'string']]);
@@ -128,15 +82,6 @@ export class ApprovalsReads extends SubClient {
     };
   }
 
-  /** Read GET /v4/approvals/pending. */
-  async pending(): Promise<ApprovalsPendingAnswer> {
-    const r = await this.rest<Partial<ApprovalsPendingAnswer>>('GET', '/v4/approvals/pending');
-    return {
-      items: genDeclared('GET /v4/approvals/pending', 'items', r.items),
-      pagination: genDeclared('GET /v4/approvals/pending', 'pagination', r.pagination),
-    };
-  }
-
   /** Read GET /v4/approvals/verify. */
   async verify(opts: ApprovalsVerifyQuery = {}): Promise<ApprovalsVerifyAnswer> {
     const query = genQuery('GET /v4/approvals/verify', [['approvalId', opts.approvalId, 'string'], ['id', opts.id, 'string']]);
@@ -152,24 +97,6 @@ export class ApprovalsReads extends SubClient {
       stageId: genDeclared('GET /v4/approvals/verify', 'stageId', r.stageId),
       state: genDeclared('GET /v4/approvals/verify', 'state', r.state),
       valid: genDeclared('GET /v4/approvals/verify', 'valid', r.valid),
-    };
-  }
-
-  /** Read GET /v4/approvals/{id}. */
-  async forId(id: string, opts: ApprovalsForIdQuery = {}): Promise<ApprovalsForIdAnswer> {
-    genPathValue('GET /v4/approvals/{id}', 'id', id, 'string');
-    const query = genQuery('GET /v4/approvals/{id}', [['approvalId', opts.approvalId, 'string'], ['id', opts.id, 'string']]);
-    const r = await this.rest<Partial<ApprovalsForIdAnswer>>('GET', `/v4/approvals/${encodeURIComponent(id)}${query}`);
-    return {
-      audit: genDeclared('GET /v4/approvals/{id}', 'audit', r.audit),
-      created: genDeclared('GET /v4/approvals/{id}', 'created', r.created),
-      fields: genDeclared('GET /v4/approvals/{id}', 'fields', r.fields),
-      id: genDeclared('GET /v4/approvals/{id}', 'id', r.id),
-      state: genDeclared('GET /v4/approvals/{id}', 'state', r.state),
-      type: genDeclared('GET /v4/approvals/{id}', 'type', r.type),
-      updated: genDeclared('GET /v4/approvals/{id}', 'updated', r.updated),
-      url: genDeclared('GET /v4/approvals/{id}', 'url', r.url),
-      version: genDeclared('GET /v4/approvals/{id}', 'version', r.version),
     };
   }
 }

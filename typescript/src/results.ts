@@ -8,6 +8,7 @@
  * proofAvailable + reasons) or fails with an explicit incomplete-artifact error.
  */
 import type { InfrixClient } from './index';
+import { evidenceIdForIntent } from './evidenceId';
 import type { OutcomeRecord, OutcomeFinality, ApprovalRef } from './types/governance';
 import type { PortableProof, ProofVerifyResult } from './proofs/verifyLocal';
 import { verifyLocalProof, hasReplayCapsule } from './proofs/verifyLocal';
@@ -173,11 +174,13 @@ export async function waitForGovernedResult<T = unknown>(
   const deadline = Date.now() + maxWaitMs;
 
   for (;;) {
-    const intent = (await client.intents.get(intentId)) as unknown as {
-      status: string;
-      planId?: string;
-      outcomeId?: string;
-    };
+    // GET /v4/intents/{id} answers {intent, status}: the lifecycle state is `status`. The plan and
+    // outcome ids are not members of the answer; the outcome record (hydrated below) carries them.
+    const answer = await client.intents.get(intentId);
+    if (typeof answer.status !== 'string') {
+      throw new Error(`the node's answer to GET /v4/intents/{id} carries a status that is not a string (intent ${intentId})`);
+    }
+    const intent: { status: string } = { status: answer.status };
 
     if (TERMINAL.has(intent.status)) {
       const result = await hydrateGovernedResult<T>(client, intentId, intent, opts);
@@ -194,8 +197,8 @@ export async function waitForGovernedResult<T = unknown>(
     if (Date.now() >= deadline) {
       const timeout: GovernedResult<T> = {
         intentId,
-        planId: intent.planId ?? '',
-        outcomeId: intent.outcomeId ?? '',
+        planId: '',
+        outcomeId: '',
         status: 'timeout',
         gasUsed: 0,
         gasAvailable: false,
@@ -227,9 +230,9 @@ export async function hydrateGovernedResult<T = unknown>(
     gasAvailable: false,
   };
 
-  if (intent.outcomeId) {
-    await hydrateOutcomeArtifacts(client, intentId, result);
-  }
+  // The intent answer names no outcome, so ask for it: an outcome that is not queryable leaves
+  // gasAvailable false (hydrateOutcomeArtifacts never fakes a 0).
+  await hydrateOutcomeArtifacts(client, intentId, result);
 
   // A terminal intent that produced an outcome but no plan id legitimately had
   // no plan stage — say so explicitly rather than leaving planId silently blank.
@@ -284,8 +287,7 @@ async function attachProof<T>(
   opts: ResultCompletenessOptions,
 ): Promise<void> {
   try {
-    const bundle = (await client.evidence.get(result.intentId)) as unknown as { id?: string; bundleId?: string };
-    const evidenceId = bundle.id ?? bundle.bundleId;
+    const evidenceId = await evidenceIdForIntent(client, result.intentId);
     if (!evidenceId) {
       result.proofAvailable = false;
       result.proofUnavailableReason = 'evidence bundle has no id to export';

@@ -1,24 +1,33 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import { checkPathValue, declaredMembers } from './routeShapes';
 import type {
-  Escrow,
+  EscrowAnswer,
+  EscrowListAnswer,
   EscrowListFilter,
   EscrowCreateOptions,
 } from '../types/governance';
+
+const LIST_ROUTE = 'GET /v4/escrows';
+const GET_ROUTE = 'GET /v4/escrows/{id}';
 
 /**
  * EscrowSubClient provides escrow management.
  */
 export class EscrowSubClient extends SubClient {
   /**
-   * List escrows.
+   * List the escrows the caller can see (REST GET /v4/escrows).
+   *
+   * @param filter - Only the filters the route accepts: `status` and `limit`.
+   * @returns `escrows` and `total`.
    */
-  async list(
-    filter?: EscrowListFilter
-  ): Promise<{ escrows: Escrow[]; total: number }> {
-    return this.rpc<{ escrows: Escrow[]; total: number }>(
-      'escrow.list',
-      (filter ?? {}) as Record<string, unknown>
-    );
+  async list(filter: EscrowListFilter = {}): Promise<EscrowListAnswer> {
+    const query = genQuery(LIST_ROUTE, [
+      ['limit', filter.limit, 'int'],
+      ['status', filter.status, 'string'],
+    ]);
+    const answer = await this.rest<unknown>('GET', `/v4/escrows${query}`);
+    return declaredMembers<EscrowListAnswer>(LIST_ROUTE, answer, ['escrows', 'total']);
   }
 
   /**
@@ -60,9 +69,15 @@ export class EscrowSubClient extends SubClient {
   }
 
   /**
-   * Get a specific escrow.
+   * Get one escrow (REST GET /v4/escrows/{id}).
    */
-  async get(id: string): Promise<Escrow> {
-    return this.rpc<Escrow>('escrow.get', { id });
+  async get(id: string): Promise<EscrowAnswer> {
+    checkPathValue(GET_ROUTE, 'id', id);
+    const answer = await this.rest<unknown>('GET', `/v4/escrows/${encodeURIComponent(id)}`);
+    return declaredMembers<EscrowAnswer>(GET_ROUTE, answer, [
+      'amount', 'arbiter', 'asset', 'beneficiary', 'createdAt', 'depositedAt', 'depositor', 'disputes',
+      'holdingAccount', 'id', 'instructionId', 'instructionState', 'legId', 'refunded', 'refundedAt',
+      'released', 'releasedAt', 'status',
+    ]);
   }
 }

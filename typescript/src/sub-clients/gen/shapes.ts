@@ -3,28 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/shapes/contracts/{contract} answers: every member the route declares. */
-export interface ShapesContractsForContractAnswer {
-  readonly contract: unknown;
-  readonly shape: unknown;
-}
-
-/** What GET /v4/shapes/contracts/{contract}/history answers: every member the route declares. */
-export interface ShapesContractsForContractHistoryAnswer {
-  readonly contract: unknown;
-  readonly total: unknown;
-  readonly transitions: unknown;
-}
-
-/** What GET /v4/shapes/contracts/{contract}/params answers: every member the route declares. */
-export interface ShapesContractsForContractParamsAnswer {
-  readonly activeShape: unknown;
-  readonly contract: unknown;
-  readonly defaultShape: unknown;
-  readonly parameterSchema: unknown;
-  readonly parameters: unknown;
-}
-
 /** What GET /v4/shapes/contracts/{contract}/simulate answers: every member the route declares. */
 export interface ShapesContractsForContractSimulateAnswer {
   readonly candidates: unknown;
@@ -42,40 +20,6 @@ export interface ShapesContractsForContractSimulateQuery {
 
 /** Typed reads of the node's /v4/shapes routes, generated from the route census. */
 export class ShapesReads extends SubClient {
-  /** Read GET /v4/shapes/contracts/{contract}. */
-  async contractsForContract(contract: string): Promise<ShapesContractsForContractAnswer> {
-    genPathValue('GET /v4/shapes/contracts/{contract}', 'contract', contract, 'string');
-    const r = await this.rest<Partial<ShapesContractsForContractAnswer>>('GET', `/v4/shapes/contracts/${encodeURIComponent(contract)}`);
-    return {
-      contract: genDeclared('GET /v4/shapes/contracts/{contract}', 'contract', r.contract),
-      shape: genDeclared('GET /v4/shapes/contracts/{contract}', 'shape', r.shape),
-    };
-  }
-
-  /** Read GET /v4/shapes/contracts/{contract}/history. */
-  async contractsForContractHistory(contract: string): Promise<ShapesContractsForContractHistoryAnswer> {
-    genPathValue('GET /v4/shapes/contracts/{contract}/history', 'contract', contract, 'string');
-    const r = await this.rest<Partial<ShapesContractsForContractHistoryAnswer>>('GET', `/v4/shapes/contracts/${encodeURIComponent(contract)}/history`);
-    return {
-      contract: genDeclared('GET /v4/shapes/contracts/{contract}/history', 'contract', r.contract),
-      total: genDeclared('GET /v4/shapes/contracts/{contract}/history', 'total', r.total),
-      transitions: genDeclared('GET /v4/shapes/contracts/{contract}/history', 'transitions', r.transitions),
-    };
-  }
-
-  /** Read GET /v4/shapes/contracts/{contract}/params. */
-  async contractsForContractParams(contract: string): Promise<ShapesContractsForContractParamsAnswer> {
-    genPathValue('GET /v4/shapes/contracts/{contract}/params', 'contract', contract, 'string');
-    const r = await this.rest<Partial<ShapesContractsForContractParamsAnswer>>('GET', `/v4/shapes/contracts/${encodeURIComponent(contract)}/params`);
-    return {
-      activeShape: genDeclared('GET /v4/shapes/contracts/{contract}/params', 'activeShape', r.activeShape),
-      contract: genDeclared('GET /v4/shapes/contracts/{contract}/params', 'contract', r.contract),
-      defaultShape: genDeclared('GET /v4/shapes/contracts/{contract}/params', 'defaultShape', r.defaultShape),
-      parameterSchema: genDeclared('GET /v4/shapes/contracts/{contract}/params', 'parameterSchema', r.parameterSchema),
-      parameters: genDeclared('GET /v4/shapes/contracts/{contract}/params', 'parameters', r.parameters),
-    };
-  }
-
   /** Read GET /v4/shapes/contracts/{contract}/simulate. */
   async contractsForContractSimulate(contract: string, opts: ShapesContractsForContractSimulateQuery = {}): Promise<ShapesContractsForContractSimulateAnswer> {
     genPathValue('GET /v4/shapes/contracts/{contract}/simulate', 'contract', contract, 'string');

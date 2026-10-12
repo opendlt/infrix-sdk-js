@@ -3,39 +3,6 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
-/** What GET /v4/intents answers: every member the route declares. */
-export interface IntentsRootAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** The query parameters GET /v4/intents declares. */
-export interface IntentsRootQuery {
-  readonly goalType?: string;
-  readonly status?: string;
-}
-
-/** What GET /v4/intents/approval-signing answers: every member the route declares. */
-export interface IntentsApprovalSigningAnswer {
-  readonly conditions: unknown;
-  readonly digest: unknown;
-  readonly keyPageRef: unknown;
-  readonly planHash: unknown;
-  readonly scope: unknown;
-  readonly signerIdentity: unknown;
-  readonly simulationHash: unknown;
-  readonly stageId: unknown;
-  readonly workflowId: unknown;
-}
-
-/** The query parameters GET /v4/intents/approval-signing declares. */
-export interface IntentsApprovalSigningQuery {
-  readonly intentId?: string;
-  readonly keyPageRef?: string;
-  readonly role?: string;
-  readonly stageId?: string;
-}
-
 /** What GET /v4/intents/outcome answers: every member the route declares. */
 export interface IntentsOutcomeAnswer {
   readonly audit: unknown;
@@ -52,26 +19,6 @@ export interface IntentsOutcomeAnswer {
 /** The query parameters GET /v4/intents/outcome declares. */
 export interface IntentsOutcomeQuery {
   readonly intentId?: string;
-}
-
-/** What GET /v4/intents/pending answers: every member the route declares. */
-export interface IntentsPendingAnswer {
-  readonly items: unknown;
-  readonly pagination: unknown;
-}
-
-/** What GET /v4/intents/{id} answers: every member the route declares. */
-export interface IntentsForIdAnswer {
-  readonly intent: unknown;
-  readonly status: unknown;
-}
-
-/** What GET /v4/intents/{id}/evidence answers: every member the route declares. */
-export interface IntentsForIdEvidenceAnswer {
-  readonly bundles: unknown;
-  readonly count: unknown;
-  readonly intent: unknown;
-  readonly intentId: unknown;
 }
 
 /** What GET /v4/intents/{id}/outcome answers: every member the route declares. */
@@ -115,33 +62,6 @@ export interface IntentsForIdPlanAnswer {
 
 /** Typed reads of the node's /v4/intents routes, generated from the route census. */
 export class IntentsReads extends SubClient {
-  /** Read GET /v4/intents. */
-  async root(opts: IntentsRootQuery = {}): Promise<IntentsRootAnswer> {
-    const query = genQuery('GET /v4/intents', [['goalType', opts.goalType, 'string'], ['status', opts.status, 'string']]);
-    const r = await this.rest<Partial<IntentsRootAnswer>>('GET', `/v4/intents${query}`);
-    return {
-      items: genDeclared('GET /v4/intents', 'items', r.items),
-      pagination: genDeclared('GET /v4/intents', 'pagination', r.pagination),
-    };
-  }
-
-  /** Read GET /v4/intents/approval-signing. */
-  async approvalSigning(opts: IntentsApprovalSigningQuery = {}): Promise<IntentsApprovalSigningAnswer> {
-    const query = genQuery('GET /v4/intents/approval-signing', [['intentId', opts.intentId, 'string'], ['keyPageRef', opts.keyPageRef, 'string'], ['role', opts.role, 'string'], ['stageId', opts.stageId, 'string']]);
-    const r = await this.rest<Partial<IntentsApprovalSigningAnswer>>('GET', `/v4/intents/approval-signing${query}`);
-    return {
-      conditions: genDeclared('GET /v4/intents/approval-signing', 'conditions', r.conditions),
-      digest: genDeclared('GET /v4/intents/approval-signing', 'digest', r.digest),
-      keyPageRef: genDeclared('GET /v4/intents/approval-signing', 'keyPageRef', r.keyPageRef),
-      planHash: genDeclared('GET /v4/intents/approval-signing', 'planHash', r.planHash),
-      scope: genDeclared('GET /v4/intents/approval-signing', 'scope', r.scope),
-      signerIdentity: genDeclared('GET /v4/intents/approval-signing', 'signerIdentity', r.signerIdentity),
-      simulationHash: genDeclared('GET /v4/intents/approval-signing', 'simulationHash', r.simulationHash),
-      stageId: genDeclared('GET /v4/intents/approval-signing', 'stageId', r.stageId),
-      workflowId: genDeclared('GET /v4/intents/approval-signing', 'workflowId', r.workflowId),
-    };
-  }
-
   /** Read GET /v4/intents/outcome. */
   async outcome(opts: IntentsOutcomeQuery = {}): Promise<IntentsOutcomeAnswer> {
     const query = genQuery('GET /v4/intents/outcome', [['intentId', opts.intentId, 'string']]);
@@ -156,37 +76,6 @@ export class IntentsReads extends SubClient {
       updated: genDeclared('GET /v4/intents/outcome', 'updated', r.updated),
       url: genDeclared('GET /v4/intents/outcome', 'url', r.url),
       version: genDeclared('GET /v4/intents/outcome', 'version', r.version),
-    };
-  }
-
-  /** Read GET /v4/intents/pending. */
-  async pending(): Promise<IntentsPendingAnswer> {
-    const r = await this.rest<Partial<IntentsPendingAnswer>>('GET', '/v4/intents/pending');
-    return {
-      items: genDeclared('GET /v4/intents/pending', 'items', r.items),
-      pagination: genDeclared('GET /v4/intents/pending', 'pagination', r.pagination),
-    };
-  }
-
-  /** Read GET /v4/intents/{id}. */
-  async forId(id: string): Promise<IntentsForIdAnswer> {
-    genPathValue('GET /v4/intents/{id}', 'id', id, 'string');
-    const r = await this.rest<Partial<IntentsForIdAnswer>>('GET', `/v4/intents/${encodeURIComponent(id)}`);
-    return {
-      intent: genDeclared('GET /v4/intents/{id}', 'intent', r.intent),
-      status: genDeclared('GET /v4/intents/{id}', 'status', r.status),
-    };
-  }
-
-  /** Read GET /v4/intents/{id}/evidence. */
-  async forIdEvidence(id: string): Promise<IntentsForIdEvidenceAnswer> {
-    genPathValue('GET /v4/intents/{id}/evidence', 'id', id, 'string');
-    const r = await this.rest<Partial<IntentsForIdEvidenceAnswer>>('GET', `/v4/intents/${encodeURIComponent(id)}/evidence`);
-    return {
-      bundles: genDeclared('GET /v4/intents/{id}/evidence', 'bundles', r.bundles),
-      count: genDeclared('GET /v4/intents/{id}/evidence', 'count', r.count),
-      intent: genDeclared('GET /v4/intents/{id}/evidence', 'intent', r.intent),
-      intentId: genDeclared('GET /v4/intents/{id}/evidence', 'intentId', r.intentId),
     };
   }
 
