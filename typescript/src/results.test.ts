@@ -141,6 +141,24 @@ test('proof export unavailable: proofAvailable=false + reason (no throw unless r
   assert.match(r.proofUnavailableReason ?? '', /unavailable/);
 });
 
+test('proof export with several bundles: the canonical ev-<intentId> bundle is exported', async () => {
+  const bundles = [{ id: 'ev-other' }, { id: 'ev-int-1' }];
+  const r = await waitForGovernedResult(makeFake({ outcome: goodOutcome, bundles }), 'int-1', { exportProof: true });
+  assert.equal(r.proofAvailable, true, 'a proof must not be hidden by a second bundle');
+  assert.ok(r.proof);
+});
+
+test('proof export with several bundles and none canonical: unavailable, naming every id and exportPortable', async () => {
+  const bundles = [{ id: 'ev-a' }, { id: 'ev-b' }];
+  const r = await waitForGovernedResult(makeFake({ outcome: goodOutcome, bundles }), 'int-1', { exportProof: true });
+  assert.equal(r.proofAvailable, false);
+  assert.match(r.proofUnavailableReason ?? '', /2 evidence bundles \(ev-a, ev-b\).*evidence\.exportPortable\(id\)/);
+  await assert.rejects(
+    () => waitForGovernedResult(makeFake({ outcome: goodOutcome, bundles }), 'int-1', { requireProof: true }),
+    /evidence\.exportPortable\(id\)/,
+  );
+});
+
 test('requireProof when unavailable: throws', async () => {
   await assert.rejects(
     () => waitForGovernedResult(makeFake({ outcome: goodOutcome, exportThrows: true }), 'int-1', { requireProof: true }),
