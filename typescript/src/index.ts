@@ -173,6 +173,7 @@ export {
   TransactionSubClient,
   AccountSubClient,
   RpcSubClient,
+  GeneratedRouteReads,
 } from './sub-clients';
 export type {
   VerifiableCredential,
@@ -243,6 +244,7 @@ import {
   TransactionSubClient,
   AccountSubClient,
   RpcSubClient,
+  GeneratedRouteReads,
 } from './sub-clients';
 
 // ---- Onboarding telemetry (adoption-12) ----
@@ -440,6 +442,9 @@ export class InfrixClient {
   /** One typed method per JSON-RPC method no other sub-client names; each returns the node's answer untouched. */
   readonly jsonrpc: RpcSubClient;
 
+  /** Typed reads of every GET route no hand-written client names, by route family (generated from the route census). */
+  readonly routes: GeneratedRouteReads;
+
   // ---- Read-only Contract Inspection ----
 
   /**
@@ -565,6 +570,7 @@ export class InfrixClient {
     this.transactions = new TransactionSubClient(rpcFn, restFn);
     this.accounts = new AccountSubClient(rpcFn, restFn);
     this.jsonrpc = new RpcSubClient(rpcFn, restFn);
+    this.routes = new GeneratedRouteReads(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);

@@ -52,3 +52,4 @@ export type {
   SubmittedEIP712Intent,
   Eip1193Provider,
 } from './eip712';
+export * from './gen';
