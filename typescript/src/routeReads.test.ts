@@ -233,6 +233,15 @@ test('every node read answers exactly the declared members and refuses an answer
   assert.deepEqual(Object.keys(s.result), ['apiVersion']);
 });
 
+test('eip712.prepare and submit send the declared members and refuse a key the routes do not take', async () => {
+  const req = { goalType: 'TRANSFER', signer: 'acc://a.acme/book/1', signerVersion: 1, publicKey: '02ab', timestamp: 7 };
+  const sent = await against({ typedData: {}, transactionHash: 'h', chainId: '1' }, (c) => c.eip712.prepare(req));
+  assert.equal(sent.seen.path, '/v4/intents/eip712/prepare');
+  assert.deepEqual(Object.keys(sent.seen.body ?? {}).sort(), ['goalType', 'publicKey', 'signer', 'signerVersion', 'timestamp']);
+  await assert.rejects(() => against({}, (c) => c.eip712.prepare({ ...req, bogus: 1 } as never)), /eip712\.prepare does not accept bogus/);
+  await assert.rejects(() => against({}, (c) => c.eip712.submit({ ...req, signature: '0x1', bogus: 1 } as never)), /eip712\.submit does not accept bogus/);
+});
+
 test('blocks.list, latest and get GET their routes, and get refuses a height the node would refuse', async () => {
   const l = await against({ items: [{ height: 3 }], pagination: { offset: 0, limit: 50, total: 3 } }, (c) => c.blocks.list());
   assert.equal(l.seen.method, 'GET');
