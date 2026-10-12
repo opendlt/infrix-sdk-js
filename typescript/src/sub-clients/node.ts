@@ -1,11 +1,11 @@
 import { SubClient } from './base';
-import type { RestMethod } from './base';
+import { declaredMembers } from './routeShapes';
 
 /**
  * The node's own API: its identity, the assurance matrix and the subsystem taxonomy.
  *
- * Each read is a plain GET of one route. The routes are held as "VERB /path" so the line that
- * names a route is the line that says how it is read.
+ * The routes are held as "VERB /path" as the route census names them (docs/release/census/
+ * rest-response-shapes.txt of infrix-core); the path each read requests is written at its call.
  */
 const ROUTE_ROOT = 'GET /v4/';
 const ROUTE_ASSURANCE = 'GET /v4/assurance';
@@ -60,7 +60,7 @@ export interface NetworkInfo {
   network: string;
 }
 
-/** What GET /v4/network/status answers. The node adds counters of its own (height, uptime). */
+/** What GET /v4/network/status answers: the members the route declares (it declares only apiVersion). */
 export interface NetworkStatus {
   apiVersion: string;
 }
@@ -79,45 +79,50 @@ export interface ClaimManifest {
 
 /**
  * NodeSubClient reads what a node says about itself. None of it is per-actor data.
+ *
+ * Each read is a plain GET of one route, and answers exactly the members that route declares: an answer that
+ * lacks one is refused rather than read as empty, and nothing the route does not declare is handed on.
  */
 export class NodeSubClient extends SubClient {
-  private read<T>(route: string): Promise<T> {
-    const space = route.indexOf(' ');
-    return this.rest<T>(route.slice(0, space) as RestMethod, route.slice(space + 1));
-  }
-
   /** The node's identity, spine and subsystem tiers. */
   async root(): Promise<NodeRoot> {
-    return this.read<NodeRoot>(ROUTE_ROOT);
+    const answer = await this.rest<unknown>('GET', '/v4/');
+    return declaredMembers<NodeRoot>(ROUTE_ROOT, answer, ['apiVersion', 'identity', 'spine', 'subsystems', 'system']);
   }
 
   /** The assurance matrix: proof levels, governance levels and the IU assurance classes. */
   async assurance(): Promise<AssuranceMatrix> {
-    return this.read<AssuranceMatrix>(ROUTE_ASSURANCE);
+    const answer = await this.rest<unknown>('GET', '/v4/assurance');
+    return declaredMembers<AssuranceMatrix>(ROUTE_ASSURANCE, answer, ['governanceLevels', 'iuClasses', 'proofLevels', 'summary']);
   }
 
   /** The subsystem taxonomy, the spine's owners and the packages awaiting a tier graduation. */
   async subsystems(): Promise<SubsystemTaxonomy> {
-    return this.read<SubsystemTaxonomy>(ROUTE_SUBSYSTEMS);
+    const answer = await this.rest<unknown>('GET', '/v4/network/subsystems');
+    return declaredMembers<SubsystemTaxonomy>(ROUTE_SUBSYSTEMS, answer, ['graduations', 'spine', 'subsystems']);
   }
 
   /** The network the node serves: its name, chain id and head block height. */
   async network(): Promise<NetworkInfo> {
-    return this.read<NetworkInfo>(ROUTE_NETWORK);
+    const answer = await this.rest<unknown>('GET', '/v4/network');
+    return declaredMembers<NetworkInfo>(ROUTE_NETWORK, answer, ['apiVersion', 'blockHeight', 'chainId', 'network']);
   }
 
   /** The node's network status. */
   async networkStatus(): Promise<NetworkStatus> {
-    return this.read<NetworkStatus>(ROUTE_NETWORK_STATUS);
+    const answer = await this.rest<unknown>('GET', '/v4/network/status');
+    return declaredMembers<NetworkStatus>(ROUTE_NETWORK_STATUS, answer, ['apiVersion']);
   }
 
   /** The DID document of the node's credential issuer; 503 on a node that issues no credentials. */
   async issuerDid(): Promise<IssuerDidDocument> {
-    return this.read<IssuerDidDocument>(ROUTE_ISSUER_DID);
+    const answer = await this.rest<unknown>('GET', '/v4/network/issuer-did');
+    return declaredMembers<IssuerDidDocument>(ROUTE_ISSUER_DID, answer, ['@context', 'id']);
   }
 
   /** The claim manifest: the profile the node stands behind and the capabilities it supports. */
   async claims(): Promise<ClaimManifest> {
-    return this.read<ClaimManifest>(ROUTE_CLAIMS);
+    const answer = await this.rest<unknown>('GET', '/v4/claims');
+    return declaredMembers<ClaimManifest>(ROUTE_CLAIMS, answer, ['selectedProfile', 'supportedCapabilities']);
   }
 }
