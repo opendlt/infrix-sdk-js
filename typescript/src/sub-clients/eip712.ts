@@ -45,7 +45,11 @@ export interface EIP712IntentRequest {
 
 export interface AssetAmount {
   asset: string;
-  amount?: string;
+  /**
+   * The amount in base units, as a JSON NUMBER: the prepare and submit routes decode it as an unsigned
+   * 64-bit integer, so a string here is refused with a 400. Use `amountDecimal` for a decimal string.
+   */
+  amount?: number;
   amountDecimal?: string;
   isMinimum?: boolean;
   isMaximum?: boolean;
