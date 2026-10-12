@@ -189,7 +189,7 @@ const CASES: Case[] = [
   },
   // ---- roles ----
   { name: 'roles.list', members: ['count', 'roles'], path: '/v4/roles', call: (c) => c.roles.list() },
-  { name: 'roles.list for an identity', members: ['count', 'roles'], path: `/v4/roles/${ACC_ESCAPED}`, call: (c) => c.roles.list(ACC) },
+  { name: 'roles.list for an identity', members: ['count', 'identity', 'roles'], path: `/v4/roles/${ACC_ESCAPED}`, call: (c) => c.roles.list(ACC) },
   {
     name: 'roles.check sends identity and role only',
     members: ['hasRole', 'identity', 'role'],
@@ -344,6 +344,77 @@ test('parameters a route does not accept are not sent, and a value the route wou
   await assert.rejects(() => against({}, (c) => c.objects.get('', 'x')), /<type> must be a non-empty string/);
 });
 
+// ---- an argument a method no longer takes is REFUSED by name, never silently dropped ----
+//
+// Each of these used to take an argument and now does not; the route takes none of them. A TypeScript caller
+// gets a compile error (the rest parameter is typed never[]); a JavaScript caller used to run on and get the
+// answer for a different question (approvals.pending('acc://alice.acme') answered the calling actor's slice).
+// The calls below are cast to what a JavaScript caller can write. No request may be made.
+
+type Loose = (...args: unknown[]) => Promise<unknown>;
+type Owner = 'approvals' | 'intents' | 'trust' | 'roles' | 'capabilities' | 'mission' | 'shapes';
+
+const REMOVED: Array<{ name: string; owner: Owner; method: string; args: unknown[]; refusal: RegExp }> = [
+  { name: 'approvals.pending(identity)', owner: 'approvals', method: 'pending', args: ['acc://alice.acme'], refusal: /^approvals\.pending no longer accepts identity: the route does not take it$/ },
+  { name: 'intents.pending(identity)', owner: 'intents', method: 'pending', args: ['acc://alice.acme'], refusal: /^intents\.pending no longer accepts identity: the route does not take it$/ },
+  { name: 'trust.list(domain)', owner: 'trust', method: 'list', args: ['ethereum'], refusal: /^trust\.list no longer accepts domain: the route does not take it$/ },
+  { name: 'trust.list(undefined, filter)', owner: 'trust', method: 'list', args: [undefined, { limit: 5 }], refusal: /^trust\.list no longer accepts filter: the route does not take it$/ },
+  { name: 'roles.list(identity, filter)', owner: 'roles', method: 'list', args: [ACC, { role: 'auditor' }], refusal: /^roles\.list no longer accepts filter: the route does not take it$/ },
+  { name: 'roles.check(identity, role, scope)', owner: 'roles', method: 'check', args: ['acc://a.acme', 'auditor', 'acc://scope.acme'], refusal: /^roles\.check no longer accepts scope: the route does not take it$/ },
+  { name: 'capabilities.check(identity, capability, scope)', owner: 'capabilities', method: 'check', args: ['acc://a.acme', 'token:transfer', 'acc://scope.acme'], refusal: /^capabilities\.check no longer accepts scope: the route does not take it$/ },
+  { name: 'mission.cost(contract, period)', owner: 'mission', method: 'cost', args: [ACC, '7d'], refusal: /^mission\.cost no longer accepts period: the route does not take it$/ },
+  { name: 'shapes.history(contract, opts)', owner: 'shapes', method: 'history', args: [ACC, { limit: 3 }], refusal: /^shapes\.history no longer accepts opts: the route does not take it$/ },
+];
+
+/** Call `client[owner][method](...args)` the way a JavaScript caller does, with no type to stop it. */
+function callLoose(c: InfrixClient, owner: Owner, method: string, args: unknown[]): Promise<unknown> {
+  const target = (c as unknown as Record<string, Record<string, Loose>>)[owner];
+  return target[method](...args);
+}
+
+for (const r of REMOVED) {
+  test(`${r.name} is refused by name and makes no request`, async () => {
+    let requests = 0;
+    (globalThis as { fetch?: FetchLike }).fetch = async () => {
+      requests++;
+      return { ok: true, status: 200, json: async () => ({ data: {} }), text: async () => '{}' };
+    };
+    try {
+      await assert.rejects(() => callLoose(client(), r.owner, r.method, r.args), (e: Error) => r.refusal.test(e.message), r.name);
+    } finally {
+      (globalThis as { fetch?: FetchLike }).fetch = realFetch;
+    }
+    assert.equal(requests, 0, 'a refused call sends nothing');
+  });
+}
+
+test('passing undefined where a removed argument used to be is not a removed argument', async () => {
+  const p = await against({ items: [], pagination: {} }, (c) => callLoose(c, 'approvals', 'pending', [undefined]));
+  assert.deepEqual(p.seen.query, {});
+  const r = await against(shapeOf(['count', 'identity', 'roles']), (c) => callLoose(c, 'roles', 'list', [ACC, undefined]));
+  assert.equal(r.seen.path, `/v4/roles/${ACC_ESCAPED}`);
+});
+
+test('a filter key the route does not accept is refused by name, not dropped from the query', async () => {
+  const bad: Array<[string, (c: InfrixClient) => Promise<unknown>, RegExp]> = [
+    ['anchors.list', (c) => c.anchors.list({ fromBlock: 1 } as never), /^anchors\.list does not accept fromBlock: GET \/v4\/anchors takes intentId, state$/],
+    ['approvals.list', (c) => c.approvals.list({ identity: 'acc://a.acme' } as never), /^approvals\.list does not accept identity: GET \/v4\/approvals takes status$/],
+    ['intents.list', (c) => c.intents.list({ user: 'acc://a.acme' } as never), /^intents\.list does not accept user: GET \/v4\/intents takes goalType, status$/],
+    ['capabilities.grants', (c) => c.capabilities.grants({ grantee: 'acc://a.acme' } as never), /^capabilities\.grants does not accept grantee: GET \/v4\/capabilities\/grants takes state$/],
+    ['disclosures.list', (c) => c.disclosures.list({ scope: 'x' } as never), /^disclosures\.list does not accept scope: GET \/v4\/disclosures takes state$/],
+    ['settlements.list', (c) => c.settlements.list({ asset: 'ACME' } as never), /^settlements\.list does not accept asset: GET \/v4\/settlements takes id, state$/],
+    ['escrows.list', (c) => c.escrows.list({ offset: 5 } as never), /^escrows\.list does not accept offset: GET \/v4\/escrows takes limit, status$/],
+    ['objects.list', (c) => c.objects.list('vault', { limit: 5 } as never), /^objects\.list does not accept limit: GET \/v4\/objects\/\{type\} takes field, filterLimit, id, state, value$/],
+    ['mission.logs', (c) => c.mission.logs(ACC, { since: 'x' } as never), /^mission\.logs does not accept since: GET \/v4\/mission\/contracts\/\{contract\}\/logs takes level, limit$/],
+  ];
+  for (const [name, call, refusal] of bad) {
+    await assert.rejects(() => against({}, call), (e: Error) => refusal.test(e.message), name);
+  }
+  // a key the caller leaves undefined is not a key
+  const ok = await against({ items: [], pagination: {} }, (c) => c.anchors.list({ intentId: undefined, state: 'verified' }));
+  assert.deepEqual(ok.seen.query, { state: 'verified' });
+});
+
 test('evidenceIdForIntent resolves the one bundle an intent produced, from the declared bundles member', async () => {
   const one = await against(
     { bundles: [{ id: 'ev-9' }], count: 1, intent: {}, intentId: 'intent-9' },
@@ -355,9 +426,31 @@ test('evidenceIdForIntent resolves the one bundle an intent produced, from the d
   const none = await against({ bundles: [], count: 0, intent: {}, intentId: 'i' }, (c) => evidenceIdForIntent(c, 'i'));
   assert.equal(none.result, undefined, 'no bundle yet is not an id');
 
+  // Several bundles: the rule is the node's canonical id `ev-<intentId>`, chosen only when exactly one bundle carries it.
+  const several = await against(
+    { bundles: [{ id: 'ev-other' }, { id: 'ev-i' }], count: 2, intent: {}, intentId: 'i' },
+    (c) => evidenceIdForIntent(c, 'i')
+  );
+  assert.equal(several.result, 'ev-i', 'the canonical bundle is chosen among several');
+  const reversed = await against(
+    { bundles: [{ id: 'ev-i' }, { id: 'ev-other' }], count: 2, intent: {}, intentId: 'i' },
+    (c) => evidenceIdForIntent(c, 'i')
+  );
+  assert.equal(reversed.result, 'ev-i', 'the choice does not depend on the order the node lists them in');
   await assert.rejects(
     () => against({ bundles: [{ id: 'a' }, { id: 'b' }], count: 2, intent: {}, intentId: 'i' }, (c) => evidenceIdForIntent(c, 'i')),
-    /has 2 evidence bundles/
+    (e: Error) =>
+      /has 2 evidence bundles \(a, b\)/.test(e.message) &&
+      /none is the canonical ev-i/.test(e.message) &&
+      /evidence\.exportPortable\(id\)/.test(e.message)
+  );
+  await assert.rejects(
+    () => against({ bundles: [{ id: 'ev-i' }, { id: 'ev-i' }], count: 2, intent: {}, intentId: 'i' }, (c) => evidenceIdForIntent(c, 'i')),
+    /the canonical ev-i appears 2 times.*evidence\.exportPortable\(id\)/
+  );
+  await assert.rejects(
+    () => against({ bundles: [{ id: 'ev-other' }, {}], count: 2, intent: {}, intentId: 'i' }, (c) => evidenceIdForIntent(c, 'i')),
+    /\(ev-other, <no id>\).*none is the canonical ev-i/
   );
   await assert.rejects(
     () => against({ bundles: 'ev-1', count: 1, intent: {}, intentId: 'i' }, (c) => evidenceIdForIntent(c, 'i')),

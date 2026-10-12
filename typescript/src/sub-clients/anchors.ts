@@ -1,6 +1,6 @@
 import { SubClient } from './base';
 import { genQuery } from './gen/runtime';
-import { LIST_MEMBERS, checkPathValue, declaredMembers } from './routeShapes';
+import { LIST_MEMBERS, checkPathValue, declaredMembers, refuseUnknownOptions } from './routeShapes';
 import type { ListAnswer } from './routeShapes';
 import type {
   AnchorAnswer,
@@ -28,6 +28,7 @@ export class AnchorSubClient extends SubClient {
    * @returns `items` and `pagination`.
    */
   async list(filter: AnchorListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('anchors.list', LIST_ROUTE, filter, ['intentId', 'state']);
     const query = genQuery(LIST_ROUTE, [
       ['intentId', filter.intentId, 'string'],
       ['state', filter.state, 'string'],

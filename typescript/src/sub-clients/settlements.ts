@@ -5,6 +5,7 @@ import {
   REGISTRY_OBJECT_MEMBERS,
   checkPathValue,
   declaredMembers,
+  refuseUnknownOptions,
 } from './routeShapes';
 import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 import type {
@@ -26,6 +27,7 @@ export class SettlementSubClient extends SubClient {
    * @returns `items` and `pagination`.
    */
   async list(filter: SettlementListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('settlements.list', LIST_ROUTE, filter, ['id', 'state']);
     const query = genQuery(LIST_ROUTE, [
       ['id', filter.id, 'string'],
       ['state', filter.state, 'string'],

@@ -4,6 +4,7 @@ import {
   REGISTRY_OBJECT_MEMBERS,
   checkPathValue,
   declaredMembers,
+  refuseRemovedArguments,
 } from './routeShapes';
 import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 import type { TrustEvaluation } from '../types/governance';
@@ -35,9 +36,11 @@ export class TrustSubClient extends SubClient {
   /**
    * List the trust profiles the caller can see (REST GET /v4/trust). The route takes no parameters.
    *
+   * @param removed - Refused: the `domain` and `filter` arguments are gone.
    * @returns `items` and `pagination`.
    */
-  async list(): Promise<ListAnswer> {
+  async list(...removed: never[]): Promise<ListAnswer> {
+    refuseRemovedArguments('trust.list', removed, ['domain', 'filter']);
     const answer = await this.rest<unknown>('GET', '/v4/trust');
     return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
   }

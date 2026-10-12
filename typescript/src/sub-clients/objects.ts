@@ -5,6 +5,7 @@ import {
   REGISTRY_OBJECT_MEMBERS,
   checkPathValue,
   declaredMembers,
+  refuseUnknownOptions,
 } from './routeShapes';
 import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 import type {
@@ -36,6 +37,7 @@ export class ObjectSubClient extends SubClient {
    */
   async list(type: string, filter: ObjectListFilter = {}): Promise<ListAnswer> {
     checkPathValue(LIST_ROUTE, 'type', type);
+    refuseUnknownOptions('objects.list', LIST_ROUTE, filter, ['field', 'filterLimit', 'id', 'state', 'value']);
     const query = genQuery(LIST_ROUTE, [
       ['field', filter.field, 'string'],
       ['filterLimit', filter.filterLimit, 'int'],

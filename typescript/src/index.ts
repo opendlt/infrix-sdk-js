@@ -210,7 +210,7 @@ export type {
 import type { DevnetEvent } from './types/contract';
 import { parseUserError, InfrixUserError, nodeAuthRequired, nodeRequestRefused } from './userError';
 import { genQuery } from './sub-clients/gen/runtime';
-import { checkPathValue, declaredMembers } from './sub-clients/routeShapes';
+import { checkPathValue, declaredMembers, refuseRemovedArguments, refuseUnknownOptions } from './sub-clients/routeShapes';
 
 // The routes the shapes, swarm and mission reads below answer from; each answer carries exactly the
 // members the route census declares for it.
@@ -764,9 +764,11 @@ export class InfrixClient {
 
     /**
      * Get the shape transition history of a contract (REST GET /v4/shapes/contracts/{contract}/history).
-     * The route takes no parameters: it answers every transition it holds.
+     * The route takes no parameters: it answers every transition it holds, so the `opts` (`limit`) argument
+     * it once took is refused by name.
      */
-    history: async (contractUrl: string): Promise<ShapeHistoryResult> => {
+    history: async (contractUrl: string, ...removed: never[]): Promise<ShapeHistoryResult> => {
+      refuseRemovedArguments('shapes.history', removed, ['opts']);
       checkPathValue(SHAPE_HISTORY_ROUTE, 'contract', contractUrl);
       const answer = await this.rest<unknown>('GET', `/v4/shapes/contracts/${encodeURIComponent(contractUrl)}/history`);
       return declaredMembers<ShapeHistoryResult>(SHAPE_HISTORY_ROUTE, answer, ['contract', 'total', 'transitions']);
@@ -1077,9 +1079,11 @@ export class MissionClient {
   }
   /**
    * A contract's cost report (REST GET /v4/mission/contracts/{contract}/cost). The route takes no
-   * parameters: there is no period to ask for, and the answer declares only the `contract`.
+   * parameters: there is no period to ask for (the `period` argument is refused by name), and the answer
+   * declares only the `contract`.
    */
-  async cost(contract: string): Promise<MissionCostReport> {
+  async cost(contract: string, ...removed: never[]): Promise<MissionCostReport> {
+    refuseRemovedArguments('mission.cost', removed, ['period']);
     checkPathValue(MISSION_COST_ROUTE, 'contract', contract);
     const answer = await this.rest<unknown>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}/cost`);
     return declaredMembers<MissionCostReport>(MISSION_COST_ROUTE, answer, ['contract']);
@@ -1090,6 +1094,7 @@ export class MissionClient {
    * @param opts - Only the parameters the route accepts: `level` and `limit`.
    */
   async logs(contract: string, opts: { level?: string; limit?: number } = {}): Promise<MissionLogs> {
+    refuseUnknownOptions('mission.logs', MISSION_LOGS_ROUTE, opts, ['level', 'limit']);
     checkPathValue(MISSION_LOGS_ROUTE, 'contract', contract);
     const query = genQuery(MISSION_LOGS_ROUTE, [
       ['level', opts.level, 'string'],

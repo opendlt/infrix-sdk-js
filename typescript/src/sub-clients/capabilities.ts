@@ -1,6 +1,6 @@
 import { SubClient } from './base';
 import { genQuery } from './gen/runtime';
-import { LIST_MEMBERS, declaredMembers } from './routeShapes';
+import { LIST_MEMBERS, declaredMembers, refuseRemovedArguments, refuseUnknownOptions } from './routeShapes';
 import type { ListAnswer } from './routeShapes';
 import type {
   CapabilityCheckAnswer,
@@ -36,6 +36,7 @@ export class CapabilitySubClient extends SubClient {
    * @returns `items` and `pagination`.
    */
   async grants(filter: CapabilityListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('capabilities.grants', GRANTS_ROUTE, filter, ['state']);
     const query = genQuery(GRANTS_ROUTE, [['state', filter.state, 'string']]);
     const answer = await this.rest<unknown>('GET', `/v4/capabilities/grants${query}`);
     return declaredMembers<ListAnswer>(GRANTS_ROUTE, answer, LIST_MEMBERS);
@@ -84,7 +85,8 @@ export class CapabilitySubClient extends SubClient {
    * @param identity - DID or ADI URL to check
    * @param capability - Capability string to check
    */
-  async check(identity: string, capability: string): Promise<CapabilityCheckAnswer> {
+  async check(identity: string, capability: string, ...removed: never[]): Promise<CapabilityCheckAnswer> {
+    refuseRemovedArguments('capabilities.check', removed, ['scope']);
     const query = genQuery(CHECK_ROUTE, [
       ['capability', capability, 'string'],
       ['identity', identity, 'string'],

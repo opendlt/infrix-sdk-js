@@ -1,6 +1,6 @@
 import { SubClient } from './base';
 import { genQuery } from './gen/runtime';
-import { checkPathValue, declaredMembers } from './routeShapes';
+import { checkPathValue, declaredMembers, refuseUnknownOptions } from './routeShapes';
 import type {
   EscrowAnswer,
   EscrowListAnswer,
@@ -22,6 +22,7 @@ export class EscrowSubClient extends SubClient {
    * @returns `escrows` and `total`.
    */
   async list(filter: EscrowListFilter = {}): Promise<EscrowListAnswer> {
+    refuseUnknownOptions('escrows.list', LIST_ROUTE, filter, ['limit', 'status']);
     const query = genQuery(LIST_ROUTE, [
       ['limit', filter.limit, 'int'],
       ['status', filter.status, 'string'],

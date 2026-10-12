@@ -1,6 +1,6 @@
 import { SubClient } from './base';
 import { genQuery } from './gen/runtime';
-import { checkPathValue, declaredMembers } from './routeShapes';
+import { checkPathValue, declaredMembers, refuseRemovedArguments } from './routeShapes';
 import type {
   RoleAssignOptions,
   RoleCheckAnswer,
@@ -11,8 +11,11 @@ const LIST_ROUTE = 'GET /v4/roles';
 const IDENTITY_ROUTE = 'GET /v4/roles/{identity}';
 const CHECK_ROUTE = 'GET /v4/roles/check';
 
-/** The members GET /v4/roles and GET /v4/roles/{identity} declare. */
+/** The members GET /v4/roles declares. */
 const ROLE_LIST_MEMBERS = ['count', 'roles'] as const;
+
+/** The members GET /v4/roles/{identity} declares: the list's two and the `identity` the roles belong to. */
+const ROLE_IDENTITY_MEMBERS = ['count', 'identity', 'roles'] as const;
 
 /**
  * RoleSubClient provides role binding management.
@@ -23,16 +26,18 @@ export class RoleSubClient extends SubClient {
    * assigned to that identity (REST GET /v4/roles/{identity}).
    *
    * @param identity - DID or ADI URL; omit to list every binding the caller can see
-   * @returns `roles` and their `count`
+   * @param removed - Refused. The route takes no filter (`role`, `scope`, `status`, `limit`, `offset` are gone).
+   * @returns `roles` and their `count`; for an identity, also that `identity`
    */
-  async list(identity?: string): Promise<RoleListAnswer> {
+  async list(identity?: string, ...removed: never[]): Promise<RoleListAnswer> {
+    refuseRemovedArguments('roles.list', removed, ['filter']);
     if (identity === undefined) {
       const all = await this.rest<unknown>('GET', '/v4/roles');
       return declaredMembers<RoleListAnswer>(LIST_ROUTE, all, ROLE_LIST_MEMBERS);
     }
     checkPathValue(IDENTITY_ROUTE, 'identity', identity);
     const answer = await this.rest<unknown>('GET', `/v4/roles/${encodeURIComponent(identity)}`);
-    return declaredMembers<RoleListAnswer>(IDENTITY_ROUTE, answer, ROLE_LIST_MEMBERS);
+    return declaredMembers<RoleListAnswer>(IDENTITY_ROUTE, answer, ROLE_IDENTITY_MEMBERS);
   }
 
   /**
@@ -63,8 +68,10 @@ export class RoleSubClient extends SubClient {
    *
    * @param identity - DID or ADI URL to check
    * @param role - Role name
+   * @param removed - Refused: the `scope` argument is gone because the route has no scope.
    */
-  async check(identity: string, role: string): Promise<RoleCheckAnswer> {
+  async check(identity: string, role: string, ...removed: never[]): Promise<RoleCheckAnswer> {
+    refuseRemovedArguments('roles.check', removed, ['scope']);
     const query = genQuery(CHECK_ROUTE, [
       ['identity', identity, 'string'],
       ['role', role, 'string'],

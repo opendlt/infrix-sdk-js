@@ -61,3 +61,40 @@ export interface RegistryObjectAnswer {
 export const REGISTRY_OBJECT_MEMBERS = [
   'audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version',
 ] as const;
+
+/**
+ * Refuse, by name, an argument a method no longer takes.
+ *
+ * The method keeps a rest parameter typed `never[]` so a TypeScript caller that still passes the
+ * argument gets a compile error, and a JavaScript caller (which has no types to tell it) is refused
+ * here at runtime instead of silently getting a different result: `approvals.pending('acc://alice.acme')`
+ * used to list the named identity's approvals and now would list the calling actor's, with no sign that
+ * the identity was dropped.
+ *
+ * @param method - The method as callers write it, e.g. `approvals.pending`.
+ * @param passed - The extra arguments the caller passed (the method's `...removed` parameter).
+ * @param names - What each extra argument used to be, in position order.
+ */
+export function refuseRemovedArguments(method: string, passed: readonly unknown[], names: readonly string[]): void {
+  for (let i = 0; i < passed.length; i++) {
+    if (passed[i] === undefined) continue;
+    throw new Error(`${method} no longer accepts ${names[i] ?? `extra argument ${i + 1}`}: the route does not take it`);
+  }
+}
+
+/**
+ * Refuse, by name, a filter/option key the route does not accept. A key outside `accepted` that carries a
+ * value would otherwise be dropped on the way to the query string, and the caller would read an unfiltered
+ * answer as the filtered one it asked for.
+ *
+ * @param method - The method as callers write it, e.g. `anchors.list`.
+ * @param route - The route as the census names it, e.g. `GET /v4/anchors`.
+ * @param options - The filter object the caller passed.
+ * @param accepted - Every key the route takes.
+ */
+export function refuseUnknownOptions(method: string, route: string, options: object, accepted: readonly string[]): void {
+  for (const [key, value] of Object.entries(options)) {
+    if (value === undefined || accepted.includes(key)) continue;
+    throw new Error(`${method} does not accept ${key}: ${route} takes ${accepted.length === 0 ? 'no parameters' : accepted.join(', ')}`);
+  }
+}

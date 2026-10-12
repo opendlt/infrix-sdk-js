@@ -1,6 +1,6 @@
 import { SubClient } from './base';
 import { genQuery } from './gen/runtime';
-import { LIST_MEMBERS, checkPathValue, declaredMembers } from './routeShapes';
+import { LIST_MEMBERS, checkPathValue, declaredMembers, refuseRemovedArguments, refuseUnknownOptions } from './routeShapes';
 import type { ListAnswer } from './routeShapes';
 import type {
   GovernedApproveResult,
@@ -158,10 +158,11 @@ export class IntentSubClient extends SubClient {
   /**
    * List the intents the caller can see (REST GET /v4/intents).
    *
-   * @param filter - Only the filters the route accepts: `status` and `goalType`.
+   * @param filter - Only the filters the route accepts: `status` and `goalType`. Any other key is refused by name.
    * @returns `items` and `pagination`.
    */
   async list(filter: IntentListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('intents.list', LIST_ROUTE, filter, ['goalType', 'status']);
     const query = genQuery(LIST_ROUTE, [
       ['goalType', filter.goalType, 'string'],
       ['status', filter.status, 'string'],
@@ -174,9 +175,11 @@ export class IntentSubClient extends SubClient {
    * List the intents pending approval (REST GET /v4/intents/pending). The route takes no parameters:
    * the node scopes the answer to the actor the client's disclosure context names.
    *
+   * @param removed - Refused: the `identity` argument is gone, a named identity cannot be asked for.
    * @returns `items` and `pagination`.
    */
-  async pending(): Promise<ListAnswer> {
+  async pending(...removed: never[]): Promise<ListAnswer> {
+    refuseRemovedArguments('intents.pending', removed, ['identity']);
     const answer = await this.rest<unknown>('GET', '/v4/intents/pending');
     return declaredMembers<ListAnswer>(PENDING_ROUTE, answer, LIST_MEMBERS);
   }

@@ -1,6 +1,6 @@
 import { SubClient } from './base';
 import { genQuery } from './gen/runtime';
-import { LIST_MEMBERS, declaredMembers } from './routeShapes';
+import { LIST_MEMBERS, declaredMembers, refuseUnknownOptions } from './routeShapes';
 import type { ListAnswer } from './routeShapes';
 import type {
   DisclosureListFilter,
@@ -32,6 +32,7 @@ export class DisclosureSubClient extends SubClient {
    * @returns `items` and `pagination`; an answer that lacks either is refused, never read as empty.
    */
   async list(filter: DisclosureListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('disclosures.list', LIST_ROUTE, filter, ['state']);
     const query = genQuery(LIST_ROUTE, [['state', filter.state, 'string']]);
     const answer = await this.rest<unknown>('GET', `/v4/disclosures${query}`);
     return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);

@@ -5,6 +5,8 @@ import {
   REGISTRY_OBJECT_MEMBERS,
   checkPathValue,
   declaredMembers,
+  refuseRemovedArguments,
+  refuseUnknownOptions,
 } from './routeShapes';
 import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 import type {
@@ -81,10 +83,11 @@ export class ApprovalSubClient extends SubClient {
   /**
    * List the approvals the caller can see (REST GET /v4/approvals).
    *
-   * @param filter - Only the filter the route accepts: `status`.
+   * @param filter - Only the filter the route accepts: `status`. Any other key is refused by name.
    * @returns `items` and `pagination`.
    */
   async list(filter: ApprovalListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('approvals.list', LIST_ROUTE, filter, ['status']);
     const query = genQuery(LIST_ROUTE, [['status', filter.status, 'string']]);
     const answer = await this.rest<unknown>('GET', `/v4/approvals${query}`);
     return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
@@ -95,9 +98,11 @@ export class ApprovalSubClient extends SubClient {
    * parameters: the node scopes the answer to the actor the client's disclosure context names, so
    * construct the client with the approver as `actor`.
    *
+   * @param removed - Refused: the `identity` argument is gone, a named identity cannot be asked for.
    * @returns `items` and `pagination`.
    */
-  async pending(): Promise<ListAnswer> {
+  async pending(...removed: never[]): Promise<ListAnswer> {
+    refuseRemovedArguments('approvals.pending', removed, ['identity']);
     const answer = await this.rest<unknown>('GET', '/v4/approvals/pending');
     return declaredMembers<ListAnswer>(PENDING_ROUTE, answer, LIST_MEMBERS);
   }

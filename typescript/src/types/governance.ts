@@ -1280,9 +1280,15 @@ export interface RoleBinding {
   conditions?: Record<string, unknown>;
 }
 
-/** What GET /v4/roles and GET /v4/roles/{identity} answer: every member the routes declare. */
+/**
+ * What GET /v4/roles and GET /v4/roles/{identity} answer: every member each route declares. `identity`
+ * is declared by the per-identity route only, so it is present on an `roles.list(identity)` answer and
+ * absent on `roles.list()`.
+ */
 export interface RoleListAnswer {
   readonly count: unknown;
+  /** The identity the roles belong to (GET /v4/roles/{identity} only). */
+  readonly identity?: unknown;
   readonly roles: unknown;
 }
 

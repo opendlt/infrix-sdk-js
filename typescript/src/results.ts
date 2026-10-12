@@ -218,13 +218,15 @@ export async function waitForGovernedResult<T = unknown>(
 export async function hydrateGovernedResult<T = unknown>(
   client: InfrixClient,
   intentId: string,
-  intent: { status: string; planId?: string; outcomeId?: string },
+  intent: { status: string },
   opts: ResultCompletenessOptions = {},
 ): Promise<GovernedResult<T>> {
+  // GET /v4/intents/{id} answers {intent, status} and names no plan or outcome: the ids come from the
+  // outcome read below, and stay blank when it is not queryable.
   const result: GovernedResult<T> = {
     intentId,
-    planId: intent.planId ?? '',
-    outcomeId: intent.outcomeId ?? '',
+    planId: '',
+    outcomeId: '',
     status: intent.status,
     gasUsed: 0,
     gasAvailable: false,
