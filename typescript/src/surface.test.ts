@@ -43,7 +43,8 @@ type RequiredClientMembers =
   | 'disclosures'
   | 'predicates'
   | 'eip712'
-  | 'contracts';
+  | 'contracts'
+  | 'mission';
 type _HasClientMembers = RequiredClientMembers extends ClientKeys ? true : false;
 const _hasClientMembers: _HasClientMembers = true;
 void _hasClientMembers;

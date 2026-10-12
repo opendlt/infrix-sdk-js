@@ -12,6 +12,7 @@
  *   withHostedDevnet  — point a client at a hosted devnet + L0 endpoint
  */
 import type { InfrixClient } from './index';
+import { nodeAuthRequired } from './userError';
 import { verifyLocalProof, hasReplayCapsule } from './proofs/verifyLocal';
 import type { PortableProof, VerifyRequire, ProofVerifyResult } from './proofs/verifyLocal';
 
@@ -155,22 +156,40 @@ export interface ReadinessReport {
   profileMet?: boolean;
 }
 
-type FetchLike = (url: string) => Promise<{ ok: boolean; json: () => Promise<unknown> }>;
+type FetchLike = (url: string, init?: { headers?: Record<string, string> }) => Promise<{ ok: boolean; status?: number; json: () => Promise<unknown> }>;
+
+/** Credentials and disclosure context for withReadiness; see InfrixClientOptions. */
+export interface ReadinessAuth {
+  /** Bearer token for a node that enforces api.auth. */
+  token?: string;
+  actor?: string;
+  purpose?: string;
+  workflowInstance?: string;
+}
 
 /**
  * withReadiness queries the node's substrate readiness dashboard. baseUrl is
  * the node's v4 API base (e.g. http://localhost:8080); fetchImpl defaults to
  * the global fetch (injectable for tests).
  */
-export function withReadiness(baseUrl: string, fetchImpl?: FetchLike) {
-  const doFetch: FetchLike = fetchImpl ?? ((url: string) => (globalThis as unknown as { fetch: FetchLike }).fetch(url));
+export function withReadiness(baseUrl: string, fetchImpl?: FetchLike, auth?: ReadinessAuth) {
+  const doFetch: FetchLike = fetchImpl ?? ((url: string, init?: { headers?: Record<string, string> }) =>
+    (globalThis as unknown as { fetch: FetchLike }).fetch(url, init));
   const base = baseUrl.replace(/\/+$/, '');
+  // A node that enforces api.auth answers 401 to this route without its token, and 400 without the
+  // disclosure context; this function sent neither.
+  const headers: Record<string, string> = {};
+  if (auth?.token?.trim()) headers['Authorization'] = `Bearer ${auth.token.trim()}`;
+  if (auth?.actor) headers['X-Actor'] = auth.actor;
+  if (auth?.purpose) headers['X-Purpose'] = auth.purpose;
+  if (auth?.workflowInstance) headers['X-Workflow-Instance'] = auth.workflowInstance;
   return {
     readiness: {
       /** Fetch the readiness report, optionally evaluated against a profile. */
       async fetch(profile?: string): Promise<ReadinessReport> {
         const q = profile ? `?profile=${encodeURIComponent(profile)}` : '';
-        const res = await doFetch(`${base}/v4/readiness/substrates${q}`);
+        const res = await doFetch(`${base}/v4/readiness/substrates${q}`, { headers });
+        if (res.status === 401) throw nodeAuthRequired(Boolean(headers['Authorization']));
         if (!res.ok) throw new Error(`withReadiness: readiness request failed`);
         const body = (await res.json()) as { data?: ReadinessReport } & ReadinessReport;
         return body.data ?? body;

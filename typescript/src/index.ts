@@ -74,6 +74,7 @@ export type {
 } from './types/contract';
 
 export * from './types/governance';
+export * from './types/verifiers';
 
 export { withGovernanceSugar, waitForCompletion, InfrixGovernanceError } from './sugar';
 export type { GovernedResult, GovernedOptions } from './sugar';
@@ -162,6 +163,16 @@ export {
   CredentialSubClient,
   DID_METHOD_INFRIX,
   EIP712SubClient,
+  NodeSubClient,
+  PublicRoutesClient,
+  PublicRouteError,
+  BillingSubClient,
+  CommitteeSubClient,
+  EmergencySubClient,
+  BlockSubClient,
+  TransactionSubClient,
+  AccountSubClient,
+  RpcSubClient,
 } from './sub-clients';
 export type {
   VerifiableCredential,
@@ -177,11 +188,25 @@ export type {
   PredicateProveRequest,
   PredicateProver,
 } from './sub-clients';
+export type {
+  NodeRoot,
+  AssuranceMatrix,
+  SubsystemTaxonomy,
+  BillingConsumption,
+  IntentBillingEntry,
+  CommitteeList,
+  CommitteeMotions,
+  EmergencyCaseList,
+  AccountList,
+  Account,
+  AccountBalance,
+} from './sub-clients';
 
 // ---- Direct imports for internal use ----
 
 import type { DevnetEvent } from './types/contract';
-import { parseUserError, InfrixUserError } from './userError';
+import { parseUserError, InfrixUserError, nodeAuthRequired, nodeRequestRefused } from './userError';
+export { nodeAuthRequired, nodeRequestRefused } from './userError';
 
 export {
   InfrixUserError,
@@ -208,6 +233,16 @@ import {
   PredicateSubClient,
   CredentialSubClient,
   EIP712SubClient,
+  NodeSubClient,
+  PublicRoutesClient,
+  PublicRouteError,
+  BillingSubClient,
+  CommitteeSubClient,
+  EmergencySubClient,
+  BlockSubClient,
+  TransactionSubClient,
+  AccountSubClient,
+  RpcSubClient,
 } from './sub-clients';
 
 // ---- Onboarding telemetry (adoption-12) ----
@@ -241,7 +276,44 @@ export interface InfrixClientOptions {
   purpose?: string;
   workflowInstance?: string;
   identity?: string;
+  /**
+   * Bearer token for a node that enforces `api.auth`. Such a node answers 401 to every governed
+   * request without it (REST, `/rpc` and `/v4/jsonrpc` alike), and a public-profile node must
+   * enforce it. The token is sent as `Authorization: Bearer <token>`; it is never included in an
+   * error, an event, or telemetry. Read it from your own secret store, e.g.
+   * `{ token: process.env.INFRIX_API_TOKEN }`.
+   */
+  token?: string;
 }
+
+/** True when running under Node (where a WebSocket can send request headers). */
+function runsOnNode(): boolean {
+  return typeof (globalThis as { process?: { versions?: { node?: string } } }).process?.versions?.node === 'string';
+}
+
+/**
+ * How a WebSocket authenticates to a node that enforces `api.auth`: Node's `ws` and undici's WebSocket
+ * take request headers; a browser WebSocket cannot send any, so it cannot authenticate and says so
+ * rather than connecting without the token and being refused with nothing to read.
+ */
+export function webSocketAuthPlan(token: string | undefined, isNode: boolean): { headers?: Record<string, string> } {
+  if (!token) return {};
+  if (!isNode) {
+    throw new InfrixUserError({
+      code: 'NODE_AUTH_REQUIRED',
+      title: 'The node requires an API bearer token',
+      message:
+        'A browser WebSocket cannot send an Authorization header, so subscribe() cannot authenticate here. Subscribe from Node, or through a proxy that adds the token.',
+      fixes: [],
+      docs: 'docs/errors/node-auth.md',
+      retryable: false,
+    });
+  }
+  return { headers: { Authorization: `Bearer ${token}` } };
+}
+
+/** Bearer tokens by client, out of reach of enumeration. See InfrixClient.apiToken. */
+const apiTokens = new WeakMap<object, string>();
 
 /**
  * Named network presets so callers connect without hard-coding a node URL.
@@ -308,6 +380,9 @@ export class InfrixClient {
   /** Approval management: submit, list, pending, revoke. */
   readonly approvals: ApprovalSubClient;
 
+  /** Production observability: metrics, SLOs, alerts, cost, logs and the system-wide view. */
+  readonly mission: MissionClient;
+
   /** Evidence chain access: get, verify, export, anchor. */
   readonly evidence: EvidenceSubClient;
 
@@ -341,6 +416,30 @@ export class InfrixClient {
   /** MetaMask EIP-712 intent signing -> Accumulate submission (prepare, submit). */
   readonly eip712: EIP712SubClient;
 
+  /** What the node says about itself: root, assurance matrix, subsystem taxonomy. */
+  readonly node: NodeSubClient;
+
+  /** The calling actor's IU billing: consumption for a period and the entry for one intent. */
+  readonly billing: BillingSubClient;
+
+  /** Committee state, visible to members only: list, motions. */
+  readonly committees: CommitteeSubClient;
+
+  /** Emergency cases, visible to emergency authorities only: cases. */
+  readonly emergency: EmergencySubClient;
+
+  /** The node's blocks: list, latest, get. */
+  readonly blocks: BlockSubClient;
+
+  /** The node's transactions: list, get, status. */
+  readonly transactions: TransactionSubClient;
+
+  /** The node's view of Accumulate accounts: list, get, balance. */
+  readonly accounts: AccountSubClient;
+
+  /** One typed method per JSON-RPC method no other sub-client names; each returns the node's answer untouched. */
+  readonly jsonrpc: RpcSubClient;
+
   // ---- Read-only Contract Inspection ----
 
   /**
@@ -351,8 +450,8 @@ export class InfrixClient {
   readonly contracts: ContractSubClient;
 
   /**
-   * The governed Solidity/EVM deploy door (DX P6-5): `evm.deploy(bytecode)`
-   * and `evm.call(addr, calldata)`. These wrap raw EVM bytecode/calldata as
+   * The governed Solidity/EVM deploy door (DX P6-5): `evm.deploy(bytecode, { authority, creation })`
+   * and `evm.call(addr, calldata)` (`creation: true` for a `solc --bin` file). These wrap raw EVM bytecode/calldata as
    * governed `EVM_DEPLOY` / `EVM_CALL` intents — the supported low-level EVM
    * door, still routed through the full spine (no raw-transaction bypass).
    */
@@ -360,6 +459,13 @@ export class InfrixClient {
 
   private restBase: string;
   private telemetry?: SdkTelemetry;
+  /**
+   * The bearer token is NOT a property: it lives in a module-level WeakMap keyed by the client, so
+   * JSON.stringify(client), util.inspect(client) and Object.keys(client) cannot show it.
+   */
+  private get apiToken(): string | undefined {
+    return apiTokens.get(this);
+  }
   private defaultDisclosure: {
     actor?: string;
     purpose?: string;
@@ -417,6 +523,8 @@ export class InfrixClient {
     this.wsUrl = base.replace(/^http/, 'ws') + '/ws';
     this.restBase = base;
     this.telemetry = options?.telemetry;
+    const token = options?.token?.trim();
+    if (token) apiTokens.set(this, token);
 
     // Fold a disclosure context passed at construction into the default so the
     // first governed call already carries actor/purpose (P0-3).
@@ -437,6 +545,7 @@ export class InfrixClient {
     this.objects = new ObjectSubClient(rpcFn, restFn);
     this.policies = new PolicySubClient(rpcFn, restFn);
     this.approvals = new ApprovalSubClient(rpcFn, restFn);
+    this.mission = new MissionClient(rpcFn);
     this.evidence = new EvidenceSubClient(rpcFn, restFn);
     this.trust = new TrustSubClient(rpcFn, restFn);
     this.capabilities = new CapabilitySubClient(rpcFn, restFn);
@@ -448,6 +557,14 @@ export class InfrixClient {
     this.predicates = new PredicateSubClient(rpcFn, restFn);
     this.credentials = new CredentialSubClient(rpcFn, restFn);
     this.eip712 = new EIP712SubClient(rpcFn, restFn);
+    this.node = new NodeSubClient(rpcFn, restFn);
+    this.billing = new BillingSubClient(rpcFn, restFn);
+    this.committees = new CommitteeSubClient(rpcFn, restFn);
+    this.emergency = new EmergencySubClient(rpcFn, restFn);
+    this.blocks = new BlockSubClient(rpcFn, restFn);
+    this.transactions = new TransactionSubClient(rpcFn, restFn);
+    this.accounts = new AccountSubClient(rpcFn, restFn);
+    this.jsonrpc = new RpcSubClient(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);
@@ -468,18 +585,35 @@ export class InfrixClient {
       }
     }
     const body = JSON.stringify({ jsonrpc: '2.0', method, params: mergedParams, id });
+    const rpcHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiToken) rpcHeaders['Authorization'] = `Bearer ${this.apiToken}`;
     const res = await fetch(this.rpcUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: rpcHeaders,
       body,
     });
+    if (res.status === 401) {
+      this.emit({ event: 'rpc.call', method, result: 'failure', errorCode: 'NODE_AUTH_REQUIRED' });
+      throw nodeAuthRequired(this.apiToken !== undefined);
+    }
     const json = await res.json();
     if (json.error) {
       const translated = parseUserError(json.error);
       const errorCode =
         translated?.code ?? (typeof json.error.code === 'string' ? json.error.code : undefined);
+      if (translated) {
+        this.emit({ event: 'rpc.call', method, result: 'failure', errorCode });
+        throw translated;
+      }
+      // The node's bridge answers HTTP 200 with {"error":{"code":400,...}} for a request the route
+      // refused: a 4xx numeric code is the node's refusal, typed like the CLI types it.
+      if (typeof json.error.code === 'number' && json.error.code >= 400 && json.error.code < 500) {
+        this.emit({ event: 'rpc.call', method, result: 'failure', errorCode: 'NODE_REQUEST_REFUSED' });
+        throw json.error.code === 401
+          ? nodeAuthRequired(this.apiToken !== undefined)
+          : nodeRequestRefused(json.error.code, undefined, String(json.error.message ?? ''));
+      }
       this.emit({ event: 'rpc.call', method, result: 'failure', errorCode });
-      if (translated) throw translated;
       throw new InfrixRPCError(json.error.code, json.error.message);
     }
     this.emit({ event: 'rpc.call', method, result: 'success' });
@@ -504,6 +638,7 @@ export class InfrixClient {
     // default-context injection so REST sub-clients need no per-call
     // header plumbing.
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiToken) headers['Authorization'] = `Bearer ${this.apiToken}`;
     if (this.defaultDisclosure.actor) headers['X-Actor'] = this.defaultDisclosure.actor;
     if (this.defaultDisclosure.purpose) headers['X-Purpose'] = this.defaultDisclosure.purpose;
     if (this.defaultDisclosure.workflowInstance)
@@ -513,6 +648,7 @@ export class InfrixClient {
       init.body = JSON.stringify(body);
     }
     const res = await fetch(url, init);
+    if (res.status === 401) throw nodeAuthRequired(this.apiToken !== undefined);
     const json = await res.json();
     if (json && json.error) {
       // v4 errors carry a stable string code (adoption-08) — surface the typed,
@@ -520,8 +656,12 @@ export class InfrixClient {
       // shows. Fall back to InfrixRPCError for legacy numeric-coded errors.
       const translated = parseUserError(json.error);
       if (translated) throw translated;
-      const code = typeof json.error.code === 'number' ? json.error.code : -32603;
       const msg = typeof json.error.message === 'string' ? json.error.message : 'rest error';
+      // A v4 refusal carries the node's own string code (BAD_REQUEST, ...) and an HTTP 4xx.
+      if (res.status >= 400 && res.status < 500) {
+        throw nodeRequestRefused(res.status, typeof json.error.code === 'string' ? json.error.code : undefined, msg);
+      }
+      const code = typeof json.error.code === 'number' ? json.error.code : -32603;
       throw new InfrixRPCError(code, msg);
     }
     return (json && json.data !== undefined ? json.data : json) as T;
@@ -545,7 +685,10 @@ export class InfrixClient {
     // Use dynamic import of 'ws' in Node, or native WebSocket in browser.
     const g = globalThis as { WebSocket?: typeof WebSocket; require?: (m: string) => unknown };
     const WS: typeof WebSocket = g.WebSocket ?? (g.require ? (g.require('ws') as typeof WebSocket) : (undefined as unknown as typeof WebSocket));
-    const ws = new WS(this.wsUrl);
+    const plan = webSocketAuthPlan(this.apiToken, runsOnNode());
+    const ws: WebSocket = plan.headers
+      ? new (WS as unknown as new (url: string, opts: { headers: Record<string, string> }) => WebSocket)(this.wsUrl, { headers: plan.headers })
+      : new WS(this.wsUrl);
 
     ws.onopen = () => {
       if (eventType) {
@@ -808,6 +951,27 @@ export class SwarmClient {
 
 // ---- Mission Control Types ----
 
+/** What GET /v4/mission/system answers: the system-wide metrics nested under `system`. */
+export interface MissionSystemMetrics {
+  block_height: number;
+  contracts_total: number;
+  contracts_healthy: number;
+  contracts_quarantined: number;
+  contracts_throttled: number;
+  contracts_paused: number;
+  contracts_frozen: number;
+  swarms_total: number;
+  shape_shifting_contracts: number;
+  total_calls_this_block: number;
+  total_gas_this_block: number;
+}
+
+export interface MissionSystemAnswer {
+  system: MissionSystemMetrics;
+  contractCount: number;
+  scope: string;
+}
+
 export interface MissionMetrics {
   contract_url: string;
   block_height: number;
@@ -905,8 +1069,12 @@ export class MissionClient {
     const r = await this.rpc<{ logs: MissionLogEntry[] }>('mission.logs', { contract, ...opts });
     return r.logs;
   }
-  async global(): Promise<Record<string, unknown>> {
-    return this.rpc<Record<string, unknown>>('mission.global', {});
+  /**
+   * The system-wide metrics. Audit/investigation purposes only — the node answers NOT-FOUND to any
+   * other disclosure purpose, so construct the client with `purpose: 'audit'`.
+   */
+  async global(): Promise<MissionSystemAnswer> {
+    return this.rpc<MissionSystemAnswer>('mission.global', {});
   }
 }
 

@@ -1756,6 +1756,72 @@ export interface PolicyConflict {
   severity: 'critical' | 'warning' | 'info';
 }
 
+/** One finding of a policy set's static analysis (GET /v4/policies/conflicts). */
+export interface PolicyAnalysisWarning {
+  severity: string;
+  ruleId?: string;
+  message: string;
+}
+
+/** The static analysis of one policy set. Lists are omitted when empty. */
+export interface PolicyAnalysis {
+  policySetId: string;
+  policyClass?: string;
+  coverageScore?: number;
+  unreachableRules?: string[];
+  redundantRules?: string[];
+  warnings?: PolicyAnalysisWarning[];
+  referencedOperands?: string[];
+  unusedOperands?: string[];
+}
+
+/** One rule as the structural conflict detector reports it. */
+export interface PolicyConflictRule {
+  ruleId: string;
+  priority: number;
+  effect: string;
+  auditMsg?: string;
+}
+
+/**
+ * The structural conflict detector's report for one policy set: duplicate rule ids, identical
+ * conditions with opposing effects, a rule whose type is not its set's, contradictions on one priority
+ * band, and conflicts between strata (the higher stratum wins) among the policy sets bound in the scope.
+ * A cross-stratum conflict is reported on the OVERRIDDEN set (`lowerSetId`).
+ */
+export interface PolicyConflictReport {
+  hasConflict: boolean;
+  matchingRules?: PolicyConflictRule[];
+  conflictPairs?: Array<{ ruleA: PolicyConflictRule; ruleB: PolicyConflictRule }>;
+  crossStratumConflicts?: Array<{
+    higherStratumRule: string;
+    higherStratum?: number;
+    higherEffect: string;
+    higherSetId?: string;
+    lowerStratumRule: string;
+    lowerStratum?: number;
+    lowerEffect: string;
+    lowerSetId?: string;
+    resolution: string;
+  }>;
+}
+
+/**
+ * What GET /v4/policies/conflicts answers: for each policy set bound in the scope, TWO analyses. `analysis`
+ * is the shadowing analysis (unreachable and redundant rules, coverage, warnings). `conflicts` is the
+ * structural conflict detector's report; `conflictsError` replaces it when the detector could not run.
+ * A set is conflict-free only when `conflicts.hasConflict` is false.
+ */
+export interface PolicyScopeAnalysis {
+  scope: string;
+  results: Array<{
+    policySetId: string;
+    analysis: PolicyAnalysis;
+    conflicts?: PolicyConflictReport;
+    conflictsError?: string;
+  }>;
+}
+
 export interface PolicyEvaluationResult {
   allowed: boolean;
   matchedRules: PolicyDecision[];

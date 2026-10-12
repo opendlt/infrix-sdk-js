@@ -7,6 +7,35 @@ import type {
 } from '../types/contract';
 
 /**
+ * What GET /v4/contracts/{addr} answers. `codeHash` and `abiHash` are the 32 bytes as a JSON array
+ * of numbers (an all-zero `abiHash` is a contract deployed without an ABI), and `deployedAt` is an
+ * RFC 3339 timestamp. `deployedBy` is present only for a reader that asserts an audit or
+ * investigation purpose: the node drops it for every other reader.
+ */
+export interface ContractMetadata {
+  name: string;
+  version: string;
+  deployedAt: string;
+  codeHash: number[];
+  abiHash: number[];
+  deployedBy?: string;
+}
+
+/** What GET /v4/contracts/{addr}/abi answers. */
+export interface ContractAbiDocument {
+  version: string;
+  functions: Array<Record<string, unknown>>;
+  events: Array<Record<string, unknown>>;
+}
+
+/** What GET /v4/contracts/{addr}/code answers: the bytecode as 0x-prefixed hex. */
+export interface ContractCode {
+  address: string;
+  size: number;
+  code: string;
+}
+
+/**
  * ContractSubClient exposes read-only contract inspection and simulation
  * RPCs. All state-changing contract operations (deploy, call, upgrade)
  * are governance-routed and must be submitted as intents via
@@ -18,6 +47,7 @@ import type {
  *   - query / inspect / schema → JSON-RPC (registered in
  *     pkg/devnet/rpc_handler.go: contract.query / contract.inspect /
  *     contract.schema). Read-only and gated.
+ *   - info / abi / code → REST GET /v4/contracts/{addr}[/abi|/code]
  *   - simulate → REST POST /v4/contracts/{addr}/simulate
  *     (pkg/api/v4/rest/contracts.go::handleSimulate). The simulate
  *     endpoint is REST-native; it carries the V4 governance-metadata
@@ -80,6 +110,25 @@ export class ContractSubClient extends SubClient {
         gasLimit: opts.gasLimit ?? 500000,
       }
     );
+  }
+
+  /** The deployed contract's name, version, deployer and code/ABI hashes (REST GET /v4/contracts/{addr}). */
+  async info(url: string): Promise<ContractMetadata> {
+    return this.rest<ContractMetadata>('GET', `/v4/contracts/${encodeURIComponent(url)}`);
+  }
+
+  /** The deployed contract's ABI as the node holds it (REST GET /v4/contracts/{addr}/abi). */
+  async abi(url: string): Promise<ContractAbiDocument> {
+    return this.rest<ContractAbiDocument>('GET', `/v4/contracts/${encodeURIComponent(url)}/abi`);
+  }
+
+  /**
+   * The deployed contract's bytecode (REST GET /v4/contracts/{addr}/code). Bytecode decompiles to
+   * near-source, so the node serves it only to an actor that asserts an audit or investigation
+   * purpose; any other caller is answered not-found.
+   */
+  async code(url: string): Promise<ContractCode> {
+    return this.rest<ContractCode>('GET', `/v4/contracts/${encodeURIComponent(url)}/code`);
   }
 
   /** Get contract metadata. */

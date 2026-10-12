@@ -99,10 +99,12 @@ export class ObjectSubClient extends SubClient {
   }
 
   /**
-   * List all registered object types.
+   * List the governance-authoritative object types: the ones created and transitioned through the
+   * ObjectRegistry and never written directly. The registry declares more types than these; `total`
+   * is the count of this list.
    */
-  async types(): Promise<{ types: string[]; schemas: Record<string, unknown> }> {
-    return this.rpc<{ types: string[]; schemas: Record<string, unknown> }>(
+  async types(): Promise<{ types: string[]; total: number; detail: string }> {
+    return this.rpc<{ types: string[]; total: number; detail: string }>(
       'object.types',
       {}
     );

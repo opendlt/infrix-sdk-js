@@ -61,6 +61,95 @@ test('evm.deploy accepts a Uint8Array and hex-encodes it', async () => {
   assert.equal(cp.bytecode, '600aff');
 });
 
+async function deployBody(
+  bytecode: string,
+  opts: { authority: string; creation?: boolean; constructorArgs?: string | Uint8Array },
+): Promise<{ calls: number; cp: Record<string, unknown> }> {
+  const c = client();
+  let calls = 0;
+  let cp: Record<string, unknown> = {};
+  setFetch(async (_url: unknown, init: unknown) => {
+    calls++;
+    cp = (JSON.parse((init as { body: string }).body).params.customParams) as Record<string, unknown>;
+    return { json: async () => ({ result: { intentId: 'i', status: 'ok' } }) };
+  });
+  try {
+    await c.evm.deploy(bytecode, opts);
+  } finally {
+    restoreFetch();
+  }
+  return { calls, cp };
+}
+
+test('evm.deploy states creation mode and the constructor-args tail on the wire', async () => {
+  // Default: the verbatim-runtime door, stated by omission.
+  const plain = await deployBody('0x60806040', { authority: 'acc://myco.acme' });
+  assert.deepEqual(plain.cp, { authority: 'acc://myco.acme', bytecode: '60806040' });
+
+  // creation: true is a JSON boolean, never a string.
+  const created = await deployBody('0x60806040', { authority: 'acc://myco.acme', creation: true });
+  assert.deepEqual(created.cp, { authority: 'acc://myco.acme', bytecode: '60806040', creation: true });
+  assert.strictEqual(created.cp.creation, true);
+
+  // constructorArgs ride only with creation, normalized to bare lowercase hex.
+  const withArgs = await deployBody('0x60806040', {
+    authority: 'acc://myco.acme',
+    creation: true,
+    constructorArgs: '0x00AB',
+  });
+  assert.deepEqual(withArgs.cp, {
+    authority: 'acc://myco.acme',
+    bytecode: '60806040',
+    creation: true,
+    constructorArgs: '00ab',
+  });
+  const fromBytes = await deployBody('60806040', {
+    authority: 'acc://myco.acme',
+    creation: true,
+    constructorArgs: new Uint8Array([0x00, 0x64]),
+  });
+  assert.equal(fromBytes.cp.constructorArgs, '0064');
+
+  // A stated false is sent as false.
+  const stated = await deployBody('60806040', { authority: 'acc://myco.acme', creation: false });
+  assert.strictEqual(stated.cp.creation, false);
+});
+
+test('evm.deploy refuses constructorArgs without creation, and a non-boolean creation, before any request', async () => {
+  for (const opts of [
+    { authority: 'acc://myco.acme', constructorArgs: '0x64' },
+    { authority: 'acc://myco.acme', creation: false, constructorArgs: '0x64' },
+  ]) {
+    let calls = 0;
+    setFetch(async () => {
+      calls++;
+      return { json: async () => ({ result: {} }) };
+    });
+    try {
+      await assert.rejects(() => client().evm.deploy('60806040', opts), /constructorArgs.*creation/);
+    } finally {
+      restoreFetch();
+    }
+    assert.equal(calls, 0, 'a refused deploy must not reach the node');
+  }
+  let calls = 0;
+  setFetch(async () => {
+    calls++;
+    return { json: async () => ({ result: {} }) };
+  });
+  try {
+    for (const bad of ['true', 1, 'yes', null]) {
+      await assert.rejects(
+        () => client().evm.deploy('60806040', { authority: 'acc://myco.acme', creation: bad as unknown as boolean }),
+        /creation must be a boolean/,
+      );
+    }
+  } finally {
+    restoreFetch();
+  }
+  assert.equal(calls, 0, 'a refused deploy must not reach the node');
+});
+
 test('evm.deploy requires an authority', async () => {
   const c = client();
   await assert.rejects(() => c.evm.deploy('60806040', { authority: '' }), /authority/);
