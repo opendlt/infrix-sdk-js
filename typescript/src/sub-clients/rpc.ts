@@ -19,12 +19,12 @@ export type RpcExtraParams = Record<string, unknown>;
 export class RpcSubClient extends SubClient {
   /** Walk the anchor chain from an anchor id (JSON-RPC anchor.chain). */
   anchorChain<T = unknown>(params: { startId: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('anchor.chain', params);
+    return this.rpc<T>('anchor.chain', { ...params, startId: params.startId });
   }
 
   /** Read one anchor (JSON-RPC anchor.get). */
   anchorGet<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('anchor.get', params);
+    return this.rpc<T>('anchor.get', { ...params, id: params.id });
   }
 
   /** Trigger an anchor now (JSON-RPC anchor.manual). */
@@ -34,7 +34,7 @@ export class RpcSubClient extends SubClient {
 
   /** Read one approval (JSON-RPC approval.get). */
   approvalGet<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('approval.get', params);
+    return this.rpc<T>('approval.get', { ...params, id: params.id });
   }
 
   /** Verify an approval (give the approval in `params`) (JSON-RPC approval.verify). */
@@ -64,7 +64,7 @@ export class RpcSubClient extends SubClient {
 
   /** Read a contract's capability manifest (JSON-RPC capability.manifest). */
   capabilityManifest<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('capability.manifest', params);
+    return this.rpc<T>('capability.manifest', { ...params, contract: params.contract });
   }
 
   /** List the capability types (JSON-RPC capability.types). */
@@ -74,32 +74,32 @@ export class RpcSubClient extends SubClient {
 
   /** Cast a ballot on a committee motion (JSON-RPC committee.castBallot). */
   committeeCastBallot<T = unknown>(params: { id: string; motionId: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('committee.castBallot', params);
+    return this.rpc<T>('committee.castBallot', { ...params, id: params.id, motionId: params.motionId });
   }
 
   /** Read a committee's motions (JSON-RPC committee.get). */
   committeeGet<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('committee.get', params);
+    return this.rpc<T>('committee.get', { ...params, id: params.id });
   }
 
   /** List a committee's motions (JSON-RPC committee.list). */
   committeeList<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('committee.list', params);
+    return this.rpc<T>('committee.list', { ...params, id: params.id });
   }
 
   /** Open a motion before a committee (JSON-RPC committee.openMotion). */
   committeeOpenMotion<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('committee.openMotion', params);
+    return this.rpc<T>('committee.openMotion', { ...params, id: params.id });
   }
 
   /** Resolve a committee motion (JSON-RPC committee.resolve). */
   committeeResolve<T = unknown>(params: { id: string; motionId: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('committee.resolve', params);
+    return this.rpc<T>('committee.resolve', { ...params, id: params.id, motionId: params.motionId });
   }
 
   /** Simulate a contract call without committing state (JSON-RPC contract.simulate). */
   contractSimulate<T = unknown>(params: { contract: string; function: string; caller: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('contract.simulate', params);
+    return this.rpc<T>('contract.simulate', { ...params, contract: params.contract, function: params.function, caller: params.caller });
   }
 
   /** Check a disclosure grant (subject and scope in `params`) (JSON-RPC disclosure.check). */
@@ -114,7 +114,7 @@ export class RpcSubClient extends SubClient {
 
   /** Read one dispute (JSON-RPC dispute.get). */
   disputeGet<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('dispute.get', params);
+    return this.rpc<T>('dispute.get', { ...params, id: params.id });
   }
 
   /** List disputes (JSON-RPC dispute.list). */
@@ -129,17 +129,17 @@ export class RpcSubClient extends SubClient {
 
   /** Sign a dispute resolution (JSON-RPC dispute.resolve). */
   disputeResolve<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('dispute.resolve', params);
+    return this.rpc<T>('dispute.resolve', { ...params, id: params.id });
   }
 
   /** Route a dispute case (JSON-RPC dispute.routeCase). */
   disputeRouteCase<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('dispute.routeCase', params);
+    return this.rpc<T>('dispute.routeCase', { ...params, id: params.id });
   }
 
   /** Execute an emergency case (JSON-RPC emergency.execute). */
   emergencyExecute<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('emergency.execute', params);
+    return this.rpc<T>('emergency.execute', { ...params, id: params.id });
   }
 
   /** Read emergency cases (filters in `params`) (JSON-RPC emergency.get). */
@@ -159,22 +159,22 @@ export class RpcSubClient extends SubClient {
 
   /** Sign an emergency case (JSON-RPC emergency.sign). */
   emergencySign<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('emergency.sign', params);
+    return this.rpc<T>('emergency.sign', { ...params, id: params.id });
   }
 
   /** Fund an escrow (JSON-RPC escrow.fund). */
   escrowFund<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('escrow.fund', params);
+    return this.rpc<T>('escrow.fund', { ...params, id: params.id });
   }
 
   /** Refund an escrow (JSON-RPC escrow.refund). */
   escrowRefund<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('escrow.refund', params);
+    return this.rpc<T>('escrow.refund', { ...params, id: params.id });
   }
 
   /** Read a contract's event history (JSON-RPC events.history). */
   eventsHistory<T = unknown>(params: { addr: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('events.history', params);
+    return this.rpc<T>('events.history', { ...params, addr: params.addr });
   }
 
   /** List evidence records (JSON-RPC evidence.list). */
@@ -184,7 +184,7 @@ export class RpcSubClient extends SubClient {
 
   /** Record a signed approval for a parked stage (JSON-RPC governed.approve). */
   governedApprove<T = unknown>(params: { intentId: string; planHash: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('governed.approve', params);
+    return this.rpc<T>('governed.approve', { ...params, intentId: params.intentId, planHash: params.planHash });
   }
 
   /** Refuse a pending approval (approval in `params`) (JSON-RPC governed.reject). */
@@ -194,72 +194,72 @@ export class RpcSubClient extends SubClient {
 
   /** Read the governed status of an intent (JSON-RPC governed.status). */
   governedStatus<T = unknown>(params: { intentId: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('governed.status', params);
+    return this.rpc<T>('governed.status', { ...params, intentId: params.intentId });
   }
 
   /** Submit a governed intent (JSON-RPC governed.submit). */
   governedSubmit<T = unknown>(params: { goalType: string; actor: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('governed.submit', params);
+    return this.rpc<T>('governed.submit', { ...params, goalType: params.goalType, actor: params.actor });
   }
 
   /** Record a signed approval for a parked stage (JSON-RPC intent.approve). */
   intentApprove<T = unknown>(params: { intentId: string; planHash: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('intent.approve', params);
+    return this.rpc<T>('intent.approve', { ...params, intentId: params.intentId, planHash: params.planHash });
   }
 
   /** Withdraw a parked intent (JSON-RPC intent.cancel). */
   intentCancel<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('intent.cancel', params);
+    return this.rpc<T>('intent.cancel', { ...params, id: params.id });
   }
 
   /** Read one intent (JSON-RPC intent.get). */
   intentGet<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('intent.get', params);
+    return this.rpc<T>('intent.get', { ...params, id: params.id });
   }
 
   /** Read the status of an intent (JSON-RPC intent.status). */
   intentStatus<T = unknown>(params: { intentId: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('intent.status', params);
+    return this.rpc<T>('intent.status', { ...params, intentId: params.intentId });
   }
 
   /** Submit a governed intent (JSON-RPC intent.submit). */
   intentSubmit<T = unknown>(params: { goalType: string; actor: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('intent.submit', params);
+    return this.rpc<T>('intent.submit', { ...params, goalType: params.goalType, actor: params.actor });
   }
 
   /** Read a contract's alert rules (JSON-RPC mission.alert.rules). */
   missionAlertRules<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('mission.alert.rules', params);
+    return this.rpc<T>('mission.alert.rules', { ...params, contract: params.contract });
   }
 
   /** Read a contract's alerts (JSON-RPC mission.alerts). */
   missionAlerts<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('mission.alerts', params);
+    return this.rpc<T>('mission.alerts', { ...params, contract: params.contract });
   }
 
   /** Read a contract's dashboard document (JSON-RPC mission.grafana). */
   missionGrafana<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('mission.grafana', params);
+    return this.rpc<T>('mission.grafana', { ...params, contract: params.contract });
   }
 
   /** Read a contract's mission metrics (JSON-RPC mission.metrics). */
   missionMetrics<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('mission.metrics', params);
+    return this.rpc<T>('mission.metrics', { ...params, contract: params.contract });
   }
 
   /** Read a contract's service-level objectives (JSON-RPC mission.slo). */
   missionSlo<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('mission.slo', params);
+    return this.rpc<T>('mission.slo', { ...params, contract: params.contract });
   }
 
   /** Read a contract's service-level objective status (JSON-RPC mission.slo.status). */
   missionSloStatus<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('mission.slo.status', params);
+    return this.rpc<T>('mission.slo.status', { ...params, contract: params.contract });
   }
 
   /** Read the trace of a transaction (JSON-RPC mission.trace). */
   missionTrace<T = unknown>(params: { tx_hash: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('mission.trace', params);
+    return this.rpc<T>('mission.trace', { ...params, tx_hash: params.tx_hash });
   }
 
   /** Read the chain identifier (JSON-RPC network.chainId). */
@@ -274,7 +274,7 @@ export class RpcSubClient extends SubClient {
 
   /** Transition a governed object (JSON-RPC object.transition). */
   objectTransition<T = unknown>(params: { type: string; id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('object.transition', params);
+    return this.rpc<T>('object.transition', { ...params, type: params.type, id: params.id });
   }
 
   /** Bind a policy (binding in `params`) (JSON-RPC policy.bind). */
@@ -287,9 +287,19 @@ export class RpcSubClient extends SubClient {
     return this.rpc<T>('policy.decisions', params);
   }
 
+  /** Evaluate a policy question (type, scope and operands in `params`) (JSON-RPC policy.evaluate). The typed REST client is `policies.evaluate`. */
+  policyEvaluate<T = unknown>(params: RpcExtraParams = {}): Promise<T> {
+    return this.rpc<T>('policy.evaluate', params);
+  }
+
+  /** Simulate a policy decision (type, scope and operands in `params`) (JSON-RPC policy.simulate). The typed REST client is `policies.simulate`. */
+  policySimulate<T = unknown>(params: RpcExtraParams = {}): Promise<T> {
+    return this.rpc<T>('policy.simulate', params);
+  }
+
   /** Read one policy rule (JSON-RPC policy.get). */
   policyGet<T = unknown>(params: { ruleId: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('policy.get', params);
+    return this.rpc<T>('policy.get', { ...params, ruleId: params.ruleId });
   }
 
   /** List policies (JSON-RPC policy.list). */
@@ -304,7 +314,7 @@ export class RpcSubClient extends SubClient {
 
   /** Read the roles of an identity (JSON-RPC role.get). */
   roleGet<T = unknown>(params: { identity: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('role.get', params);
+    return this.rpc<T>('role.get', { ...params, identity: params.identity });
   }
 
   /** List pending settlements (JSON-RPC settlement.pending). */
@@ -314,7 +324,7 @@ export class RpcSubClient extends SubClient {
 
   /** Simulate a shape change for a contract (JSON-RPC shapes.simulate). */
   shapesSimulate<T = unknown>(params: { contract: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('shapes.simulate', params);
+    return this.rpc<T>('shapes.simulate', { ...params, contract: params.contract });
   }
 
   /** Create a swarm (definition in `params`) (JSON-RPC swarm.create). */
@@ -334,11 +344,11 @@ export class RpcSubClient extends SubClient {
 
   /** Read a trust profile's history (JSON-RPC trust.history). */
   trustHistory<T = unknown>(params: { id: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('trust.history', params);
+    return this.rpc<T>('trust.history', { ...params, id: params.id });
   }
 
   /** Read one transaction (JSON-RPC tx.get). */
   txGet<T = unknown>(params: { txHash: string } & RpcExtraParams): Promise<T> {
-    return this.rpc<T>('tx.get', params);
+    return this.rpc<T>('tx.get', { ...params, txHash: params.txHash });
   }
 }
