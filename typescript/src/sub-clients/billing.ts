@@ -1,4 +1,7 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+
+const CONSUMPTION_ROUTE = 'GET /v4/billing/consumption';
 
 /** What GET /v4/billing/consumption answers. */
 export interface BillingConsumption {
@@ -93,7 +96,7 @@ export class BillingSubClient extends SubClient {
     if (start !== undefined && (!Number.isInteger(start) || start < 0)) {
       throw new Error('consumption: periodStart must be a non-negative unix timestamp');
     }
-    const query = start === undefined ? '' : `?periodStart=${start}`;
+    const query = genQuery(CONSUMPTION_ROUTE, [['periodStart', start, 'int']]);
     return this.rest<BillingConsumption>('GET', `/v4/billing/consumption${query}`);
   }
 

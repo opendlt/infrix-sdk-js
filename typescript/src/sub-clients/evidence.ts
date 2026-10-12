@@ -1,5 +1,5 @@
 import { SubClient } from './base';
-import { genCheckValue } from './gen/runtime';
+import { genQuery } from './gen/runtime';
 import { REGISTRY_OBJECT_MEMBERS, checkPathValue, declaredMembers } from './routeShapes';
 import type { RegistryObjectAnswer } from './routeShapes';
 import type {
@@ -57,7 +57,7 @@ export class EvidenceSubClient extends SubClient {
    */
   async export(evidenceId: string, format: EvidenceExportFormat): Promise<EvidenceExportAnswer> {
     checkPathValue(EXPORT_ROUTE, 'id', evidenceId);
-    const query = `?format=${encodeURIComponent(genCheckValue(`${EXPORT_ROUTE} format`, format, 'enum', EXPORT_FORMATS))}`;
+    const query = genQuery(EXPORT_ROUTE, [['format', format, 'enum', EXPORT_FORMATS]]);
     const answer = await this.rest<unknown>('GET', `/v4/evidence/${encodeURIComponent(evidenceId)}/export${query}`);
     return declaredMembers<EvidenceExportAnswer>(EXPORT_ROUTE, answer, [
       'bundle', 'bundleId', 'bytes', 'exportHash', 'format',
