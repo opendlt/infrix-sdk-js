@@ -9,6 +9,21 @@ export interface TrustForIdHistoryAnswer {
   readonly profileId: unknown;
 }
 
+/** What POST /v4/trust/{id}/evaluate answers: every member the route declares. */
+export interface TrustForIdEvaluateAnswer {
+  readonly identity: unknown;
+  readonly meetsThreshold: unknown;
+  readonly profileId: unknown;
+  readonly trustLevel: unknown;
+}
+
+/** The body members POST /v4/trust/{id}/evaluate accepts. */
+export interface TrustForIdEvaluateBody {
+  readonly identity: unknown;
+  readonly proofTypes?: unknown;
+  readonly scope?: unknown;
+}
+
 /** Typed reads of the node's /v4/trust routes, generated from the route census. */
 export class TrustReads extends SubClient {
   /** Read GET /v4/trust/{id}/history. */
@@ -18,6 +33,18 @@ export class TrustReads extends SubClient {
     return {
       history: genDeclared('GET /v4/trust/{id}/history', 'history', r.history),
       profileId: genDeclared('GET /v4/trust/{id}/history', 'profileId', r.profileId),
+    };
+  }
+
+  /** Read POST /v4/trust/{id}/evaluate. */
+  async forIdEvaluate(id: string, body: TrustForIdEvaluateBody): Promise<TrustForIdEvaluateAnswer> {
+    genPathValue('POST /v4/trust/{id}/evaluate', 'id', id, 'string');
+    const r = await this.rest<Partial<TrustForIdEvaluateAnswer>>('POST', `/v4/trust/${encodeURIComponent(id)}/evaluate`, { identity: body.identity, proofTypes: body.proofTypes, scope: body.scope });
+    return {
+      identity: genDeclared('POST /v4/trust/{id}/evaluate', 'identity', r.identity),
+      meetsThreshold: genDeclared('POST /v4/trust/{id}/evaluate', 'meetsThreshold', r.meetsThreshold),
+      profileId: genDeclared('POST /v4/trust/{id}/evaluate', 'profileId', r.profileId),
+      trustLevel: genDeclared('POST /v4/trust/{id}/evaluate', 'trustLevel', r.trustLevel),
     };
   }
 }

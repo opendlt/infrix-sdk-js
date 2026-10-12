@@ -19,6 +19,7 @@ interface Seen {
   path: string;
   query: Record<string, string>;
   headers: Record<string, string>;
+  body?: Record<string, unknown>;
 }
 
 type Reader = (...args: unknown[]) => Promise<Record<string, unknown>>;
@@ -31,13 +32,14 @@ function client() {
 async function against<T>(data: unknown, fn: (c: InfrixClient) => Promise<T>): Promise<{ seen: Seen; result: T }> {
   const seen: Seen = { count: 0, path: '', query: {}, headers: {} };
   (globalThis as { fetch?: FetchLike }).fetch = async (url: unknown, init: unknown) => {
-    const i = (init ?? {}) as { method?: string; headers?: Record<string, string> };
+    const i = (init ?? {}) as { method?: string; headers?: Record<string, string>; body?: string };
     const u = new URL(String(url));
     seen.count += 1;
     seen.method = i.method;
     seen.path = u.pathname;
     seen.query = Object.fromEntries(u.searchParams.entries());
     seen.headers = i.headers ?? {};
+    seen.body = i.body ? (JSON.parse(i.body) as Record<string, unknown>) : undefined;
     const payload = { data };
     return { ok: true, status: 200, json: async () => payload, text: async () => JSON.stringify(payload) };
   };
@@ -80,6 +82,21 @@ function pathArgs(info: GeneratedRouteInfo): Array<string | number> {
   return info.pathValues.map((p) => sample(p.kind, p.allowed, p.name));
 }
 
+function bodyOf(info: GeneratedRouteInfo): Record<string, string> {
+  return Object.fromEntries(info.bodyFields.map((f) => [f.name, `body-${f.name}`]));
+}
+
+function callArgs(info: GeneratedRouteInfo, extraBody: Record<string, unknown> = {}): unknown[] {
+  const args: unknown[] = [...pathArgs(info)];
+  if (info.route.startsWith('POST ')) {
+    args.push({ ...bodyOf(info), ...extraBody });
+  }
+  if (info.query.length > 0) {
+    args.push(queryOpts(info));
+  }
+  return args;
+}
+
 function queryOpts(info: GeneratedRouteInfo): Record<string, string | number> {
   return Object.fromEntries(info.query.map((q) => [q.name, sample(q.kind, q.allowed, q.name)]));
 }
@@ -100,19 +117,19 @@ test('the generated table is non-trivial and names every route and method once',
   assert.equal(new Set(GENERATED_ROUTES.map((r) => r.route)).size, GENERATED_ROUTES.length);
   assert.equal(new Set(GENERATED_ROUTES.map((r) => `${r.family}.${r.method}`)).size, GENERATED_ROUTES.length);
   for (const r of GENERATED_ROUTES) {
-    assert.ok(r.route.startsWith('GET /v4/'), r.route);
+    assert.ok(r.route.startsWith('GET /v4/') || r.route.startsWith('POST /v4/'), r.route);
+    assert.equal(r.route.startsWith('POST '), r.bodyFields.length > 0, `${r.route} body members`);
     assert.ok(r.members.length > 0, `${r.route} declares no member`);
   }
 });
 
 test('every generated read GETs its route with only the declared parameters and returns every declared member', async () => {
   for (const info of GENERATED_ROUTES) {
-    const hasQuery = info.query.length > 0;
-    const { seen, result } = await against(fullAnswer(info), (c) => {
-      const read = reader(c, info);
-      return hasQuery ? read(...pathArgs(info), queryOpts(info)) : read(...pathArgs(info));
-    });
-    assert.equal(seen.method, 'GET', info.route);
+    const { seen, result } = await against(fullAnswer(info), (c) => reader(c, info)(...callArgs(info)));
+    assert.equal(seen.method, info.route.split(' ')[0], info.route);
+    if (info.route.startsWith('POST ')) {
+      assert.deepEqual(seen.body, bodyOf(info), `${info.route} body`);
+    }
     assert.equal(seen.path, expectedPath(info), info.route);
     const want = Object.fromEntries(info.query.map((q) => [q.name, String(sample(q.kind, q.allowed, q.name))]));
     assert.deepEqual(seen.query, want, `${info.route} query`);
@@ -136,7 +153,7 @@ test('an answer that lacks a declared member is refused, naming it', async () =>
       const answer = fullAnswer(info);
       delete answer[member];
       await assert.rejects(
-        () => against(answer, (c) => reader(c, info)(...pathArgs(info))),
+        () => against(answer, (c) => reader(c, info)(...callArgs(info).slice(0, pathArgs(info).length + (info.route.startsWith('POST ') ? 1 : 0)))),
         (err: Error) => err.message.includes(info.route) && err.message.includes(member),
         `${info.route} accepted an answer without ${member}`
       );
@@ -201,4 +218,10 @@ test('a path value is escaped into the route, not interpreted', async () => {
   const info = GENERATED_ROUTES.find((r) => r.pathValues.length === 1 && r.pathValues[0].kind === 'string')!;
   const { seen } = await against(fullAnswer(info), (c) => reader(c, info)('acc://a.acme/x y'));
   assert.equal(seen.path, info.path.replace(/\{\w+\}/, encodeURIComponent('acc://a.acme/x y')));
+});
+
+test('a read-only POST sends exactly the body members the route declares, whatever else the caller holds', async () => {
+  const info = GENERATED_ROUTES.find((r) => r.route.startsWith('POST '))!;
+  const { seen } = await against(fullAnswer(info), (c) => reader(c, info)(...callArgs(info, { bogus: 'dropped' })));
+  assert.deepEqual(Object.keys(seen.body ?? {}).sort(), info.bodyFields.map((f) => f.name).sort(), info.route);
 });

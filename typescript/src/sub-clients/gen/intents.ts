@@ -60,6 +60,44 @@ export interface IntentsForIdPlanAnswer {
   readonly version: unknown;
 }
 
+/** What POST /v4/intents/eip712/challenge answers: every member the route declares. */
+export interface IntentsEip712ChallengeAnswer {
+  readonly address: unknown;
+  readonly challenge: unknown;
+  readonly domain: unknown;
+  readonly expiresAt: unknown;
+  readonly issuedAt: unknown;
+  readonly nonce: unknown;
+  readonly purpose: unknown;
+  readonly replayResistant: unknown;
+  readonly signer: unknown;
+}
+
+/** The body members POST /v4/intents/eip712/challenge accepts. */
+export interface IntentsEip712ChallengeBody {
+  readonly address?: unknown;
+  readonly domain?: unknown;
+  readonly signer?: unknown;
+  readonly ttlSeconds?: unknown;
+}
+
+/** What POST /v4/intents/eip712/challenge/verify answers: every member the route declares. */
+export interface IntentsEip712ChallengeVerifyAnswer {
+  readonly ethAddress: unknown;
+  readonly fresh: unknown;
+  readonly nonceConsumed: unknown;
+  readonly publicKeyCompressed: unknown;
+  readonly publicKeyUncompressed: unknown;
+  readonly replayResistant: unknown;
+  readonly valid: unknown;
+}
+
+/** The body members POST /v4/intents/eip712/challenge/verify accepts. */
+export interface IntentsEip712ChallengeVerifyBody {
+  readonly challenge?: unknown;
+  readonly signature?: unknown;
+}
+
 /** Typed reads of the node's /v4/intents routes, generated from the route census. */
 export class IntentsReads extends SubClient {
   /** Read GET /v4/intents/outcome. */
@@ -123,6 +161,36 @@ export class IntentsReads extends SubClient {
       updated: genDeclared('GET /v4/intents/{id}/plan', 'updated', r.updated),
       url: genDeclared('GET /v4/intents/{id}/plan', 'url', r.url),
       version: genDeclared('GET /v4/intents/{id}/plan', 'version', r.version),
+    };
+  }
+
+  /** Read POST /v4/intents/eip712/challenge. */
+  async eip712Challenge(body: IntentsEip712ChallengeBody): Promise<IntentsEip712ChallengeAnswer> {
+    const r = await this.rest<Partial<IntentsEip712ChallengeAnswer>>('POST', '/v4/intents/eip712/challenge', { address: body.address, domain: body.domain, signer: body.signer, ttlSeconds: body.ttlSeconds });
+    return {
+      address: genDeclared('POST /v4/intents/eip712/challenge', 'address', r.address),
+      challenge: genDeclared('POST /v4/intents/eip712/challenge', 'challenge', r.challenge),
+      domain: genDeclared('POST /v4/intents/eip712/challenge', 'domain', r.domain),
+      expiresAt: genDeclared('POST /v4/intents/eip712/challenge', 'expiresAt', r.expiresAt),
+      issuedAt: genDeclared('POST /v4/intents/eip712/challenge', 'issuedAt', r.issuedAt),
+      nonce: genDeclared('POST /v4/intents/eip712/challenge', 'nonce', r.nonce),
+      purpose: genDeclared('POST /v4/intents/eip712/challenge', 'purpose', r.purpose),
+      replayResistant: genDeclared('POST /v4/intents/eip712/challenge', 'replayResistant', r.replayResistant),
+      signer: genDeclared('POST /v4/intents/eip712/challenge', 'signer', r.signer),
+    };
+  }
+
+  /** Read POST /v4/intents/eip712/challenge/verify. */
+  async eip712ChallengeVerify(body: IntentsEip712ChallengeVerifyBody): Promise<IntentsEip712ChallengeVerifyAnswer> {
+    const r = await this.rest<Partial<IntentsEip712ChallengeVerifyAnswer>>('POST', '/v4/intents/eip712/challenge/verify', { challenge: body.challenge, signature: body.signature });
+    return {
+      ethAddress: genDeclared('POST /v4/intents/eip712/challenge/verify', 'ethAddress', r.ethAddress),
+      fresh: genDeclared('POST /v4/intents/eip712/challenge/verify', 'fresh', r.fresh),
+      nonceConsumed: genDeclared('POST /v4/intents/eip712/challenge/verify', 'nonceConsumed', r.nonceConsumed),
+      publicKeyCompressed: genDeclared('POST /v4/intents/eip712/challenge/verify', 'publicKeyCompressed', r.publicKeyCompressed),
+      publicKeyUncompressed: genDeclared('POST /v4/intents/eip712/challenge/verify', 'publicKeyUncompressed', r.publicKeyUncompressed),
+      replayResistant: genDeclared('POST /v4/intents/eip712/challenge/verify', 'replayResistant', r.replayResistant),
+      valid: genDeclared('POST /v4/intents/eip712/challenge/verify', 'valid', r.valid),
     };
   }
 }
