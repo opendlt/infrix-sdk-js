@@ -74,6 +74,7 @@ export type {
 } from './types/contract';
 
 export * from './types/governance';
+export * from './types/verifiers';
 
 export { withGovernanceSugar, waitForCompletion, InfrixGovernanceError } from './sugar';
 export type { GovernedResult, GovernedOptions } from './sugar';

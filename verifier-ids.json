@@ -1,0 +1,20 @@
+{
+  "verifiers": [
+    "bbs-bls12381",
+    "bls12381-merkle-disclosure",
+    "bridge-validator-quorum",
+    "cosmos-adr036",
+    "ed25519",
+    "ethereum-ecdsa",
+    "groth16-bls12-381",
+    "groth16-bn254",
+    "groth16-circuit-mac",
+    "plonk-bls12-381",
+    "plonk-bn254",
+    "vc-accumulate-keypage",
+    "vc-w3c-ed25519",
+    "vc-w3c-ed25519-statuslist",
+    "vp-bbs-selective-disclosure",
+    "vp-w3c-ed25519"
+  ]
+}
