@@ -44,6 +44,8 @@ export interface IntentsForIdPendingAnswer {
 
 /** The query parameters GET /v4/intents/{id}/pending declares. */
 export interface IntentsForIdPendingQuery {
+  readonly limit?: number;
+  readonly offset?: number;
   readonly state?: string;
 }
 
@@ -139,7 +141,7 @@ export class IntentsReads extends SubClient {
   /** Read GET /v4/intents/{id}/pending. */
   async forIdPending(id: string, opts: IntentsForIdPendingQuery = {}): Promise<IntentsForIdPendingAnswer> {
     genPathValue('GET /v4/intents/{id}/pending', 'id', id, 'string');
-    const query = genQuery('GET /v4/intents/{id}/pending', [['state', opts.state, 'string']]);
+    const query = genQuery('GET /v4/intents/{id}/pending', [['limit', opts.limit, 'int'], ['offset', opts.offset, 'int'], ['state', opts.state, 'string']]);
     const r = await this.rest<Partial<IntentsForIdPendingAnswer>>('GET', `/v4/intents/${encodeURIComponent(id)}/pending${query}`);
     return {
       items: genDeclared('GET /v4/intents/{id}/pending', 'items', r.items),

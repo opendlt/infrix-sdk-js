@@ -9,6 +9,12 @@ export interface BridgeMessagesAnswer {
   readonly pagination: unknown;
 }
 
+/** The query parameters GET /v4/bridge/messages declares. */
+export interface BridgeMessagesQuery {
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
 /** What GET /v4/bridge/messages/{id} answers: every member the route declares. */
 export interface BridgeMessagesForIdAnswer {
   readonly audit: unknown;
@@ -25,8 +31,9 @@ export interface BridgeMessagesForIdAnswer {
 /** Typed reads of the node's /v4/bridge routes, generated from the route census. */
 export class BridgeReads extends SubClient {
   /** Read GET /v4/bridge/messages. */
-  async messages(): Promise<BridgeMessagesAnswer> {
-    const r = await this.rest<Partial<BridgeMessagesAnswer>>('GET', '/v4/bridge/messages');
+  async messages(opts: BridgeMessagesQuery = {}): Promise<BridgeMessagesAnswer> {
+    const query = genQuery('GET /v4/bridge/messages', [['limit', opts.limit, 'int'], ['offset', opts.offset, 'int']]);
+    const r = await this.rest<Partial<BridgeMessagesAnswer>>('GET', `/v4/bridge/messages${query}`);
     return {
       items: genDeclared('GET /v4/bridge/messages', 'items', r.items),
       pagination: genDeclared('GET /v4/bridge/messages', 'pagination', r.pagination),

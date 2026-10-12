@@ -15,12 +15,13 @@ import { MissionReads } from './mission';
 import { ObjectsReads } from './objects';
 import { PendingReads } from './pending';
 import { PoliciesReads } from './policies';
+import { PredicatesReads } from './predicates';
+import { ReadinessReads } from './readiness';
 import { RolesReads } from './roles';
 import { SettlementsReads } from './settlements';
 import { ShapesReads } from './shapes';
 import { SwarmsReads } from './swarms';
 import { TrustReads } from './trust';
-import { GenRpcReads } from './rpc';
 import type { GenQueryKind, GenRest, GenRpc } from './runtime';
 
 export * from './account';
@@ -38,12 +39,13 @@ export * from './mission';
 export * from './objects';
 export * from './pending';
 export * from './policies';
+export * from './predicates';
+export * from './readiness';
 export * from './roles';
 export * from './settlements';
 export * from './shapes';
 export * from './swarms';
 export * from './trust';
-export * from './rpc';
 export { genCheckValue, genDeclared, genPathValue, genQuery } from './runtime';
 export type { GenQueryKind, GenQueryEntry } from './runtime';
 
@@ -64,13 +66,13 @@ export class GeneratedRouteReads {
   readonly objects: ObjectsReads;
   readonly pending: PendingReads;
   readonly policies: PoliciesReads;
+  readonly predicates: PredicatesReads;
+  readonly readiness: ReadinessReads;
   readonly roles: RolesReads;
   readonly settlements: SettlementsReads;
   readonly shapes: ShapesReads;
   readonly swarms: SwarmsReads;
   readonly trust: TrustReads;
-  /** The served JSON-RPC methods no hand-written client names. */
-  readonly rpcMethods: GenRpcReads;
 
   constructor(rpc: GenRpc, rest: GenRest) {
     this.account = new AccountReads(rpc, rest);
@@ -88,12 +90,13 @@ export class GeneratedRouteReads {
     this.objects = new ObjectsReads(rpc, rest);
     this.pending = new PendingReads(rpc, rest);
     this.policies = new PoliciesReads(rpc, rest);
+    this.predicates = new PredicatesReads(rpc, rest);
+    this.readiness = new ReadinessReads(rpc, rest);
     this.roles = new RolesReads(rpc, rest);
     this.settlements = new SettlementsReads(rpc, rest);
     this.shapes = new ShapesReads(rpc, rest);
     this.swarms = new SwarmsReads(rpc, rest);
     this.trust = new TrustReads(rpc, rest);
-    this.rpcMethods = new GenRpcReads(rpc, rest);
   }
 }
 
@@ -118,9 +121,9 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'GET /v4/approvals/by-id', family: 'approvals', method: 'byId', path: '/v4/approvals/by-id', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [], query: [{ name: 'approvalId', kind: 'string', allowed: [] }, { name: 'id', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/approvals/by-target/{type}/{id}', family: 'approvals', method: 'byTargetForTypeForId', path: '/v4/approvals/by-target/{type}/{id}', members: ['approvals', 'count', 'targetId', 'targetType'], bodyFields: [], pathValues: [{ name: 'type', kind: 'string', allowed: [] }, { name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/approvals/verify', family: 'approvals', method: 'verify', path: '/v4/approvals/verify', members: ['algorithm', 'approvalId', 'authority', 'keyPageRef', 'planHash', 'signer', 'signerRole', 'stageId', 'state', 'valid'], bodyFields: [], pathValues: [], query: [{ name: 'approvalId', kind: 'string', allowed: [] }, { name: 'id', kind: 'string', allowed: [] }] },
-  { route: 'GET /v4/audit', family: 'audit', method: 'root', path: '/v4/audit', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'action', kind: 'string', allowed: [] }, { name: 'objectId', kind: 'string', allowed: [] }, { name: 'objectType', kind: 'string', allowed: [] }] },
-  { route: 'GET /v4/audit/export', family: 'audit', method: 'export', path: '/v4/audit/export', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'objectType', kind: 'string', allowed: [] }] },
-  { route: 'GET /v4/bridge/messages', family: 'bridge', method: 'messages', path: '/v4/bridge/messages', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [] },
+  { route: 'GET /v4/audit', family: 'audit', method: 'root', path: '/v4/audit', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'action', kind: 'string', allowed: [] }, { name: 'limit', kind: 'int', allowed: [] }, { name: 'objectId', kind: 'string', allowed: [] }, { name: 'objectType', kind: 'string', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }] },
+  { route: 'GET /v4/audit/export', family: 'audit', method: 'export', path: '/v4/audit/export', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'limit', kind: 'int', allowed: [] }, { name: 'objectType', kind: 'string', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }] },
+  { route: 'GET /v4/bridge/messages', family: 'bridge', method: 'messages', path: '/v4/bridge/messages', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/bridge/messages/{id}', family: 'bridge', method: 'messagesForId', path: '/v4/bridge/messages/{id}', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/capabilities', family: 'capabilities', method: 'root', path: '/v4/capabilities', members: ['capabilities', 'count'], bodyFields: [], pathValues: [], query: [] },
   { route: 'GET /v4/capabilities/grants/{id}', family: 'capabilities', method: 'grantsForId', path: '/v4/capabilities/grants/{id}', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
@@ -129,6 +132,7 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'GET /v4/contracts/{addr}/events', family: 'contracts', method: 'forAddrEvents', path: '/v4/contracts/{addr}/events', members: ['contract', 'count', 'events', 'total'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }], query: [{ name: 'eventName', kind: 'string', allowed: [] }, { name: 'fromBlock', kind: 'int', allowed: [] }, { name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }, { name: 'toBlock', kind: 'int', allowed: [] }, { name: 'topic0', kind: 'string', allowed: [] }, { name: 'topic1', kind: 'string', allowed: [] }, { name: 'topic2', kind: 'string', allowed: [] }, { name: 'topic3', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/contracts/{addr}/state', family: 'contracts', method: 'forAddrState', path: '/v4/contracts/{addr}/state', members: ['blockNumber', 'contract', 'count', 'keys', 'truncated'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }], query: [{ name: 'limit', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/contracts/{addr}/state/{key}', family: 'contracts', method: 'forAddrStateForKey', path: '/v4/contracts/{addr}/state/{key}', members: ['blockHash', 'blockNumber', 'exists', 'stateRoot', 'value'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }, { name: 'key', kind: 'string', allowed: [] }], query: [] },
+  { route: 'GET /v4/disclosures/check', family: 'disclosures', method: 'check', path: '/v4/disclosures/check', members: ['authorized', 'targetId', 'targetType', 'viewer'], bodyFields: [], pathValues: [], query: [{ name: 'approvalId', kind: 'string', allowed: [] }, { name: 'field', kind: 'string', allowed: [] }, { name: 'grantId', kind: 'string', allowed: [] }, { name: 'targetId', kind: 'string', allowed: [] }, { name: 'targetType', kind: 'string', allowed: [] }, { name: 'viewer', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/disclosures/{id}/proof', family: 'disclosures', method: 'forIdProof', path: '/v4/disclosures/{id}/proof', members: ['canonical', 'digest', 'payload', 'sigAlgo', 'signature', 'signerKey'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/disputes', family: 'disputes', method: 'root', path: '/v4/disputes', members: ['cases', 'total'], bodyFields: [], pathValues: [], query: [{ name: 'limit', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/disputes/{id}', family: 'disputes', method: 'forId', path: '/v4/disputes/{id}', members: ['caseId', 'contestedOutcomeId', 'created', 'disputeId', 'lifecycle', 'panelId', 'reason', 'submittedBy', 'verdict'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
@@ -138,16 +142,18 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'GET /v4/evidence/list', family: 'evidence', method: 'list', path: '/v4/evidence/list', members: ['items', 'pagination', 'scope'], bodyFields: [], pathValues: [], query: [{ name: 'limit', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/intents/outcome', family: 'intents', method: 'outcome', path: '/v4/intents/outcome', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [], query: [{ name: 'intentId', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/intents/{id}/outcome', family: 'intents', method: 'forIdOutcome', path: '/v4/intents/{id}/outcome', members: ['audit', 'created', 'createdByIntentId', 'createdByPlanId', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
-  { route: 'GET /v4/intents/{id}/pending', family: 'intents', method: 'forIdPending', path: '/v4/intents/{id}/pending', members: ['items', 'pagination'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [{ name: 'state', kind: 'string', allowed: [] }] },
+  { route: 'GET /v4/intents/{id}/pending', family: 'intents', method: 'forIdPending', path: '/v4/intents/{id}/pending', members: ['items', 'pagination'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [{ name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }, { name: 'state', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/intents/{id}/plan', family: 'intents', method: 'forIdPlan', path: '/v4/intents/{id}/plan', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/mission/contracts/{contract}/dashboard', family: 'mission', method: 'contractsForContractDashboard', path: '/v4/mission/contracts/{contract}/dashboard', members: ['contract', 'dashboard', 'grafana'], bodyFields: [], pathValues: [{ name: 'contract', kind: 'string', allowed: [] }], query: [{ name: 'template', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/mission/traces', family: 'mission', method: 'traces', path: '/v4/mission/traces', members: ['count', 'retained', 'traces'], bodyFields: [], pathValues: [], query: [{ name: 'limit', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/mission/traces/{tx_hash}', family: 'mission', method: 'tracesForTxHash', path: '/v4/mission/traces/{tx_hash}', members: ['trace', 'txHash'], bodyFields: [], pathValues: [{ name: 'tx_hash', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/objects/{type}/{id}/provenance', family: 'objects', method: 'forTypeForIdProvenance', path: '/v4/objects/{type}/{id}/provenance', members: ['createdAt', 'createdBy', 'intentId', 'objectId', 'objectType', 'planId', 'updatedAt', 'version'], bodyFields: [], pathValues: [{ name: 'type', kind: 'string', allowed: [] }, { name: 'id', kind: 'string', allowed: [] }], query: [] },
-  { route: 'GET /v4/pending', family: 'pending', method: 'root', path: '/v4/pending', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'id', kind: 'string', allowed: [] }, { name: 'pluginFamily', kind: 'string', allowed: [] }, { name: 'pluginId', kind: 'string', allowed: [] }, { name: 'state', kind: 'string', allowed: [] }] },
+  { route: 'GET /v4/pending', family: 'pending', method: 'root', path: '/v4/pending', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'id', kind: 'string', allowed: [] }, { name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }, { name: 'pluginFamily', kind: 'string', allowed: [] }, { name: 'pluginId', kind: 'string', allowed: [] }, { name: 'state', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/pending/{id}', family: 'pending', method: 'forId', path: '/v4/pending/{id}', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
+  { route: 'GET /v4/policies/rules/{ruleId}', family: 'policies', method: 'rulesForRuleId', path: '/v4/policies/rules/{ruleId}', members: ['id', 'kind', 'scope'], bodyFields: [], pathValues: [{ name: 'ruleId', kind: 'string', allowed: [] }], query: [{ name: 'scope', kind: 'scope', allowed: [] }] },
+  { route: 'GET /v4/readiness/substrates', family: 'readiness', method: 'substrates', path: '/v4/readiness/substrates', members: ['generatedAtUnix', 'substrates'], bodyFields: [], pathValues: [], query: [{ name: 'profile', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/roles/holders/{role}', family: 'roles', method: 'holdersForRole', path: '/v4/roles/holders/{role}', members: ['count', 'holders', 'role'], bodyFields: [], pathValues: [{ name: 'role', kind: 'string', allowed: [] }], query: [] },
-  { route: 'GET /v4/settlements/pending', family: 'settlements', method: 'pending', path: '/v4/settlements/pending', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [] },
+  { route: 'GET /v4/settlements/pending', family: 'settlements', method: 'pending', path: '/v4/settlements/pending', members: ['items', 'pagination'], bodyFields: [], pathValues: [], query: [{ name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/settlements/{id}/status', family: 'settlements', method: 'forIdStatus', path: '/v4/settlements/{id}/status', members: ['id', 'status', 'updatedAt', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/shapes/contracts/{contract}/simulate', family: 'shapes', method: 'contractsForContractSimulate', path: '/v4/shapes/contracts/{contract}/simulate', members: ['candidates', 'contract', 'current_shape', 'detail', 'overrides', 'simulated'], bodyFields: [], pathValues: [{ name: 'contract', kind: 'string', allowed: [] }], query: [{ name: 'overrides', kind: 'json', allowed: [] }] },
   { route: 'GET /v4/swarms/{id}/channel', family: 'swarms', method: 'forIdChannel', path: '/v4/swarms/{id}/channel', members: ['count', 'gas', 'keys', 'swarmId'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [{ name: 'memberAlias', kind: 'resolved_id', allowed: [] }] },
@@ -155,5 +161,6 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'POST /v4/intents/eip712/challenge', family: 'intents', method: 'eip712Challenge', path: '/v4/intents/eip712/challenge', members: ['address', 'challenge', 'domain', 'expiresAt', 'issuedAt', 'nonce', 'purpose', 'replayResistant', 'signer'], bodyFields: [{ name: 'address', required: false }, { name: 'domain', required: false }, { name: 'signer', required: false }, { name: 'ttlSeconds', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/intents/eip712/challenge/verify', family: 'intents', method: 'eip712ChallengeVerify', path: '/v4/intents/eip712/challenge/verify', members: ['ethAddress', 'fresh', 'nonceConsumed', 'publicKeyCompressed', 'publicKeyUncompressed', 'replayResistant', 'valid'], bodyFields: [{ name: 'challenge', required: false }, { name: 'signature', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/policies/approval-preflight', family: 'policies', method: 'approvalPreflight', path: '/v4/policies/approval-preflight', members: ['action', 'artifactHash', 'policySetId', 'signingPayloadHex'], bodyFields: [{ name: 'action', required: false }, { name: 'actor', required: false }, { name: 'contractUrl', required: false }, { name: 'params', required: false }, { name: 'policyType', required: false }], pathValues: [], query: [] },
+  { route: 'POST /v4/predicates/verify', family: 'predicates', method: 'verify', path: '/v4/predicates/verify', members: ['valid'], bodyFields: [{ name: 'binding', required: false }, { name: 'challenge', required: false }, { name: 'circuitName', required: false }, { name: 'curve', required: false }, { name: 'domain', required: false }, { name: 'grantId', required: false }, { name: 'holderDid', required: false }, { name: 'holderPubKey', required: false }, { name: 'issuedAtBlock', required: false }, { name: 'nullifier', required: false }, { name: 'predicate', required: false }, { name: 'proof', required: false }, { name: 'publicInputs', required: false }, { name: 'purpose', required: false }, { name: 'version', required: false }, { name: 'vkHash', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/trust/{id}/evaluate', family: 'trust', method: 'forIdEvaluate', path: '/v4/trust/{id}/evaluate', members: ['identity', 'meetsThreshold', 'profileId', 'trustLevel'], bodyFields: [{ name: 'identity', required: true }, { name: 'proofTypes', required: false }, { name: 'scope', required: false }], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
 ];

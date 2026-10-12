@@ -9,6 +9,12 @@ export interface SettlementsPendingAnswer {
   readonly pagination: unknown;
 }
 
+/** The query parameters GET /v4/settlements/pending declares. */
+export interface SettlementsPendingQuery {
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
 /** What GET /v4/settlements/{id}/status answers: every member the route declares. */
 export interface SettlementsForIdStatusAnswer {
   readonly id: unknown;
@@ -20,8 +26,9 @@ export interface SettlementsForIdStatusAnswer {
 /** Typed reads of the node's /v4/settlements routes, generated from the route census. */
 export class SettlementsReads extends SubClient {
   /** Read GET /v4/settlements/pending. */
-  async pending(): Promise<SettlementsPendingAnswer> {
-    const r = await this.rest<Partial<SettlementsPendingAnswer>>('GET', '/v4/settlements/pending');
+  async pending(opts: SettlementsPendingQuery = {}): Promise<SettlementsPendingAnswer> {
+    const query = genQuery('GET /v4/settlements/pending', [['limit', opts.limit, 'int'], ['offset', opts.offset, 'int']]);
+    const r = await this.rest<Partial<SettlementsPendingAnswer>>('GET', `/v4/settlements/pending${query}`);
     return {
       items: genDeclared('GET /v4/settlements/pending', 'items', r.items),
       pagination: genDeclared('GET /v4/settlements/pending', 'pagination', r.pagination),

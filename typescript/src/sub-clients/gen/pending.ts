@@ -12,6 +12,8 @@ export interface PendingRootAnswer {
 /** The query parameters GET /v4/pending declares. */
 export interface PendingRootQuery {
   readonly id?: string;
+  readonly limit?: number;
+  readonly offset?: number;
   readonly pluginFamily?: string;
   readonly pluginId?: string;
   readonly state?: string;
@@ -34,7 +36,7 @@ export interface PendingForIdAnswer {
 export class PendingReads extends SubClient {
   /** Read GET /v4/pending. */
   async root(opts: PendingRootQuery = {}): Promise<PendingRootAnswer> {
-    const query = genQuery('GET /v4/pending', [['id', opts.id, 'string'], ['pluginFamily', opts.pluginFamily, 'string'], ['pluginId', opts.pluginId, 'string'], ['state', opts.state, 'string']]);
+    const query = genQuery('GET /v4/pending', [['id', opts.id, 'string'], ['limit', opts.limit, 'int'], ['offset', opts.offset, 'int'], ['pluginFamily', opts.pluginFamily, 'string'], ['pluginId', opts.pluginId, 'string'], ['state', opts.state, 'string']]);
     const r = await this.rest<Partial<PendingRootAnswer>>('GET', `/v4/pending${query}`);
     return {
       items: genDeclared('GET /v4/pending', 'items', r.items),

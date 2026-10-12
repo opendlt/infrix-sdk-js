@@ -12,8 +12,10 @@ export interface AuditRootAnswer {
 /** The query parameters GET /v4/audit declares. */
 export interface AuditRootQuery {
   readonly action?: string;
+  readonly limit?: number;
   readonly objectId?: string;
   readonly objectType?: string;
+  readonly offset?: number;
 }
 
 /** What GET /v4/audit/export answers: every member the route declares. */
@@ -24,14 +26,16 @@ export interface AuditExportAnswer {
 
 /** The query parameters GET /v4/audit/export declares. */
 export interface AuditExportQuery {
+  readonly limit?: number;
   readonly objectType?: string;
+  readonly offset?: number;
 }
 
 /** Typed reads of the node's /v4/audit routes, generated from the route census. */
 export class AuditReads extends SubClient {
   /** Read GET /v4/audit. */
   async root(opts: AuditRootQuery = {}): Promise<AuditRootAnswer> {
-    const query = genQuery('GET /v4/audit', [['action', opts.action, 'string'], ['objectId', opts.objectId, 'string'], ['objectType', opts.objectType, 'string']]);
+    const query = genQuery('GET /v4/audit', [['action', opts.action, 'string'], ['limit', opts.limit, 'int'], ['objectId', opts.objectId, 'string'], ['objectType', opts.objectType, 'string'], ['offset', opts.offset, 'int']]);
     const r = await this.rest<Partial<AuditRootAnswer>>('GET', `/v4/audit${query}`);
     return {
       items: genDeclared('GET /v4/audit', 'items', r.items),
@@ -41,7 +45,7 @@ export class AuditReads extends SubClient {
 
   /** Read GET /v4/audit/export. */
   async export(opts: AuditExportQuery = {}): Promise<AuditExportAnswer> {
-    const query = genQuery('GET /v4/audit/export', [['objectType', opts.objectType, 'string']]);
+    const query = genQuery('GET /v4/audit/export', [['limit', opts.limit, 'int'], ['objectType', opts.objectType, 'string'], ['offset', opts.offset, 'int']]);
     const r = await this.rest<Partial<AuditExportAnswer>>('GET', `/v4/audit/export${query}`);
     return {
       items: genDeclared('GET /v4/audit/export', 'items', r.items),

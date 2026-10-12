@@ -3,6 +3,18 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
+/** What GET /v4/policies/rules/{ruleId} answers: every member the route declares. */
+export interface PoliciesRulesForRuleIdAnswer {
+  readonly id: unknown;
+  readonly kind: unknown;
+  readonly scope: unknown;
+}
+
+/** The query parameters GET /v4/policies/rules/{ruleId} declares. */
+export interface PoliciesRulesForRuleIdQuery {
+  readonly scope?: string;
+}
+
 /** What POST /v4/policies/approval-preflight answers: every member the route declares. */
 export interface PoliciesApprovalPreflightAnswer {
   readonly action: unknown;
@@ -22,6 +34,18 @@ export interface PoliciesApprovalPreflightBody {
 
 /** Typed reads of the node's /v4/policies routes, generated from the route census. */
 export class PoliciesReads extends SubClient {
+  /** Read GET /v4/policies/rules/{ruleId}. */
+  async rulesForRuleId(ruleId: string, opts: PoliciesRulesForRuleIdQuery = {}): Promise<PoliciesRulesForRuleIdAnswer> {
+    genPathValue('GET /v4/policies/rules/{ruleId}', 'ruleId', ruleId, 'string');
+    const query = genQuery('GET /v4/policies/rules/{ruleId}', [['scope', opts.scope, 'scope']]);
+    const r = await this.rest<Partial<PoliciesRulesForRuleIdAnswer>>('GET', `/v4/policies/rules/${encodeURIComponent(ruleId)}${query}`);
+    return {
+      id: genDeclared('GET /v4/policies/rules/{ruleId}', 'id', r.id),
+      kind: genDeclared('GET /v4/policies/rules/{ruleId}', 'kind', r.kind),
+      scope: genDeclared('GET /v4/policies/rules/{ruleId}', 'scope', r.scope),
+    };
+  }
+
   /** Read POST /v4/policies/approval-preflight. */
   async approvalPreflight(body: PoliciesApprovalPreflightBody): Promise<PoliciesApprovalPreflightAnswer> {
     const r = await this.rest<Partial<PoliciesApprovalPreflightAnswer>>('POST', '/v4/policies/approval-preflight', { action: body.action, actor: body.actor, contractUrl: body.contractUrl, params: body.params, policyType: body.policyType });

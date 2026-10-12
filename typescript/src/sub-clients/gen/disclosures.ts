@@ -3,6 +3,24 @@
 import { SubClient } from '../base';
 import { genDeclared, genPathValue, genQuery } from './runtime';
 
+/** What GET /v4/disclosures/check answers: every member the route declares. */
+export interface DisclosuresCheckAnswer {
+  readonly authorized: unknown;
+  readonly targetId: unknown;
+  readonly targetType: unknown;
+  readonly viewer: unknown;
+}
+
+/** The query parameters GET /v4/disclosures/check declares. */
+export interface DisclosuresCheckQuery {
+  readonly approvalId?: string;
+  readonly field?: string;
+  readonly grantId?: string;
+  readonly targetId?: string;
+  readonly targetType?: string;
+  readonly viewer?: string;
+}
+
 /** What GET /v4/disclosures/{id}/proof answers: every member the route declares. */
 export interface DisclosuresForIdProofAnswer {
   readonly canonical: unknown;
@@ -15,6 +33,18 @@ export interface DisclosuresForIdProofAnswer {
 
 /** Typed reads of the node's /v4/disclosures routes, generated from the route census. */
 export class DisclosuresReads extends SubClient {
+  /** Read GET /v4/disclosures/check. */
+  async check(opts: DisclosuresCheckQuery = {}): Promise<DisclosuresCheckAnswer> {
+    const query = genQuery('GET /v4/disclosures/check', [['approvalId', opts.approvalId, 'string'], ['field', opts.field, 'string'], ['grantId', opts.grantId, 'string'], ['targetId', opts.targetId, 'string'], ['targetType', opts.targetType, 'string'], ['viewer', opts.viewer, 'string']]);
+    const r = await this.rest<Partial<DisclosuresCheckAnswer>>('GET', `/v4/disclosures/check${query}`);
+    return {
+      authorized: genDeclared('GET /v4/disclosures/check', 'authorized', r.authorized),
+      targetId: genDeclared('GET /v4/disclosures/check', 'targetId', r.targetId),
+      targetType: genDeclared('GET /v4/disclosures/check', 'targetType', r.targetType),
+      viewer: genDeclared('GET /v4/disclosures/check', 'viewer', r.viewer),
+    };
+  }
+
   /** Read GET /v4/disclosures/{id}/proof. */
   async forIdProof(id: string): Promise<DisclosuresForIdProofAnswer> {
     genPathValue('GET /v4/disclosures/{id}/proof', 'id', id, 'string');
