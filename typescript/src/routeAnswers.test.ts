@@ -66,3 +66,46 @@ test('mission.global is reachable from the client and hands back the nested syst
   assert.equal((got as typeof route).system.block_height, 1234567);
 });
 
+async function recordingRequests(result: unknown, call: (c: InfrixClient) => Promise<unknown>) {
+  const sent: string[] = [];
+  (globalThis as { fetch?: FetchLike }).fetch = async (...args: unknown[]) => {
+    const init = (args[1] ?? {}) as { body?: unknown };
+    sent.push(String(init.body ?? ''));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ jsonrpc: '2.0', id: 1, result }),
+      text: async () => JSON.stringify({ jsonrpc: '2.0', id: 1, result }),
+    };
+  };
+  try {
+    const got = await call(new InfrixClient('http://node.test', { actor: 'acc://myco.acme', purpose: 'audit' }));
+    return { got, sent };
+  } finally {
+    (globalThis as { fetch?: FetchLike }).fetch = realFetch;
+  }
+}
+
+test('client.mission is a constructed MissionClient, and global() and systemAlerts() reach the routes they name', async () => {
+  const probe = new InfrixClient('http://node.test', { actor: 'acc://myco.acme', purpose: 'audit' });
+  assert.equal(typeof probe.mission, 'object', 'InfrixClient has no `mission` member: client.mission.global() would throw');
+  assert.equal(typeof probe.mission.global, 'function');
+  assert.equal(typeof probe.mission.systemAlerts, 'function');
+
+  const system = { scope: 'system-wide (privileged)', contractCount: 1, system: { block_height: 10, contracts_total: 1 } };
+  const g = await recordingRequests(system, (c) => c.mission.global());
+  assert.deepEqual(g.got, system);
+  assert.equal(g.sent.length, 1);
+  assert.match(g.sent[0], /mission\.global/, 'global() must ask for the system route, not another');
+
+  const alertsRoute = {
+    scope: 'system-wide (privileged)',
+    active: [{ id: 'alert-1', rule_id: 'prod-error-rate-high', contract_url: 'acc://ms-target.acme', status: 'firing' }],
+    rules: [{ id: 'prod-error-rate-high', contract_url: '*' }],
+    history: [{ id: 'alert-1', status: 'firing' }],
+  };
+  const a = await recordingRequests(alertsRoute, (c) => c.mission.systemAlerts());
+  assert.deepEqual(a.got, alertsRoute.active, 'systemAlerts() hands back the firing alerts the route lists under `active`');
+  assert.match(a.sent[0], /mission\.alert\.system/, 'systemAlerts() must ask for the system alerts route');
+});
+

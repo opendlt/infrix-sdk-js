@@ -18,9 +18,12 @@ export type { NodeRoot, AssuranceMatrix, SubsystemTaxonomy, NetworkInfo, Network
 export { BlockSubClient, TransactionSubClient } from './chain';
 export type { PageInfo, BlockList, LatestBlock, Block, TransactionList, Transaction, TransactionStatus } from './chain';
 export { AccountSubClient } from './accounts';
+export { RpcSubClient } from './rpc';
+export type { RpcExtraParams } from './rpc';
 export type { AccountList, Account, AccountBalance } from './accounts';
 export { BillingSubClient } from './billing';
-export type { BillingConsumption, IntentBillingEntry } from './billing';
+export type { BillingConsumption, IntentBillingEntry, BillingPreviewInput, BillingQuote } from './billing';
+export type { PolicyDecisionAnswer, PolicyQuestion } from './policies';
 export { CommitteeSubClient, EmergencySubClient } from './governanceBodies';
 export type { CommitteeList, CommitteeMotions, EmergencyCaseList } from './governanceBodies';
 export { PredicateSubClient } from './predicates';

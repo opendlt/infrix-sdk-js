@@ -2,9 +2,30 @@ import { SubClient } from './base';
 import type {
   PolicyDecision,
   PolicyScopeAnalysis,
-  PolicyEvaluationResult,
-  PolicySimulationResult,
 } from '../types/governance';
+
+/** What POST /v4/policies/evaluate and POST /v4/policies/simulate answer: the registry's decision. */
+export interface PolicyDecisionAnswer {
+  /** false for an evaluation, true for a simulation. */
+  simulate: boolean;
+  scope: string;
+  policyType: string;
+  allowed: boolean;
+  effect: string;
+  /** The id of the rule that decided, or empty when the scope's default effect applied. */
+  matchedRule: string;
+  stratum: string;
+  auditMsg: string;
+  trace: unknown;
+}
+
+/** What a policy question is asked about: a policy type, in one scope, with optional operands. */
+export interface PolicyQuestion {
+  /** `global`, `contract:<url>`, `obj:<url>` or `parent:<adi>` (global when omitted; a malformed scope is refused). */
+  scope?: string;
+  /** The operands sent with the question. The node currently decides from the scope and policy type alone. */
+  operands?: Record<string, string>;
+}
 
 /** A policy set as the node's registry holds and serves it. */
 export interface PolicySet {
@@ -90,42 +111,25 @@ export class PolicySubClient extends SubClient {
   }
 
   /**
-   * Evaluate a policy for a specific operation.
+   * Ask the registry what it decides for a policy type in a scope (REST POST /v4/policies/evaluate).
+   * Read-only: no decision proof is recorded and no act is performed.
    *
-   * @param scope - The scope under which to evaluate
-   * @param type - The operation type (e.g. 'token_transfer', 'object_create')
-   * @param operands - The operation parameters to evaluate against
+   * @param policyType - The policy type to decide for (e.g. 'contract:call')
+   * @param question - The scope (global when omitted) and the operands to send
    */
-  async evaluate(
-    scope: string,
-    type: string,
-    operands: Record<string, unknown>
-  ): Promise<PolicyEvaluationResult> {
-    return this.rpc<PolicyEvaluationResult>('policy.evaluate', {
-      scope,
-      type,
-      operands,
-    });
+  async evaluate(policyType: string, question: PolicyQuestion = {}): Promise<PolicyDecisionAnswer> {
+    return this.rest<PolicyDecisionAnswer>('POST', '/v4/policies/evaluate', policyQuestionBody(policyType, question));
   }
 
   /**
-   * Simulate a policy change without committing it.
+   * The same question flagged as a simulation (REST POST /v4/policies/simulate): the answer's
+   * `simulate` is true and nothing is recorded. It simulates the decision, not a change to a policy set.
    *
-   * @param scope - Target scope
-   * @param type - Operation type
-   * @param operands - Simulated operands
-   * @returns What would happen if this policy were evaluated
+   * @param policyType - The policy type to decide for (e.g. 'contract:call')
+   * @param question - The scope (global when omitted) and the operands to send
    */
-  async simulate(
-    scope: string,
-    type: string,
-    operands: Record<string, unknown>
-  ): Promise<PolicySimulationResult> {
-    return this.rpc<PolicySimulationResult>('policy.simulate', {
-      scope,
-      type,
-      operands,
-    });
+  async simulate(policyType: string, question: PolicyQuestion = {}): Promise<PolicyDecisionAnswer> {
+    return this.rest<PolicyDecisionAnswer>('POST', '/v4/policies/simulate', policyQuestionBody(policyType, question));
   }
 
   /**
@@ -171,4 +175,19 @@ export class PolicySubClient extends SubClient {
     const query = scope === undefined ? '' : `?scope=${encodeURIComponent(scope)}`;
     return this.rest<PolicyLookup>('GET', `/v4/policies/rules/${encodeURIComponent(ruleId)}${query}`);
   }
+}
+
+/**
+ * The body of POST /v4/policies/evaluate and /simulate. The policy type is required; the scope is sent
+ * only when named, and a blank one is refused (the node reads it as no scope, so it would be widened to
+ * global without the caller saying so).
+ */
+function policyQuestionBody(policyType: string, question: PolicyQuestion): Record<string, unknown> {
+  if (typeof policyType !== 'string' || policyType.trim() === '') {
+    throw new Error('policy: policyType is required (for example contract:call)');
+  }
+  if (question.scope !== undefined && question.scope.trim() === '') {
+    throw new Error('policy: scope is empty; name global, contract:<url>, obj:<url> or parent:<adi>, or leave it out');
+  }
+  return { policyType: policyType.trim(), scopeKey: question.scope?.trim(), operands: question.operands };
 }
