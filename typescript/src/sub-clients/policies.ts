@@ -59,6 +59,13 @@ export interface PolicyRuleDefinition {
   updatedAt: string;
 }
 
+/** What GET /v4/policies/{scope} answers: the policy sets bound in exactly that scope. */
+export interface PolicyScopeAnswer {
+  scope: string;
+  policies: PolicySet[];
+  count: number;
+}
+
 /** What GET /v4/policies/rules/{ruleId} answers: the set, or the rule, the id named. */
 export type PolicyLookup =
   | { scope: string; kind: 'policySet'; id: string; policySet: PolicySet }
@@ -103,11 +110,8 @@ export class PolicySubClient extends SubClient {
    *
    * @param scope - `global`, `contract:<url>`, `obj:<url>` or `parent:<adi>`
    */
-  async scope(scope: string): Promise<{ scope: string; policies: PolicySet[]; count: number }> {
-    return this.rest<{ scope: string; policies: PolicySet[]; count: number }>(
-      'GET',
-      `/v4/policies/${encodeURIComponent(scope)}`
-    );
+  async scope(scope: string): Promise<PolicyScopeAnswer> {
+    return this.rest<PolicyScopeAnswer>('GET', `/v4/policies/${encodeURIComponent(scope)}`);
   }
 
   /**
@@ -118,7 +122,8 @@ export class PolicySubClient extends SubClient {
    * @param question - The scope (global when omitted) and the operands to send
    */
   async evaluate(policyType: string, question: PolicyQuestion = {}): Promise<PolicyDecisionAnswer> {
-    return this.rest<PolicyDecisionAnswer>('POST', '/v4/policies/evaluate', policyQuestionBody(policyType, question));
+    const q = policyQuestionBody(policyType, question);
+    return this.rest<PolicyDecisionAnswer>('POST', '/v4/policies/evaluate', { policyType: q.policyType, scopeKey: q.scopeKey, operands: q.operands });
   }
 
   /**
@@ -129,7 +134,8 @@ export class PolicySubClient extends SubClient {
    * @param question - The scope (global when omitted) and the operands to send
    */
   async simulate(policyType: string, question: PolicyQuestion = {}): Promise<PolicyDecisionAnswer> {
-    return this.rest<PolicyDecisionAnswer>('POST', '/v4/policies/simulate', policyQuestionBody(policyType, question));
+    const q = policyQuestionBody(policyType, question);
+    return this.rest<PolicyDecisionAnswer>('POST', '/v4/policies/simulate', { policyType: q.policyType, scopeKey: q.scopeKey, operands: q.operands });
   }
 
   /**
@@ -182,7 +188,7 @@ export class PolicySubClient extends SubClient {
  * only when named, and a blank one is refused (the node reads it as no scope, so it would be widened to
  * global without the caller saying so).
  */
-function policyQuestionBody(policyType: string, question: PolicyQuestion): Record<string, unknown> {
+function policyQuestionBody(policyType: string, question: PolicyQuestion): { policyType: string; scopeKey: string | undefined; operands: PolicyQuestion['operands'] } {
   if (typeof policyType !== 'string' || policyType.trim() === '') {
     throw new Error('policy: policyType is required (for example contract:call)');
   }
