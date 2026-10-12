@@ -96,6 +96,11 @@ export type {
   AssuranceSummary,
 } from './results';
 
+// The evidence id of an intent: the evidence routes take the id of a bundle (`ev-<intentId>`), not the
+// id of the intent. The rule for an intent with several bundles is documented on the function.
+export { evidenceIdForIntent, canonicalEvidenceId } from './evidenceId';
+export type { IntentEvidenceReader } from './evidenceId';
+
 export { withGoldenApp } from './golden/escrow';
 export type {
   EscrowCreateParams,

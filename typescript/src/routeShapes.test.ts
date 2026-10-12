@@ -7,8 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { InfrixClient, SwarmClient } from './index';
-import { evidenceIdForIntent } from './evidenceId';
+import { InfrixClient, SwarmClient, evidenceIdForIntent, canonicalEvidenceId } from './index';
 
 type FetchLike = (...args: unknown[]) => Promise<unknown>;
 const realFetch = (globalThis as { fetch?: FetchLike }).fetch;
@@ -422,6 +421,7 @@ test('evidenceIdForIntent resolves the one bundle an intent produced, from the d
   );
   assert.equal(one.result, 'ev-9');
   assert.equal(one.seen.path, '/v4/intents/intent-9/evidence');
+  assert.equal(canonicalEvidenceId('intent-9'), 'ev-intent-9', 'the id the node gives the bundle of an intent');
 
   const none = await against({ bundles: [], count: 0, intent: {}, intentId: 'i' }, (c) => evidenceIdForIntent(c, 'i'));
   assert.equal(none.result, undefined, 'no bundle yet is not an id');
