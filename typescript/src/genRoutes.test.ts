@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { InfrixClient } from './index';
-import { GENERATED_ROUTES, genCheckValue, genDeclared, genPathValue, genQuery } from './sub-clients';
+import { GENERATED_ROUTES, GenParkedError, genCheckBody, genCheckValue, genDeclared, genPathValue, genQuery } from './sub-clients';
 import type { GeneratedRouteInfo } from './sub-clients';
 
 type FetchLike = (...args: unknown[]) => Promise<unknown>;
@@ -71,8 +71,9 @@ function sample(kind: string, allowed: readonly string[], name: string): string 
 }
 
 function reader(c: InfrixClient, info: GeneratedRouteInfo): Reader {
-  const family = (c.routes as unknown as Record<string, Record<string, Reader>>)[familyKey(info.family)];
-  assert.ok(family, `client.routes has no ${info.family}`);
+  const root = info.write ? (c.routes.writes as unknown) : (c.routes as unknown);
+  const family = (root as Record<string, Record<string, Reader>>)[familyKey(info.family)];
+  assert.ok(family, `client.routes${info.write ? '.writes' : ''} has no ${info.family}`);
   const fn = family[info.method];
   assert.equal(typeof fn, 'function', `${info.route}: no method ${info.method}`);
   return fn.bind(family);
@@ -88,7 +89,7 @@ function bodyOf(info: GeneratedRouteInfo): Record<string, string> {
 
 function callArgs(info: GeneratedRouteInfo, extraBody: Record<string, unknown> = {}): unknown[] {
   const args: unknown[] = [...pathArgs(info)];
-  if (info.route.startsWith('POST ')) {
+  if (info.bodyFields.length > 0) {
     args.push({ ...bodyOf(info), ...extraBody });
   }
   if (info.query.length > 0) {
@@ -115,10 +116,11 @@ function fullAnswer(info: GeneratedRouteInfo): Record<string, unknown> {
 test('the generated table is non-trivial and names every route and method once', () => {
   assert.ok(GENERATED_ROUTES.length > 0);
   assert.equal(new Set(GENERATED_ROUTES.map((r) => r.route)).size, GENERATED_ROUTES.length);
-  assert.equal(new Set(GENERATED_ROUTES.map((r) => `${r.family}.${r.method}`)).size, GENERATED_ROUTES.length);
+  assert.equal(new Set(GENERATED_ROUTES.map((r) => `${r.write ? 'writes.' : ''}${r.family}.${r.method}`)).size, GENERATED_ROUTES.length);
   for (const r of GENERATED_ROUTES) {
-    assert.ok(r.route.startsWith('GET /v4/') || r.route.startsWith('POST /v4/'), r.route);
-    assert.equal(r.route.startsWith('POST '), r.bodyFields.length > 0, `${r.route} body members`);
+    assert.ok(/^(GET|POST|PUT) \/v4\//.test(r.route), r.route);
+    assert.equal(!r.route.startsWith('GET '), r.bodyFields.length > 0, `${r.route} body members`);
+    assert.ok(!r.write || r.bodyFields.length > 0, `${r.route} is a write with no body members`);
     assert.ok(r.members.length > 0, `${r.route} declares no member`);
   }
 });
@@ -127,7 +129,7 @@ test('every generated read GETs its route with only the declared parameters and 
   for (const info of GENERATED_ROUTES) {
     const { seen, result } = await against(fullAnswer(info), (c) => reader(c, info)(...callArgs(info)));
     assert.equal(seen.method, info.route.split(' ')[0], info.route);
-    if (info.route.startsWith('POST ')) {
+    if (info.bodyFields.length > 0) {
       assert.deepEqual(seen.body, bodyOf(info), `${info.route} body`);
     }
     assert.equal(seen.path, expectedPath(info), info.route);
@@ -153,7 +155,7 @@ test('an answer that lacks a declared member is refused, naming it', async () =>
       const answer = fullAnswer(info);
       delete answer[member];
       await assert.rejects(
-        () => against(answer, (c) => reader(c, info)(...callArgs(info).slice(0, pathArgs(info).length + (info.route.startsWith('POST ') ? 1 : 0)))),
+        () => against(answer, (c) => reader(c, info)(...callArgs(info).slice(0, pathArgs(info).length + (info.bodyFields.length > 0 ? 1 : 0)))),
         (err: Error) => err.message.includes(info.route) && err.message.includes(member),
         `${info.route} accepted an answer without ${member}`
       );
@@ -220,8 +222,79 @@ test('a path value is escaped into the route, not interpreted', async () => {
   assert.equal(seen.path, info.path.replace(/\{\w+\}/, encodeURIComponent('acc://a.acme/x y')));
 });
 
-test('a read-only POST sends exactly the body members the route declares, whatever else the caller holds', async () => {
-  const info = GENERATED_ROUTES.find((r) => r.route.startsWith('POST '))!;
-  const { seen } = await against(fullAnswer(info), (c) => reader(c, info)(...callArgs(info, { bogus: 'dropped' })));
+test('a read-only POST sends exactly the body members the route declares and refuses any other', async () => {
+  const info = GENERATED_ROUTES.find((r) => r.route.startsWith('POST ') && !r.write)!;
+  const { seen } = await against(fullAnswer(info), (c) => reader(c, info)(...callArgs(info)));
   assert.deepEqual(Object.keys(seen.body ?? {}).sort(), info.bodyFields.map((f) => f.name).sort(), info.route);
+  await assert.rejects(
+    () => against(fullAnswer(info), (c) => reader(c, info)(...callArgs(info, { bogus: 'dropped' }))),
+    (err: Error) => err.message.includes(info.route) && err.message.includes('does not accept the body member "bogus"')
+  );
+});
+
+function firstWrite(pred: (r: GeneratedRouteInfo) => boolean = () => true): GeneratedRouteInfo {
+  const info = GENERATED_ROUTES.find((r) => r.write && pred(r));
+  assert.ok(info, 'no generated write route matches');
+  return info;
+}
+
+test('a governed write sends exactly the declared body members under its own verb and path', async () => {
+  const post = firstWrite((r) => r.route.startsWith('POST ') && r.pathValues.length === 1);
+  const { seen, result } = await against(fullAnswer(post), (c) => reader(c, post)(...callArgs(post)));
+  assert.equal(seen.method, 'POST');
+  assert.equal(seen.path, expectedPath(post));
+  assert.deepEqual(seen.body, bodyOf(post));
+  assert.deepEqual(Object.keys(result).sort(), [...post.members].sort());
+
+  const put = firstWrite((r) => r.route.startsWith('PUT '));
+  const sent = await against(fullAnswer(put), (c) => reader(c, put)(...callArgs(put)));
+  assert.equal(sent.seen.method, 'PUT');
+  assert.equal(sent.seen.path, expectedPath(put));
+  assert.deepEqual(sent.seen.body, bodyOf(put));
+});
+
+test('a governed write refuses a member the route does not accept and a missing required one before any request', async () => {
+  const info = firstWrite((r) => r.bodyFields.some((f) => f.required));
+  const required = info.bodyFields.find((f) => f.required)!.name;
+  const seen: Seen[] = [];
+  await assert.rejects(
+    async () => {
+      const r = await against(fullAnswer(info), (c) => reader(c, info)(...pathArgs(info), { ...bodyOf(info), bogus: 'x' }));
+      seen.push(r.seen);
+    },
+    (err: Error) => err.message.includes(info.route) && err.message.includes('does not accept the body member "bogus"')
+  );
+  const withoutRequired = bodyOf(info);
+  delete withoutRequired[required];
+  await assert.rejects(
+    async () => {
+      const r = await against(fullAnswer(info), (c) => reader(c, info)(...pathArgs(info), withoutRequired));
+      seen.push(r.seen);
+    },
+    (err: Error) => err.message.includes(info.route) && err.message.includes(`needs the body member "${required}"`)
+  );
+  assert.equal(seen.length, 0);
+});
+
+test('a write the node admitted but did not do is thrown, never returned as the act', async () => {
+  const info = firstWrite((r) => r.pathValues.length === 0);
+  const parked = { status: 'pending_approval', intentId: 'intent-9', detail: 'parked awaiting approval' };
+  await assert.rejects(
+    () => against(parked, (c) => reader(c, info)(...callArgs(info))),
+    (err: unknown) => err instanceof GenParkedError && err.answer['intentId'] === 'intent-9' && err.message.includes('has NOT happened') && err.message.includes(info.route.split(' ')[1])
+  );
+  // the same shape is an answer to a read: only a governed write can park
+  const read = GENERATED_ROUTES.find((r) => !r.write && r.bodyFields.length === 0 && r.pathValues.length === 0 && r.members.includes('status'));
+  if (read) {
+    const answer = { ...fullAnswer(read), status: 'pending_approval', intentId: 'intent-9' };
+    const { result } = await against(answer, (c) => reader(c, read)(...callArgs(read)));
+    assert.equal(result['status'], 'pending_approval');
+  }
+});
+
+test('the body check names the first fault and passes a complete body', () => {
+  assert.doesNotThrow(() => genCheckBody('POST /v4/x', { a: 1 }, [['a', true], ['b', false]]));
+  assert.throws(() => genCheckBody('POST /v4/x', { a: 1, c: 2 }, [['a', true], ['b', false]]), /POST \/v4\/x does not accept the body member "c" \(it accepts a \(required\), b\)/);
+  assert.throws(() => genCheckBody('POST /v4/x', { b: 1 }, [['a', true], ['b', false]]), /POST \/v4\/x needs the body member "a"/);
+  assert.throws(() => genCheckBody('POST /v4/x', { a: undefined }, [['a', true]]), /needs the body member "a"/);
 });
