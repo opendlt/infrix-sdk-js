@@ -51,7 +51,7 @@ export interface ObjectsWriteForTypeForIdTransitionAnswer {
 
 /** The body members POST /v4/objects/{type}/{id}/transition accepts. */
 export interface ObjectsWriteForTypeForIdTransitionBody {
-  readonly actor?: unknown;
+  readonly actor: unknown;
   readonly newState: unknown;
 }
 
@@ -70,7 +70,7 @@ export interface ObjectsWriteForTypeForIdAnswer {
 
 /** The body members PUT /v4/objects/{type}/{id} accepts. */
 export interface ObjectsWriteForTypeForIdBody {
-  readonly actor?: unknown;
+  readonly actor: unknown;
   readonly fields?: unknown;
 }
 
@@ -122,7 +122,7 @@ export class ObjectsWrites extends SubClient {
   async forTypeForIdTransition(type: string, id: string, body: ObjectsWriteForTypeForIdTransitionBody): Promise<ObjectsWriteForTypeForIdTransitionAnswer> {
     genPathValue('POST /v4/objects/{type}/{id}/transition', 'type', type, 'string');
     genPathValue('POST /v4/objects/{type}/{id}/transition', 'id', id, 'string');
-    genCheckBody('POST /v4/objects/{type}/{id}/transition', body, [['actor', false], ['newState', true]]);
+    genCheckBody('POST /v4/objects/{type}/{id}/transition', body, [['actor', true], ['newState', true]]);
     const r = await this.rest<Partial<ObjectsWriteForTypeForIdTransitionAnswer>>('POST', `/v4/objects/${encodeURIComponent(type)}/${encodeURIComponent(id)}/transition`, { actor: body.actor, newState: body.newState });
     return {
       audit: genDeclared('POST /v4/objects/{type}/{id}/transition', 'audit', r.audit),
@@ -141,7 +141,7 @@ export class ObjectsWrites extends SubClient {
   async forTypeForId(type: string, id: string, body: ObjectsWriteForTypeForIdBody): Promise<ObjectsWriteForTypeForIdAnswer> {
     genPathValue('PUT /v4/objects/{type}/{id}', 'type', type, 'string');
     genPathValue('PUT /v4/objects/{type}/{id}', 'id', id, 'string');
-    genCheckBody('PUT /v4/objects/{type}/{id}', body, [['actor', false], ['fields', false]]);
+    genCheckBody('PUT /v4/objects/{type}/{id}', body, [['actor', true], ['fields', false]]);
     const r = await this.rest<Partial<ObjectsWriteForTypeForIdAnswer>>('PUT', `/v4/objects/${encodeURIComponent(type)}/${encodeURIComponent(id)}`, { actor: body.actor, fields: body.fields });
     return {
       audit: genDeclared('PUT /v4/objects/{type}/{id}', 'audit', r.audit),
