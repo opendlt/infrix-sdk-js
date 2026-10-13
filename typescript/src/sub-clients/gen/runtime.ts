@@ -70,3 +70,56 @@ export function genQuery(route: string, entries: readonly GenQueryEntry[]): stri
   const text = params.toString();
   return text === '' ? '' : `?${text}`;
 }
+
+/** One member a route accepts in its body: its name and whether the route requires it. */
+export type GenBodyMember = readonly [string, boolean];
+
+/**
+ * The node's answer to a governed write it ADMITTED but did not do (HTTP 202): an intent parked awaiting approval.
+ * Its envelope carries the intent (status, intentId, detail), not the members the route declares for a finished act, so
+ * it is thrown rather than returned: handing it back would read as done, and reading the act's members from it would
+ * find them missing.
+ */
+export class GenParkedError extends Error {
+  readonly route: string;
+  readonly answer: Readonly<Record<string, unknown>>;
+
+  constructor(route: string, answer: Record<string, unknown>) {
+    super(`${route} was admitted but the act has NOT happened (the intent is parked awaiting approval): ${JSON.stringify(answer)}`);
+    this.name = 'GenParkedError';
+    this.route = route;
+    this.answer = answer;
+  }
+}
+
+/** The REST injector with the parked envelope (status pending_approval and an intentId) turned into a GenParkedError. */
+export function genParkedGuard(rest: GenRest): GenRest {
+  const guarded = async <T>(method: Parameters<GenRest>[0], path: string, body?: unknown): Promise<T> => {
+    const data = await rest<T>(method, path, body);
+    const answer = data as unknown as Record<string, unknown> | null | undefined;
+    if (answer !== null && typeof answer === 'object' && answer.status === 'pending_approval' && typeof answer.intentId === 'string') {
+      throw new GenParkedError(`${method} ${path}`, answer);
+    }
+    return data;
+  };
+  return guarded;
+}
+
+/**
+ * Refuse a body the route would not take as given: a member the route does not accept (the node would drop it in
+ * silence) and a required member that is absent are both named, before any request is made.
+ */
+export function genCheckBody(route: string, body: object, members: readonly GenBodyMember[]): void {
+  const given = body as Record<string, unknown>;
+  const accepted = members.map(([name, required]) => (required ? `${name} (required)` : name)).join(', ');
+  for (const key of Object.keys(given)) {
+    if (!members.some(([name]) => name === key)) {
+      throw new Error(`${route} does not accept the body member ${JSON.stringify(key)} (it accepts ${accepted})`);
+    }
+  }
+  for (const [name, required] of members) {
+    if (required && given[name] === undefined) {
+      throw new Error(`${route} needs the body member ${JSON.stringify(name)}`);
+    }
+  }
+}
