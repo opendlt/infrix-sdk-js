@@ -48,8 +48,16 @@ export interface OutcomeRecord {
   gasDrift: number;
 }
 
-export interface EvidenceBundle {
-  id: string;
+/**
+ * What `intent.evidence` (GET /v4/intents/{id}/evidence) answers: every member the route declares.
+ * It is NOT an evidence bundle: the bundles are in `bundles`, each as the object registry holds it
+ * (its `id` is the evidence id the evidence routes take, `fields.AnchorStatus` its anchor state).
+ */
+export interface IntentEvidenceAnswer {
+  /** The evidence bundles linked to the intent, as the object registry holds them. */
+  bundles: unknown[];
+  count: number;
+  /** The intent as the object registry holds it. */
+  intent: unknown;
   intentId: string;
-  anchorStatus: string;
 }

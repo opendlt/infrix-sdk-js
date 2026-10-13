@@ -56,14 +56,14 @@ function makeFake(): { client: InfrixClient; calls: FakeCalls } {
       },
     },
     intents: {
-      get: async (intentId: string) => ({ id: intentId, status: 'completed', planId: `plan-${intentId}`, outcomeId: `out-${intentId}` }),
+      get: async (intentId: string) => ({ intent: { id: intentId }, status: 'completed' }),
       outcome: async (intentId: string) => outcomeFor(intentId),
+      evidence: async (intentId: string) => {
+        calls.evidenceGet.push(intentId);
+        return { bundles: [{ id: 'ev-1' }], count: 1, intent: { id: intentId }, intentId };
+      },
     },
     evidence: {
-      get: async (intentId: string) => {
-        calls.evidenceGet.push(intentId);
-        return { id: 'ev-1', intentId };
-      },
       exportPortable: async (evidenceId: string) => {
         calls.exportPortable.push(evidenceId);
         return { version: '3', bundleData: '{}', exportHash: 'deadbeef' };
@@ -109,8 +109,8 @@ test('golden escrow create/release/export speaks escrow, not spine', async () =>
   assert.equal(calls.escrowRelease.length, 1);
   assert.equal((calls.escrowRelease[0] as { id: string }).id, 'escrow-1');
 
-  // Export a proof by intent id → resolves the bundle and exports the
-  // PORTABLE package via the spine evidence sub-client.
+  // Export a proof by intent id → resolves the intent's bundle id from the intent's evidence
+  // answer and exports the PORTABLE package via the spine evidence sub-client.
   const proof = await app.proofs.export({ intentId: handle.intentId });
   assert.equal(calls.evidenceGet[0], 'intent-1');
   assert.equal(calls.exportPortable[0], 'ev-1');

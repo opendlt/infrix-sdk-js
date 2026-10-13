@@ -21,16 +21,13 @@ interface FakeOpts {
   terminalStatus?: 'completed' | 'failed' | 'cancelled';
   outcome?: unknown;
   outcomeThrows?: boolean;
-  planId?: string | null;
-  outcomeId?: string | null;
-  evidence?: unknown;
+  /** The bundles the intent's evidence answer lists (default: one bundle, ev-1). */
+  bundles?: unknown[];
   exportThrows?: boolean;
 }
 
 function makeFake(opts: FakeOpts = {}): InfrixClient {
   let getCalls = 0;
-  const planId = opts.planId === null ? undefined : (opts.planId ?? 'plan-1');
-  const outcomeId = opts.outcomeId === null ? undefined : (opts.outcomeId ?? 'out-1');
   return {
     intents: {
       get: async () => {
@@ -38,18 +35,19 @@ function makeFake(opts: FakeOpts = {}): InfrixClient {
           ? opts.getStatuses[Math.min(getCalls, opts.getStatuses.length - 1)]
           : opts.terminalStatus ?? 'completed';
         getCalls++;
-        return { id: 'int-1', status, planId, outcomeId };
+        return { intent: { id: 'int-1' }, status };
       },
       outcome: async () => {
         if (opts.outcomeThrows) throw new Error('outcome not queryable yet');
         return opts.outcome;
       },
+      evidence: async () => {
+        if (opts.exportThrows) throw new Error('evidence unavailable');
+        const bundles = opts.bundles ?? [{ id: 'ev-1' }];
+        return { bundles, count: bundles.length, intent: { id: 'int-1' }, intentId: 'int-1' };
+      },
     },
     evidence: {
-      get: async () => {
-        if (opts.exportThrows) throw new Error('evidence unavailable');
-        return opts.evidence ?? { id: 'ev-1' };
-      },
       exportPortable: async () => ({ version: '4', bundleData: '{}' }),
     },
   } as unknown as InfrixClient;
@@ -117,7 +115,7 @@ test('missing outcome: gasAvailable=false, no evidence (never fabricated)', asyn
 });
 
 test('requireOutcome + throwOnIncomplete: throws when outcome absent', async () => {
-  const fake = makeFake({ outcomeId: null, outcomeThrows: true });
+  const fake = makeFake({ outcomeThrows: true });
   await assert.rejects(
     () => waitForGovernedResult(fake, 'int-1', { requireOutcome: true, throwOnIncomplete: true }),
     IncompleteGovernedResultError,
@@ -126,7 +124,7 @@ test('requireOutcome + throwOnIncomplete: throws when outcome absent', async () 
 
 test('planSkipped: terminal completed with no plan id is marked explicitly', async () => {
   const noPlanOutcome = { ...goodOutcome, planId: '' };
-  const r = await waitForGovernedResult(makeFake({ planId: null, outcome: noPlanOutcome }), 'int-1');
+  const r = await waitForGovernedResult(makeFake({ outcome: noPlanOutcome }), 'int-1');
   assert.equal(r.planSkipped, true);
   assert.match(r.planReason ?? '', /no plan stage/);
 });
@@ -141,6 +139,24 @@ test('proof export unavailable: proofAvailable=false + reason (no throw unless r
   const r = await waitForGovernedResult(makeFake({ outcome: goodOutcome, exportThrows: true }), 'int-1', { exportProof: true });
   assert.equal(r.proofAvailable, false);
   assert.match(r.proofUnavailableReason ?? '', /unavailable/);
+});
+
+test('proof export with several bundles: the canonical ev-<intentId> bundle is exported', async () => {
+  const bundles = [{ id: 'ev-other' }, { id: 'ev-int-1' }];
+  const r = await waitForGovernedResult(makeFake({ outcome: goodOutcome, bundles }), 'int-1', { exportProof: true });
+  assert.equal(r.proofAvailable, true, 'a proof must not be hidden by a second bundle');
+  assert.ok(r.proof);
+});
+
+test('proof export with several bundles and none canonical: unavailable, naming every id and exportPortable', async () => {
+  const bundles = [{ id: 'ev-a' }, { id: 'ev-b' }];
+  const r = await waitForGovernedResult(makeFake({ outcome: goodOutcome, bundles }), 'int-1', { exportProof: true });
+  assert.equal(r.proofAvailable, false);
+  assert.match(r.proofUnavailableReason ?? '', /2 evidence bundles \(ev-a, ev-b\).*evidence\.exportPortable\(id\)/);
+  await assert.rejects(
+    () => waitForGovernedResult(makeFake({ outcome: goodOutcome, bundles }), 'int-1', { requireProof: true }),
+    /evidence\.exportPortable\(id\)/,
+  );
 });
 
 test('requireProof when unavailable: throws', async () => {

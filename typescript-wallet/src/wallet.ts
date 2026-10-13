@@ -40,7 +40,7 @@ import type {
   IntentSubmitOptions,
   ApprovalEnvelope,
   OutcomeRecord,
-  EvidenceBundle,
+  IntentEvidenceAnswer,
 } from './governance-types';
 
 /** Options for creating a wallet. */
@@ -55,6 +55,17 @@ export interface WalletOptions {
    * (JSON.stringify(wallet) does not show it).
    */
   token?: string;
+}
+
+/**
+ * Refuse, by name, the `scope` argument the capability and role checks no longer take: the routes
+ * (GET /v4/capabilities/check, GET /v4/roles/check) take an identity and a name and nothing else, and a
+ * JavaScript caller that still passes a scope would otherwise get the answer to an unscoped question.
+ */
+function refuseRemovedScope(method: string, passed: readonly unknown[]): void {
+  if (passed.some((v) => v !== undefined)) {
+    throw new Error(`${method} no longer accepts scope: the route does not take it`);
+  }
 }
 
 /** Bearer tokens by wallet, out of reach of enumeration. */
@@ -440,28 +451,40 @@ export class InfrixWallet {
   }
 
   /**
-   * Get the evidence bundle for an intent.
+   * Get the evidence an intent produced (`intent.evidence`, GET /v4/intents/{id}/evidence): the
+   * intent's `bundles` and their `count`, with the `intent` and its `intentId`. A bundle's own `id` is
+   * the evidence id the evidence routes take; this answer is not itself a bundle. An answer that lacks
+   * a member the route declares is refused rather than read as "no evidence".
    *
    * @param intentId - The intent ID
    */
-  async getEvidence(intentId: string): Promise<EvidenceBundle> {
-    return this.rpc('intent.evidence', { intentId }) as unknown as EvidenceBundle;
+  async getEvidence(intentId: string): Promise<IntentEvidenceAnswer> {
+    const answer = await this.rpc('intent.evidence', { intentId });
+    for (const member of ['bundles', 'count', 'intent', 'intentId']) {
+      if (answer[member] === undefined) {
+        throw new Error(`the node's answer to intent.evidence carries no ${member}`);
+      }
+    }
+    if (!Array.isArray(answer.bundles)) {
+      throw new Error("the node's answer to intent.evidence carries bundles that are not a list");
+    }
+    return answer as unknown as IntentEvidenceAnswer;
   }
 
   /**
    * Check if this wallet has a specific capability.
    *
    * @param capability - Capability string to check
-   * @param scope - Optional scope constraint
+   * @param removed - Refused: the route takes no `scope`, so one cannot be asked about.
    */
   async hasCapability(
     capability: string,
-    scope?: string
+    ...removed: never[]
   ): Promise<boolean> {
+    refuseRemovedScope('wallet.hasCapability', removed);
     const result = await this.rpc('capability.check', {
       identity: this.adi,
       capability,
-      scope,
     });
     return (result as Record<string, unknown>).granted as boolean;
   }
@@ -470,13 +493,13 @@ export class InfrixWallet {
    * Check if this wallet has a specific role.
    *
    * @param role - Role name to check
-   * @param scope - Optional scope constraint
+   * @param removed - Refused: the route takes no `scope`, so one cannot be asked about.
    */
-  async hasRole(role: string, scope?: string): Promise<boolean> {
+  async hasRole(role: string, ...removed: never[]): Promise<boolean> {
+    refuseRemovedScope('wallet.hasRole', removed);
     const result = await this.rpc('role.check', {
       identity: this.adi,
       role,
-      scope,
     });
     return (result as Record<string, unknown>).hasRole as boolean;
   }

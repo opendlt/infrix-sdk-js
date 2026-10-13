@@ -1,16 +1,23 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import { LIST_MEMBERS, checkPathValue, declaredMembers, refuseRemovedArguments, refuseUnknownOptions } from './routeShapes';
+import type { ListAnswer } from './routeShapes';
 import type {
   GovernedApproveResult,
-  Intent,
+  IntentAnswer,
+  IntentEvidenceAnswer,
   IntentGoal,
   IntentResult,
   ExecutionPlan,
   OutcomeRecord,
-  EvidenceBundle,
   IntentListFilter,
   IntentSubmitOptions,
-  PendingApproval,
 } from '../types/governance';
+
+const LIST_ROUTE = 'GET /v4/intents';
+const PENDING_ROUTE = 'GET /v4/intents/pending';
+const GET_ROUTE = 'GET /v4/intents/{id}';
+const EVIDENCE_ROUTE = 'GET /v4/intents/{id}/evidence';
 
 /**
  * IntentSubClient provides intent lifecycle operations.
@@ -124,53 +131,57 @@ export class IntentSubClient extends SubClient {
   }
 
   /**
-   * Get the evidence bundle for an intent.
+   * Get the evidence an intent produced (REST GET /v4/intents/{id}/evidence): the intent as the
+   * registry holds it (`intent`) and the evidence bundles linked to it (`bundles`, `count`). Read a
+   * bundle in full with `client.evidence.get(<bundle id>)`.
    *
    * @param intentId - The intent ID
-   * @returns EvidenceBundle with full chain of evidence links
    */
-  async evidence(intentId: string): Promise<EvidenceBundle> {
-    return this.rpc<EvidenceBundle>('intent.evidence', { intentId });
+  async evidence(intentId: string): Promise<IntentEvidenceAnswer> {
+    checkPathValue(EVIDENCE_ROUTE, 'id', intentId);
+    const answer = await this.rest<unknown>('GET', `/v4/intents/${encodeURIComponent(intentId)}/evidence`);
+    return declaredMembers<IntentEvidenceAnswer>(EVIDENCE_ROUTE, answer, ['bundles', 'count', 'intent', 'intentId']);
   }
 
   /**
-   * Get the current status of an intent.
+   * Get the current state of an intent (REST GET /v4/intents/{id}): the intent as the registry holds
+   * it (`intent`) and its lifecycle `status`.
    *
    * @param intentId - The intent ID
-   * @returns Intent with current status, plan reference, outcome reference
    */
-  async get(intentId: string): Promise<Intent> {
-    return this.rpc<Intent>('intent.get', { intentId });
+  async get(intentId: string): Promise<IntentAnswer> {
+    checkPathValue(GET_ROUTE, 'id', intentId);
+    const answer = await this.rest<unknown>('GET', `/v4/intents/${encodeURIComponent(intentId)}`);
+    return declaredMembers<IntentAnswer>(GET_ROUTE, answer, ['intent', 'status']);
   }
 
   /**
-   * List intents with optional filtering.
+   * List the intents the caller can see (REST GET /v4/intents).
    *
-   * @param filter - Filter by status, user, goal type, date range
-   * @returns Array of matching intents with pagination metadata
+   * @param filter - Only the filters the route accepts: `status` and `goalType`. Any other key is refused by name.
+   * @returns `items` and `pagination`.
    */
-  async list(
-    filter?: IntentListFilter
-  ): Promise<{ intents: Intent[]; total: number }> {
-    return this.rpc<{ intents: Intent[]; total: number }>(
-      'intent.list',
-      (filter ?? {}) as Record<string, unknown>
-    );
+  async list(filter: IntentListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('intents.list', LIST_ROUTE, filter, ['goalType', 'status']);
+    const query = genQuery(LIST_ROUTE, [
+      ['goalType', filter.goalType, 'string'],
+      ['status', filter.status, 'string'],
+    ]);
+    const answer = await this.rest<unknown>('GET', `/v4/intents${query}`);
+    return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**
-   * List intents that are pending approval from any identity.
+   * List the intents pending approval (REST GET /v4/intents/pending). The route takes no parameters:
+   * the node scopes the answer to the actor the client's disclosure context names.
    *
-   * @param identity - Optional: filter to approvals needed from a specific identity
-   * @returns Array of intents with pending approval requirements
+   * @param removed - Refused: the `identity` argument is gone, a named identity cannot be asked for.
+   * @returns `items` and `pagination`.
    */
-  async pending(
-    identity?: string
-  ): Promise<{ intents: PendingApproval[]; total: number }> {
-    return this.rpc<{ intents: PendingApproval[]; total: number }>(
-      'intent.pending',
-      { identity }
-    );
+  async pending(...removed: never[]): Promise<ListAnswer> {
+    refuseRemovedArguments('intents.pending', removed, ['identity']);
+    const answer = await this.rest<unknown>('GET', '/v4/intents/pending');
+    return declaredMembers<ListAnswer>(PENDING_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**

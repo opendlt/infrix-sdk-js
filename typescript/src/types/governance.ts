@@ -244,15 +244,28 @@ export interface IntentSubmitOptions {
   expiresAt?: string;
 }
 
-/** Filter for listing intents. */
+/** Filter for listing intents: the parameters GET /v4/intents accepts, and no others. */
 export interface IntentListFilter {
   status?: IntentStatus;
-  userAddress?: string;
   goalType?: IntentGoalType;
-  fromDate?: string;
-  toDate?: string;
-  limit?: number;
-  offset?: number;
+}
+
+/** What GET /v4/intents/{id} answers: every member the route declares. */
+export interface IntentAnswer {
+  /** The intent as the object registry holds it. */
+  readonly intent: unknown;
+  /** The intent's lifecycle state. */
+  readonly status: unknown;
+}
+
+/** What GET /v4/intents/{id}/evidence answers: every member the route declares. */
+export interface IntentEvidenceAnswer {
+  /** The evidence bundles linked to the intent, as the object registry holds them (each carries its `id`). */
+  readonly bundles: unknown;
+  readonly count: unknown;
+  /** The intent as the object registry holds it. */
+  readonly intent: unknown;
+  readonly intentId: unknown;
 }
 
 /** An intent pending approval with its requirements. */
@@ -751,16 +764,9 @@ export interface SeparationConstraint {
   mustBeDifferentIdentity: boolean;
 }
 
-/** Filter for listing approvals. */
+/** Filter for listing approvals: the parameter GET /v4/approvals accepts, and no other. */
 export interface ApprovalListFilter {
-  targetId?: string;
-  targetType?: string;
   status?: string;
-  identity?: string;
-  fromDate?: string;
-  toDate?: string;
-  limit?: number;
-  offset?: number;
 }
 
 /** Options for submitting an approval. */
@@ -810,11 +816,10 @@ export interface GovernedApproveResult {
  * signing — never sign a digest you did not derive.
  */
 export interface ApprovalSigningRequest {
-  networkId?: string;
   workflowId: string;
   stageId: string;
   planHash: number[] | string;
-  scope?: {
+  scope: {
     contractUrl?: string;
     functions?: string[];
     maxAmount?: number;
@@ -822,13 +827,9 @@ export interface ApprovalSigningRequest {
     targetAssets?: string[];
   };
   simulationHash: number[] | string;
-  ghostReceiptId?: string;
-  conditions?: { minBlockHeight?: number; maxBlockHeight?: number; requiredState?: string };
-  expiresAtBlock?: number;
+  conditions: { minBlockHeight?: number; maxBlockHeight?: number; requiredState?: string };
   signerIdentity: string;
-  signerRole?: string;
   keyPageRef: string;
-  signerPublicKey?: string;
   digest: string;
 }
 
@@ -940,18 +941,34 @@ export type EvidenceLevel =
   | 'full'
   | 'forensic';
 
-/** Result of evidence verification. */
-export interface EvidenceVerificationResult {
-  valid: boolean;
-  chainIntegrity: boolean;
-  stateRootMatch: boolean;
-  anchorVerified: boolean;
-  linkCount: number;
-  errors: string[];
-  warnings: string[];
+/** What GET /v4/evidence/{id}/verify answers: every member the route declares. */
+export interface EvidenceVerifyAnswer {
+  readonly bundleId: unknown;
+  /** Whether the bundle's hash chain holds. */
+  readonly chainVerified: unknown;
 }
 
-export type EvidenceExportFormat = 'json' | 'cbor' | 'protobuf' | 'pdf';
+/** What GET /v4/evidence/{id}/export answers: every member the route declares. */
+export interface EvidenceExportAnswer {
+  readonly bundle: unknown;
+  readonly bundleId: unknown;
+  readonly bytes: unknown;
+  readonly exportHash: unknown;
+  readonly format: unknown;
+}
+
+/** What GET /v4/evidence/{id}/anchor answers: every member the route declares. */
+export interface EvidenceAnchorAnswer {
+  readonly anchorBlock: unknown;
+  readonly anchorDataIdx: unknown;
+  readonly anchorStatus: unknown;
+  readonly anchorTxHash: unknown;
+  readonly bundleId: unknown;
+  readonly stateRoot: unknown;
+}
+
+/** The formats GET /v4/evidence/{id}/export accepts. */
+export type EvidenceExportFormat = 'json' | 'portable';
 
 /** Reference to a policy decision within an evidence bundle. */
 export interface DecisionProofRef {
@@ -1148,13 +1165,6 @@ export interface TrustCheck {
   severity: 'critical' | 'warning' | 'info';
 }
 
-export interface TrustListFilter {
-  proofType?: string;
-  minConfirmations?: number;
-  auditStatus?: string;
-  limit?: number;
-  offset?: number;
-}
 
 // =============================================================================
 // Capability Types
@@ -1190,14 +1200,19 @@ export interface CapabilityType {
   implies?: string[];
 }
 
+/** Filter for listing capability grants: the parameter GET /v4/capabilities/grants accepts, and no other. */
 export interface CapabilityListFilter {
-  grantee?: string;
-  grantor?: string;
-  capability?: string;
-  scope?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
+  state?: string;
+}
+
+/** What GET /v4/capabilities/check answers: every member the route declares. */
+export interface CapabilityCheckAnswer {
+  readonly capability: unknown;
+  /** Whether the identity holds the capability. */
+  readonly granted: boolean;
+  /** The grants that give the identity the capability. */
+  readonly grants: unknown;
+  readonly identity: unknown;
 }
 
 // =============================================================================
@@ -1265,12 +1280,24 @@ export interface RoleBinding {
   conditions?: Record<string, unknown>;
 }
 
-export interface RoleListFilter {
-  role?: string;
-  scope?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
+/**
+ * What GET /v4/roles and GET /v4/roles/{identity} answer: every member each route declares. `identity`
+ * is declared by the per-identity route only, so it is present on an `roles.list(identity)` answer and
+ * absent on `roles.list()`.
+ */
+export interface RoleListAnswer {
+  readonly count: unknown;
+  /** The identity the roles belong to (GET /v4/roles/{identity} only). */
+  readonly identity?: unknown;
+  readonly roles: unknown;
+}
+
+/** What GET /v4/roles/check answers: every member the route declares. */
+export interface RoleCheckAnswer {
+  /** Whether the identity holds the role. */
+  readonly hasRole: boolean;
+  readonly identity: unknown;
+  readonly role: unknown;
 }
 
 export interface RoleAssignOptions {
@@ -1362,13 +1389,10 @@ export interface CompensationInstruction {
   executedAt?: string;        // ISO 8601
 }
 
+/** Filter for listing settlements: the parameters GET /v4/settlements accepts, and no others. */
 export interface SettlementListFilter {
-  status?: string;
-  party?: string;
-  fromDate?: string;
-  toDate?: string;
-  limit?: number;
-  offset?: number;
+  id?: string;
+  state?: string;
 }
 
 export interface SettlementCreateOptions {
@@ -1452,12 +1476,38 @@ export interface DisputeRecord {
   resolvedAt?: string;        // ISO 8601
 }
 
+/** Filter for listing escrows: the parameters GET /v4/escrows accepts, and no others. */
 export interface EscrowListFilter {
   status?: string;
-  depositor?: string;
-  beneficiary?: string;
   limit?: number;
-  offset?: number;
+}
+
+/** What GET /v4/escrows answers: every member the route declares. */
+export interface EscrowListAnswer {
+  readonly escrows: unknown;
+  readonly total: unknown;
+}
+
+/** What GET /v4/escrows/{id} answers: every member the route declares. */
+export interface EscrowAnswer {
+  readonly amount: unknown;
+  readonly arbiter: unknown;
+  readonly asset: unknown;
+  readonly beneficiary: unknown;
+  readonly createdAt: unknown;
+  readonly depositedAt: unknown;
+  readonly depositor: unknown;
+  readonly disputes: unknown;
+  readonly holdingAccount: unknown;
+  readonly id: unknown;
+  readonly instructionId: unknown;
+  readonly instructionState: unknown;
+  readonly legId: unknown;
+  readonly refunded: unknown;
+  readonly refundedAt: unknown;
+  readonly released: unknown;
+  readonly releasedAt: unknown;
+  readonly status: unknown;
 }
 
 export interface EscrowCreateOptions {
@@ -1536,14 +1586,9 @@ export interface DisclosureGrant {
   status: 'active' | 'revoked' | 'expired';
 }
 
+/** Filter for listing disclosure grants: the parameter GET /v4/disclosures accepts, and no other. */
 export interface DisclosureListFilter {
-  grantee?: string;
-  grantor?: string;
-  targetType?: string;
-  targetId?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
+  state?: string;
 }
 
 export interface DisclosureGrantOptions {
@@ -1617,32 +1662,38 @@ export interface AnchoredRecord {
   batchMerkleProof?: string[];
 }
 
+/** Filter for listing anchors: the parameters GET /v4/anchors accepts, and no others. */
 export interface AnchorListFilter {
-  artifactType?: string;
-  status?: string;
-  fromBlock?: number;
-  toBlock?: number;
-  limit?: number;
-  offset?: number;
+  intentId?: string;
+  state?: string;
 }
 
-export interface AnchorVerificationResult {
-  anchorId: string;
-  valid: boolean;
-  l0TxHash: string;
-  l0BlockHeight: number;
-  artifactHashMatch: boolean;
-  l0DataPresent: boolean;
-  errors: string[];
+/** What GET /v4/anchors/{id} answers: every member the route declares. */
+export interface AnchorAnswer {
+  readonly anchor: unknown;
+  readonly id: unknown;
+  readonly state: unknown;
+  readonly txHash: unknown;
 }
 
-export interface AnchorStats {
-  totalAnchors: number;
-  pendingAnchors: number;
-  verifiedAnchors: number;
-  failedAnchors: number;
-  avgAnchorLatencyMs: number;
-  lastAnchorAt?: string;
+/** What GET /v4/anchors/{id}/verify answers: every member the route declares. */
+export interface AnchorVerifyAnswer {
+  readonly anchor: unknown;
+  readonly dataUrl: unknown;
+  readonly digest: unknown;
+  readonly id: unknown;
+  readonly state: unknown;
+  readonly txHash: unknown;
+  /** Whether the anchor verified against L0. */
+  readonly verified: unknown;
+}
+
+/** What GET /v4/anchors/stats answers: every member the route declares. */
+export interface AnchorStatsAnswer {
+  readonly byState: unknown;
+  readonly byType: unknown;
+  readonly scope: unknown;
+  readonly totalAnchors: unknown;
 }
 
 // =============================================================================
@@ -1698,13 +1749,23 @@ export interface ObjectAuditEntry {
   evidenceId?: string;
 }
 
+/** Filter for listing objects of a type: the parameters GET /v4/objects/{type} accepts, and no others. */
 export interface ObjectListFilter {
-  status?: string;
-  owner?: string;
-  fromDate?: string;
-  toDate?: string;
-  limit?: number;
-  offset?: number;
+  /** The field to match, with `value`. */
+  field?: string;
+  /** The most objects a `field` match returns. */
+  filterLimit?: number;
+  id?: string;
+  state?: string;
+  value?: string;
+}
+
+/** What GET /v4/objects/{type}/{id}/audit answers: every member the route declares. */
+export interface ObjectAuditAnswer {
+  /** The object's audit trail. */
+  readonly audit: unknown;
+  readonly objectId: unknown;
+  readonly objectType: unknown;
 }
 
 export interface ObjectCreateOptions {

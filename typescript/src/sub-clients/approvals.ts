@@ -1,4 +1,14 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import {
+  LIST_MEMBERS,
+  REGISTRY_OBJECT_MEMBERS,
+  checkPathValue,
+  declaredMembers,
+  refuseRemovedArguments,
+  refuseUnknownOptions,
+} from './routeShapes';
+import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 import type {
   ApprovalEnvelope,
   ApprovalListFilter,
@@ -6,8 +16,16 @@ import type {
   ApprovalSubmitOptions,
 } from '../types/governance';
 
+const LIST_ROUTE = 'GET /v4/approvals';
+const PENDING_ROUTE = 'GET /v4/approvals/pending';
+const GET_ROUTE = 'GET /v4/approvals/{id}';
+const SIGNING_ROUTE = 'GET /v4/intents/approval-signing';
+
 /**
  * ApprovalSubClient provides approval management operations.
+ *
+ * Every read answers exactly the members its route declares; an answer that lacks one is refused
+ * rather than read as empty.
  */
 export class ApprovalSubClient extends SubClient {
   /**
@@ -34,10 +52,11 @@ export class ApprovalSubClient extends SubClient {
   }
 
   /**
-   * Fetch what the caller must sign to approve a parked stage. The approving
-   * identity is the asserted actor; the material is bound to it, the role and
-   * the key page. Recompute the digest from the fields before signing
-   * (@infrix/wallet bindApprovalSigningRequest does this).
+   * Fetch what the caller must sign to approve a parked stage (REST GET
+   * /v4/intents/approval-signing). The approving identity is the asserted actor
+   * (`signerIdentity` in the answer); the material is bound to it and the key page.
+   * Recompute the digest from the fields before signing (@infrix/wallet
+   * bindApprovalSigningRequest does this).
    *
    * @param intentId - The parked intent
    * @param keyPageRef - Your key page whose entry is sha256(signing public key)
@@ -48,39 +67,44 @@ export class ApprovalSubClient extends SubClient {
     keyPageRef: string,
     opts?: { stageId?: string; role?: string }
   ): Promise<ApprovalSigningRequest> {
-    return this.rpc<ApprovalSigningRequest>('approval.signing', {
-      intentId,
-      keyPageRef,
-      ...(opts ?? {}),
-    });
+    const query = genQuery(SIGNING_ROUTE, [
+      ['intentId', intentId, 'string'],
+      ['keyPageRef', keyPageRef, 'string'],
+      ['role', opts?.role, 'string'],
+      ['stageId', opts?.stageId, 'string'],
+    ]);
+    const answer = await this.rest<unknown>('GET', `/v4/intents/approval-signing${query}`);
+    return declaredMembers<ApprovalSigningRequest>(SIGNING_ROUTE, answer, [
+      'conditions', 'digest', 'keyPageRef', 'planHash', 'scope',
+      'signerIdentity', 'simulationHash', 'stageId', 'workflowId',
+    ]);
   }
 
   /**
-   * List approvals with optional filtering.
+   * List the approvals the caller can see (REST GET /v4/approvals).
    *
-   * @param filter - Filter by targetId, status, identity, date range
+   * @param filter - Only the filter the route accepts: `status`. Any other key is refused by name.
+   * @returns `items` and `pagination`.
    */
-  async list(
-    filter?: ApprovalListFilter
-  ): Promise<{ approvals: ApprovalEnvelope[]; total: number }> {
-    return this.rpc<{ approvals: ApprovalEnvelope[]; total: number }>(
-      'approval.list',
-      (filter ?? {}) as Record<string, unknown>
-    );
+  async list(filter: ApprovalListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('approvals.list', LIST_ROUTE, filter, ['status']);
+    const query = genQuery(LIST_ROUTE, [['status', filter.status, 'string']]);
+    const answer = await this.rest<unknown>('GET', `/v4/approvals${query}`);
+    return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**
-   * List approvals pending for a specific identity.
+   * The approvals pending for the calling actor (REST GET /v4/approvals/pending). The route takes no
+   * parameters: the node scopes the answer to the actor the client's disclosure context names, so
+   * construct the client with the approver as `actor`.
    *
-   * @param identity - The identity (DID or ADI URL)
+   * @param removed - Refused: the `identity` argument is gone, a named identity cannot be asked for.
+   * @returns `items` and `pagination`.
    */
-  async pending(
-    identity: string
-  ): Promise<{ approvals: ApprovalEnvelope[]; total: number }> {
-    return this.rpc<{ approvals: ApprovalEnvelope[]; total: number }>(
-      'approval.pending',
-      { identity }
-    );
+  async pending(...removed: never[]): Promise<ListAnswer> {
+    refuseRemovedArguments('approvals.pending', removed, ['identity']);
+    const answer = await this.rest<unknown>('GET', '/v4/approvals/pending');
+    return declaredMembers<ListAnswer>(PENDING_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**
@@ -94,9 +118,12 @@ export class ApprovalSubClient extends SubClient {
   }
 
   /**
-   * Get a specific approval by ID.
+   * Get one approval by id (REST GET /v4/approvals/{id}) as the object registry holds it: the
+   * approval's own record is in `fields`.
    */
-  async get(approvalId: string): Promise<ApprovalEnvelope> {
-    return this.rpc<ApprovalEnvelope>('approval.get', { approvalId });
+  async get(approvalId: string): Promise<RegistryObjectAnswer> {
+    checkPathValue(GET_ROUTE, 'id', approvalId);
+    const answer = await this.rest<unknown>('GET', `/v4/approvals/${encodeURIComponent(approvalId)}`);
+    return declaredMembers<RegistryObjectAnswer>(GET_ROUTE, answer, REGISTRY_OBJECT_MEMBERS);
   }
 }

@@ -1,4 +1,12 @@
 import { SubClient } from './base';
+import { refuseUnknownOptions } from './routeShapes';
+
+const PREPARE_ROUTE = 'POST /v4/intents/eip712/prepare';
+const SUBMIT_ROUTE = 'POST /v4/intents/eip712/submit';
+const INTENT_REQUEST_MEMBERS = [
+  'goalType', 'customType', 'customParams', 'sourceAssets', 'targetAssets', 'signer', 'signerVersion',
+  'publicKey', 'timestamp', 'memo', 'networkName', 'chainId',
+] as const;
 
 /**
  * MetaMask -> Accumulate intent signing (direction-hardening #1).
@@ -91,14 +99,43 @@ export interface Eip1193Provider {
 export class EIP712SubClient extends SubClient {
   /** Build the EIP-712 typed data a wallet signs for this intent. */
   async prepare(req: EIP712IntentRequest): Promise<PreparedEIP712Intent> {
-    return this.rest<PreparedEIP712Intent>('POST', '/v4/intents/eip712/prepare', req);
+    refuseUnknownOptions('eip712.prepare', PREPARE_ROUTE, req, INTENT_REQUEST_MEMBERS);
+    return this.rest<PreparedEIP712Intent>('POST', '/v4/intents/eip712/prepare', {
+      goalType: req.goalType,
+      customType: req.customType,
+      customParams: req.customParams,
+      sourceAssets: req.sourceAssets,
+      targetAssets: req.targetAssets,
+      signer: req.signer,
+      signerVersion: req.signerVersion,
+      publicKey: req.publicKey,
+      timestamp: req.timestamp,
+      memo: req.memo,
+      networkName: req.networkName,
+      chainId: req.chainId,
+    });
   }
 
   /** Submit a MetaMask-signed intent (signature is 0x-hex, 65-byte RSV). */
   async submit(
     req: EIP712IntentRequest & { signature: string }
   ): Promise<SubmittedEIP712Intent> {
-    return this.rest<SubmittedEIP712Intent>('POST', '/v4/intents/eip712/submit', req);
+    refuseUnknownOptions('eip712.submit', SUBMIT_ROUTE, req, [...INTENT_REQUEST_MEMBERS, 'signature']);
+    return this.rest<SubmittedEIP712Intent>('POST', '/v4/intents/eip712/submit', {
+      goalType: req.goalType,
+      customType: req.customType,
+      customParams: req.customParams,
+      sourceAssets: req.sourceAssets,
+      targetAssets: req.targetAssets,
+      signer: req.signer,
+      signerVersion: req.signerVersion,
+      publicKey: req.publicKey,
+      timestamp: req.timestamp,
+      memo: req.memo,
+      networkName: req.networkName,
+      chainId: req.chainId,
+      signature: req.signature,
+    });
   }
 
   /**

@@ -220,6 +220,28 @@ test('node.network, networkStatus, issuerDid and claims GET their routes and sen
   assert.equal(cl.seen.headers['X-Actor'], 'acc://reader.acme');
 });
 
+test('every node read answers exactly the declared members and refuses an answer that lacks one', async () => {
+  // GET /v4/network declares apiVersion, blockHeight, chainId, network: an answer without chainId is refused by name
+  await assert.rejects(() => against({ apiVersion: 'v4', blockHeight: 1, network: 'kermit' }, (c) => c.node.network()), /chainId/);
+  await assert.rejects(() => against({}, (c) => c.node.root()), /apiVersion|identity|spine|subsystems|system/);
+  await assert.rejects(() => against({ selectedProfile: 'p' }, (c) => c.node.claims()), /supportedCapabilities/);
+  await assert.rejects(() => against({}, (c) => c.node.assurance()), /governanceLevels|iuClasses|proofLevels|summary/);
+  await assert.rejects(() => against({ spine: [], graduations: [] }, (c) => c.node.subsystems()), /subsystems/);
+  await assert.rejects(() => against({ id: 'did:acc:issuer.acme' }, (c) => c.node.issuerDid()), /@context/);
+  // and nothing the route does not declare is handed on: the status counters the node adds are not part of the answer
+  const s = await against({ apiVersion: 'v4', height: 9, uptime: 12 }, (c) => c.node.networkStatus());
+  assert.deepEqual(Object.keys(s.result), ['apiVersion']);
+});
+
+test('eip712.prepare and submit send the declared members and refuse a key the routes do not take', async () => {
+  const req = { goalType: 'TRANSFER', signer: 'acc://a.acme/book/1', signerVersion: 1, publicKey: '02ab', timestamp: 7 };
+  const sent = await against({ typedData: {}, transactionHash: 'h', chainId: '1' }, (c) => c.eip712.prepare(req));
+  assert.equal(sent.seen.path, '/v4/intents/eip712/prepare');
+  assert.deepEqual(Object.keys(sent.seen.body ?? {}).sort(), ['goalType', 'publicKey', 'signer', 'signerVersion', 'timestamp']);
+  await assert.rejects(() => against({}, (c) => c.eip712.prepare({ ...req, bogus: 1 } as never)), /eip712\.prepare does not accept bogus/);
+  await assert.rejects(() => against({}, (c) => c.eip712.submit({ ...req, signature: '0x1', bogus: 1 } as never)), /eip712\.submit does not accept bogus/);
+});
+
 test('blocks.list, latest and get GET their routes, and get refuses a height the node would refuse', async () => {
   const l = await against({ items: [{ height: 3 }], pagination: { offset: 0, limit: 50, total: 3 } }, (c) => c.blocks.list());
   assert.equal(l.seen.method, 'GET');

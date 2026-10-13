@@ -1,28 +1,43 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import { checkPathValue, declaredMembers, refuseRemovedArguments } from './routeShapes';
 import type {
-  RoleBinding,
-  RoleListFilter,
   RoleAssignOptions,
+  RoleCheckAnswer,
+  RoleListAnswer,
 } from '../types/governance';
+
+const LIST_ROUTE = 'GET /v4/roles';
+const IDENTITY_ROUTE = 'GET /v4/roles/{identity}';
+const CHECK_ROUTE = 'GET /v4/roles/check';
+
+/** The members GET /v4/roles declares. */
+const ROLE_LIST_MEMBERS = ['count', 'roles'] as const;
+
+/** The members GET /v4/roles/{identity} declares: the list's two and the `identity` the roles belong to. */
+const ROLE_IDENTITY_MEMBERS = ['count', 'identity', 'roles'] as const;
 
 /**
  * RoleSubClient provides role binding management.
  */
 export class RoleSubClient extends SubClient {
   /**
-   * List roles assigned to an identity.
+   * List the role bindings the caller can see (REST GET /v4/roles), or, given an identity, the roles
+   * assigned to that identity (REST GET /v4/roles/{identity}).
    *
-   * @param identity - DID or ADI URL
-   * @param filter - Optional: scope, role name, status
+   * @param identity - DID or ADI URL; omit to list every binding the caller can see
+   * @param removed - Refused. The route takes no filter (`role`, `scope`, `status`, `limit`, `offset` are gone).
+   * @returns `roles` and their `count`; for an identity, also that `identity`
    */
-  async list(
-    identity?: string,
-    filter?: RoleListFilter
-  ): Promise<{ bindings: RoleBinding[]; total: number }> {
-    return this.rpc<{ bindings: RoleBinding[]; total: number }>('role.list', {
-      identity,
-      ...(filter ?? {}),
-    });
+  async list(identity?: string, ...removed: never[]): Promise<RoleListAnswer> {
+    refuseRemovedArguments('roles.list', removed, ['filter']);
+    if (identity === undefined) {
+      const all = await this.rest<unknown>('GET', '/v4/roles');
+      return declaredMembers<RoleListAnswer>(LIST_ROUTE, all, ROLE_LIST_MEMBERS);
+    }
+    checkPathValue(IDENTITY_ROUTE, 'identity', identity);
+    const answer = await this.rest<unknown>('GET', `/v4/roles/${encodeURIComponent(identity)}`);
+    return declaredMembers<RoleListAnswer>(IDENTITY_ROUTE, answer, ROLE_IDENTITY_MEMBERS);
   }
 
   /**
@@ -46,22 +61,23 @@ export class RoleSubClient extends SubClient {
   }
 
   /**
-   * Check if an identity has a specific role.
+   * Check if an identity has a specific role (REST GET /v4/roles/check).
+   *
+   * The route takes the identity and the role and nothing else: there is no scope constraint to ask
+   * about.
    *
    * @param identity - DID or ADI URL to check
    * @param role - Role name
-   * @param scope - Optional scope constraint
+   * @param removed - Refused: the `scope` argument is gone because the route has no scope.
    */
-  async check(
-    identity: string,
-    role: string,
-    scope?: string
-  ): Promise<{ hasRole: boolean; bindingId?: string; expiresAt?: string }> {
-    return this.rpc<{
-      hasRole: boolean;
-      bindingId?: string;
-      expiresAt?: string;
-    }>('role.check', { identity, role, scope });
+  async check(identity: string, role: string, ...removed: never[]): Promise<RoleCheckAnswer> {
+    refuseRemovedArguments('roles.check', removed, ['scope']);
+    const query = genQuery(CHECK_ROUTE, [
+      ['identity', identity, 'string'],
+      ['role', role, 'string'],
+    ]);
+    const answer = await this.rest<unknown>('GET', `/v4/roles/check${query}`);
+    return declaredMembers<RoleCheckAnswer>(CHECK_ROUTE, answer, ['hasRole', 'identity', 'role']);
   }
 
   /**

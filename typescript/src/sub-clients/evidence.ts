@@ -1,60 +1,80 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import { REGISTRY_OBJECT_MEMBERS, checkPathValue, declaredMembers } from './routeShapes';
+import type { RegistryObjectAnswer } from './routeShapes';
 import type {
-  EvidenceBundle,
-  EvidenceVerificationResult,
+  EvidenceAnchorAnswer,
+  EvidenceExportAnswer,
   EvidenceExportFormat,
-  AnchoredRecord,
+  EvidenceVerifyAnswer,
 } from '../types/governance';
+
+const GET_ROUTE = 'GET /v4/evidence/{id}';
+const VERIFY_ROUTE = 'GET /v4/evidence/{id}/verify';
+const EXPORT_ROUTE = 'GET /v4/evidence/{id}/export';
+const ANCHOR_ROUTE = 'GET /v4/evidence/{id}/anchor';
+
+/** The export formats the route accepts. */
+const EXPORT_FORMATS: readonly EvidenceExportFormat[] = ['json', 'portable'];
 
 /**
  * EvidenceSubClient provides evidence chain access and verification.
+ *
+ * Every read is by EVIDENCE BUNDLE id (the `id` of a bundle), never by intent id: find the bundles an
+ * intent produced with `client.intents.evidence(intentId)`. Every read answers exactly the members its
+ * route declares; an answer that lacks one is refused rather than read as empty.
  */
 export class EvidenceSubClient extends SubClient {
   /**
-   * Get the evidence bundle for an intent or operation.
+   * Get an evidence bundle as the object registry holds it (REST GET /v4/evidence/{id}): the
+   * bundle's own record is in `fields`.
    *
-   * @param intentId - The intent whose evidence to retrieve
+   * @param evidenceId - The evidence bundle id
    */
-  async get(intentId: string): Promise<EvidenceBundle> {
-    return this.rpc<EvidenceBundle>('evidence.get', { intentId });
+  async get(evidenceId: string): Promise<RegistryObjectAnswer> {
+    checkPathValue(GET_ROUTE, 'id', evidenceId);
+    const answer = await this.rest<unknown>('GET', `/v4/evidence/${encodeURIComponent(evidenceId)}`);
+    return declaredMembers<RegistryObjectAnswer>(GET_ROUTE, answer, REGISTRY_OBJECT_MEMBERS);
   }
 
   /**
-   * Verify the integrity of an evidence bundle.
+   * Verify the integrity of an evidence bundle (REST GET /v4/evidence/{id}/verify): whether its
+   * hash chain holds (`chainVerified`).
    *
-   * Checks hash chain continuity, state root consistency, and anchor status.
-   *
-   * @param intentId - The intent whose evidence to verify
+   * @param evidenceId - The evidence bundle id
    */
-  async verify(intentId: string): Promise<EvidenceVerificationResult> {
-    return this.rpc<EvidenceVerificationResult>('evidence.verify', {
-      intentId,
-    });
+  async verify(evidenceId: string): Promise<EvidenceVerifyAnswer> {
+    checkPathValue(VERIFY_ROUTE, 'id', evidenceId);
+    const answer = await this.rest<unknown>('GET', `/v4/evidence/${encodeURIComponent(evidenceId)}/verify`);
+    return declaredMembers<EvidenceVerifyAnswer>(VERIFY_ROUTE, answer, ['bundleId', 'chainVerified']);
   }
 
   /**
-   * Export an evidence bundle in the specified format.
+   * Export an evidence bundle (REST GET /v4/evidence/{id}/export).
    *
-   * @param intentId - The intent whose evidence to export
-   * @param format - Export format: 'json', 'cbor', 'protobuf', 'pdf'
+   * @param evidenceId - The evidence bundle id
+   * @param format - `json` or `portable`; the route refuses any other
    */
-  async export(
-    intentId: string,
-    format: EvidenceExportFormat
-  ): Promise<{ data: string; mimeType: string; size: number }> {
-    return this.rpc<{ data: string; mimeType: string; size: number }>(
-      'evidence.export',
-      { intentId, format }
-    );
+  async export(evidenceId: string, format: EvidenceExportFormat): Promise<EvidenceExportAnswer> {
+    checkPathValue(EXPORT_ROUTE, 'id', evidenceId);
+    const query = genQuery(EXPORT_ROUTE, [['format', format, 'enum', EXPORT_FORMATS]]);
+    const answer = await this.rest<unknown>('GET', `/v4/evidence/${encodeURIComponent(evidenceId)}/export${query}`);
+    return declaredMembers<EvidenceExportAnswer>(EXPORT_ROUTE, answer, [
+      'bundle', 'bundleId', 'bytes', 'exportHash', 'format',
+    ]);
   }
 
   /**
-   * Get the L0 anchor proof for an evidence bundle.
+   * Get the L0 anchor proof for an evidence bundle (REST GET /v4/evidence/{id}/anchor).
    *
-   * @param intentId - The intent whose anchor to retrieve
+   * @param evidenceId - The evidence bundle id
    */
-  async anchor(intentId: string): Promise<AnchoredRecord> {
-    return this.rpc<AnchoredRecord>('evidence.anchor', { intentId });
+  async anchor(evidenceId: string): Promise<EvidenceAnchorAnswer> {
+    checkPathValue(ANCHOR_ROUTE, 'id', evidenceId);
+    const answer = await this.rest<unknown>('GET', `/v4/evidence/${encodeURIComponent(evidenceId)}/anchor`);
+    return declaredMembers<EvidenceAnchorAnswer>(ANCHOR_ROUTE, answer, [
+      'anchorBlock', 'anchorDataIdx', 'anchorStatus', 'anchorTxHash', 'bundleId', 'stateRoot',
+    ]);
   }
 
   /**

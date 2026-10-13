@@ -1,9 +1,13 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import { LIST_MEMBERS, declaredMembers, refuseUnknownOptions } from './routeShapes';
+import type { ListAnswer } from './routeShapes';
 import type {
-  DisclosureGrant,
   DisclosureListFilter,
   DisclosureGrantOptions,
 } from '../types/governance';
+
+const LIST_ROUTE = 'GET /v4/disclosures';
 
 /** What GET /v4/disclosures/check answers. */
 export interface DisclosureCheckResult {
@@ -22,15 +26,16 @@ export interface DisclosureCheckResult {
  */
 export class DisclosureSubClient extends SubClient {
   /**
-   * List disclosure grants.
+   * List the disclosure grants the caller can see (REST GET /v4/disclosures).
+   *
+   * @param filter - Only the filter the route accepts: `state`.
+   * @returns `items` and `pagination`; an answer that lacks either is refused, never read as empty.
    */
-  async list(
-    filter?: DisclosureListFilter
-  ): Promise<{ grants: DisclosureGrant[]; total: number }> {
-    return this.rpc<{ grants: DisclosureGrant[]; total: number }>(
-      'disclosure.list',
-      (filter ?? {}) as Record<string, unknown>
-    );
+  async list(filter: DisclosureListFilter = {}): Promise<ListAnswer> {
+    refuseUnknownOptions('disclosures.list', LIST_ROUTE, filter, ['state']);
+    const query = genQuery(LIST_ROUTE, [['state', filter.state, 'string']]);
+    const answer = await this.rest<unknown>('GET', `/v4/disclosures${query}`);
+    return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**

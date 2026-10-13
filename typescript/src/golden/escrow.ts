@@ -17,6 +17,7 @@
  * ```
  */
 import type { InfrixClient } from '../index';
+import { evidenceIdForIntent } from '../evidenceId';
 import { normalizeSubmittedIntent } from '../results';
 import type { GovernedResult, ResultCompletenessOptions, SubmittedLike } from '../results';
 
@@ -108,10 +109,7 @@ export function withGoldenApp(client: InfrixClient) {
        * in this node.
        */
       async export(params: { intentId: string }): Promise<PortableProof> {
-        const bundle = await client.evidence.get(params.intentId);
-        const evidenceId =
-          (bundle as unknown as { id?: string; bundleId?: string }).id ??
-          (bundle as unknown as { id?: string; bundleId?: string }).bundleId;
+        const evidenceId = await evidenceIdForIntent(client, params.intentId);
         if (!evidenceId) {
           throw new Error('golden-escrow: evidence bundle has no id to export');
         }

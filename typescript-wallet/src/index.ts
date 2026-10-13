@@ -58,7 +58,7 @@ export type {
   IntentSubmitOptions,
   ApprovalEnvelope,
   OutcomeRecord,
-  EvidenceBundle,
+  IntentEvidenceAnswer,
 } from './governance-types';
 
 // Crypto

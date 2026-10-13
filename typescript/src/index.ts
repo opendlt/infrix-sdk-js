@@ -96,6 +96,11 @@ export type {
   AssuranceSummary,
 } from './results';
 
+// The evidence id of an intent: the evidence routes take the id of a bundle (`ev-<intentId>`), not the
+// id of the intent. The rule for an intent with several bundles is documented on the function.
+export { evidenceIdForIntent, canonicalEvidenceId } from './evidenceId';
+export type { IntentEvidenceReader } from './evidenceId';
+
 export { withGoldenApp } from './golden/escrow';
 export type {
   EscrowCreateParams,
@@ -173,6 +178,7 @@ export {
   TransactionSubClient,
   AccountSubClient,
   RpcSubClient,
+  GeneratedRouteReads,
 } from './sub-clients';
 export type {
   VerifiableCredential,
@@ -200,12 +206,29 @@ export type {
   AccountList,
   Account,
   AccountBalance,
+  ListAnswer,
+  RegistryObjectAnswer,
 } from './sub-clients';
 
 // ---- Direct imports for internal use ----
 
 import type { DevnetEvent } from './types/contract';
 import { parseUserError, InfrixUserError, nodeAuthRequired, nodeRequestRefused } from './userError';
+import { genQuery } from './sub-clients/gen/runtime';
+import { checkPathValue, declaredMembers, refuseRemovedArguments, refuseUnknownOptions } from './sub-clients/routeShapes';
+
+// The routes the shapes, swarm and mission reads below answer from; each answer carries exactly the
+// members the route census declares for it.
+const SHAPE_CURRENT_ROUTE = 'GET /v4/shapes/contracts/{contract}';
+const SHAPE_RULES_ROUTE = 'GET /v4/shapes/contracts/{contract}/rules';
+const SHAPE_HISTORY_ROUTE = 'GET /v4/shapes/contracts/{contract}/history';
+const SHAPE_PARAMS_ROUTE = 'GET /v4/shapes/contracts/{contract}/params';
+const SWARM_STATUS_ROUTE = 'GET /v4/swarms/{id}';
+const SWARM_CHANNEL_ROUTE = 'GET /v4/swarms/{id}/channel/{key}';
+const MISSION_STATUS_ROUTE = 'GET /v4/mission/contracts/{contract}';
+const MISSION_SLOS_ROUTE = 'GET /v4/mission/contracts/{contract}/slos';
+const MISSION_COST_ROUTE = 'GET /v4/mission/contracts/{contract}/cost';
+const MISSION_LOGS_ROUTE = 'GET /v4/mission/contracts/{contract}/logs';
 export { nodeAuthRequired, nodeRequestRefused } from './userError';
 
 export {
@@ -243,6 +266,7 @@ import {
   TransactionSubClient,
   AccountSubClient,
   RpcSubClient,
+  GeneratedRouteReads,
 } from './sub-clients';
 
 // ---- Onboarding telemetry (adoption-12) ----
@@ -440,6 +464,9 @@ export class InfrixClient {
   /** One typed method per JSON-RPC method no other sub-client names; each returns the node's answer untouched. */
   readonly jsonrpc: RpcSubClient;
 
+  /** Typed reads of every GET route no hand-written client names, by route family (generated from the route census). */
+  readonly routes: GeneratedRouteReads;
+
   // ---- Read-only Contract Inspection ----
 
   /**
@@ -545,7 +572,7 @@ export class InfrixClient {
     this.objects = new ObjectSubClient(rpcFn, restFn);
     this.policies = new PolicySubClient(rpcFn, restFn);
     this.approvals = new ApprovalSubClient(rpcFn, restFn);
-    this.mission = new MissionClient(rpcFn);
+    this.mission = new MissionClient(rpcFn, restFn);
     this.evidence = new EvidenceSubClient(rpcFn, restFn);
     this.trust = new TrustSubClient(rpcFn, restFn);
     this.capabilities = new CapabilitySubClient(rpcFn, restFn);
@@ -565,6 +592,7 @@ export class InfrixClient {
     this.transactions = new TransactionSubClient(rpcFn, restFn);
     this.accounts = new AccountSubClient(rpcFn, restFn);
     this.jsonrpc = new RpcSubClient(rpcFn, restFn);
+    this.routes = new GeneratedRouteReads(rpcFn, restFn);
 
     // SECONDARY: Contract sub-client
     this.contracts = new ContractSubClient(rpcFn, restFn);
@@ -725,32 +753,39 @@ export class InfrixClient {
 
   /** Shapes sub-client for shape-shifting contract queries. */
   shapes = {
-    /** Get the current active shape for a contract. */
-    current: (contractUrl: string): Promise<ShapeInfo> => {
-      return this.rpc<ShapeInfo>('shapes.current', { url: contractUrl });
+    /** Get the current active shape for a contract (REST GET /v4/shapes/contracts/{contract}). */
+    current: async (contractUrl: string): Promise<ShapeInfo> => {
+      checkPathValue(SHAPE_CURRENT_ROUTE, 'contract', contractUrl);
+      const answer = await this.rest<unknown>('GET', `/v4/shapes/contracts/${encodeURIComponent(contractUrl)}`);
+      return declaredMembers<ShapeInfo>(SHAPE_CURRENT_ROUTE, answer, ['contract', 'shape']);
     },
 
-    /** List all defined shapes for a contract. */
-    list: (contractUrl: string): Promise<ShapeListResult> => {
-      return this.rpc<ShapeListResult>('shapes.list', { url: contractUrl });
+    /** Get evolution rules for a contract (REST GET /v4/shapes/contracts/{contract}/rules). */
+    rules: async (contractUrl: string): Promise<ShapeRulesResult> => {
+      checkPathValue(SHAPE_RULES_ROUTE, 'contract', contractUrl);
+      const answer = await this.rest<unknown>('GET', `/v4/shapes/contracts/${encodeURIComponent(contractUrl)}/rules`);
+      return declaredMembers<ShapeRulesResult>(SHAPE_RULES_ROUTE, answer, ['contract', 'detail', 'rules']);
     },
 
-    /** Get evolution rules for a contract. */
-    rules: (contractUrl: string): Promise<ShapeRulesResult> => {
-      return this.rpc<ShapeRulesResult>('shapes.rules', { url: contractUrl });
+    /**
+     * Get the shape transition history of a contract (REST GET /v4/shapes/contracts/{contract}/history).
+     * The route takes no parameters: it answers every transition it holds, so the `opts` (`limit`) argument
+     * it once took is refused by name.
+     */
+    history: async (contractUrl: string, ...removed: never[]): Promise<ShapeHistoryResult> => {
+      refuseRemovedArguments('shapes.history', removed, ['opts']);
+      checkPathValue(SHAPE_HISTORY_ROUTE, 'contract', contractUrl);
+      const answer = await this.rest<unknown>('GET', `/v4/shapes/contracts/${encodeURIComponent(contractUrl)}/history`);
+      return declaredMembers<ShapeHistoryResult>(SHAPE_HISTORY_ROUTE, answer, ['contract', 'total', 'transitions']);
     },
 
-    /** Get shape transition history. */
-    history: (contractUrl: string, opts?: { limit?: number }): Promise<ShapeHistoryResult> => {
-      return this.rpc<ShapeHistoryResult>('shapes.history', {
-        url: contractUrl,
-        limit: opts?.limit ?? 10,
-      });
-    },
-
-    /** Get the current shape's parameters. */
-    params: (contractUrl: string): Promise<ShapeParamsResult> => {
-      return this.rpc<ShapeParamsResult>('shapes.params', { url: contractUrl });
+    /** Get the current shape's parameters (REST GET /v4/shapes/contracts/{contract}/params). */
+    params: async (contractUrl: string): Promise<ShapeParamsResult> => {
+      checkPathValue(SHAPE_PARAMS_ROUTE, 'contract', contractUrl);
+      const answer = await this.rest<unknown>('GET', `/v4/shapes/contracts/${encodeURIComponent(contractUrl)}/params`);
+      return declaredMembers<ShapeParamsResult>(SHAPE_PARAMS_ROUTE, answer, [
+        'activeShape', 'contract', 'defaultShape', 'parameterSchema', 'parameters',
+      ]);
     },
 
     /** Subscribe to shape transitions via WebSocket. */
@@ -766,33 +801,11 @@ export class InfrixClient {
 
 // ---- Shape-Shifting Types ----
 
+/** What GET /v4/shapes/contracts/{contract} answers: every member the route declares. */
 export interface ShapeInfo {
-  contract_url: string;
-  shape_name: string;
-  activated_at: number;
-  blocks_active: number;
-}
-
-export interface ShapeDefinition {
-  name: string;
-  description?: string;
-  parameters: ShapeParameterDef[];
-  color?: string;
-  priority?: number;
-}
-
-export interface ShapeParameterDef {
-  name: string;
-  type: string;
-  value: unknown;
-  description?: string;
-}
-
-export interface ShapeListResult {
-  contract_name: string;
-  default_shape: string;
-  active_shape: string;
-  shapes: ShapeDefinition[];
+  readonly contract: unknown;
+  /** The contract's active shape. */
+  readonly shape: unknown;
 }
 
 export interface EvolutionRuleDef {
@@ -806,33 +819,28 @@ export interface EvolutionRuleDef {
   enabled: boolean;
 }
 
+/** What GET /v4/shapes/contracts/{contract}/rules answers: every member the route declares. */
 export interface ShapeRulesResult {
-  rules: EvolutionRuleDef[];
+  readonly contract: unknown;
+  readonly detail: unknown;
+  readonly rules: EvolutionRuleDef[];
 }
 
-export interface ShapeTransitionRecord {
-  contract_url: string;
-  from_shape: string;
-  to_shape: string;
-  block_height: number;
-  timestamp: number;
-  trigger_rule: string;
-  trigger_condition: string;
-  duration_blocks_satisfied: number;
-  previous_shape_duration: number;
-  gas_consumed: number;
-  immune_reconfigured: boolean;
-}
-
+/** What GET /v4/shapes/contracts/{contract}/history answers: every member the route declares. */
 export interface ShapeHistoryResult {
-  transitions: ShapeTransitionRecord[];
-  total_transitions: number;
-  time_in_shape: Record<string, number>;
+  readonly contract: unknown;
+  readonly total: unknown;
+  /** The shape transitions the contract has made. */
+  readonly transitions: unknown;
 }
 
+/** What GET /v4/shapes/contracts/{contract}/params answers: every member the route declares. */
 export interface ShapeParamsResult {
-  shape_name: string;
-  parameters: ShapeParameterDef[];
+  readonly activeShape: unknown;
+  readonly contract: unknown;
+  readonly defaultShape: unknown;
+  readonly parameterSchema: unknown;
+  readonly parameters: unknown;
 }
 
 export interface ShapeTransitionEvent {
@@ -847,14 +855,18 @@ export interface ShapeTransitionEvent {
 
 // ---- Swarm Contract Types ----
 
+/** What GET /v4/swarms/{id} answers: every member the route declares. */
 export interface SwarmStatus {
-  id: string;
-  name: string;
-  collective_immune_state: string;
-  version: number;
-  dissolved: boolean;
-  members: SwarmMemberInfo[];
-  channel_size: number;
+  readonly createdAt: unknown;
+  readonly gasBudget: unknown;
+  readonly id: string;
+  readonly lifecycle: unknown;
+  readonly maxMembers: unknown;
+  readonly members: SwarmMemberInfo[];
+  readonly name: string;
+  readonly state: unknown;
+  readonly updatedAt: unknown;
+  readonly version: number;
 }
 
 export interface SwarmMemberInfo {
@@ -864,10 +876,12 @@ export interface SwarmMemberInfo {
   state: string;
 }
 
+/** What GET /v4/swarms/{id}/channel/{key} answers: every member the route declares. */
 export interface SwarmChannelValue {
-  key: string;
-  value: string;
-  type?: string;
+  readonly gas: unknown;
+  readonly key: string;
+  readonly swarmId: unknown;
+  readonly value: string;
 }
 
 export interface SwarmCoordinateResult {
@@ -901,16 +915,29 @@ export interface SwarmCompatResult {
 
 /** SwarmClient provides methods for interacting with swarm contracts. */
 export class SwarmClient {
-  constructor(private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>) {}
+  constructor(
+    private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>,
+    private rest: <T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH', path: string, body?: unknown) => Promise<T>,
+  ) {}
 
-  /** Get swarm status. */
+  /** Get swarm status (REST GET /v4/swarms/{id}). */
   async status(swarmId: string): Promise<SwarmStatus> {
-    return this.rpc<SwarmStatus>('swarm.status', { id: swarmId });
+    checkPathValue(SWARM_STATUS_ROUTE, 'id', swarmId);
+    const answer = await this.rest<unknown>('GET', `/v4/swarms/${encodeURIComponent(swarmId)}`);
+    return declaredMembers<SwarmStatus>(SWARM_STATUS_ROUTE, answer, [
+      'createdAt', 'gasBudget', 'id', 'lifecycle', 'maxMembers', 'members', 'name', 'state', 'updatedAt', 'version',
+    ]);
   }
 
-  /** Read a channel value. */
+  /** Read a channel value (REST GET /v4/swarms/{id}/channel/{key}). */
   async channelGet(swarmId: string, key: string): Promise<SwarmChannelValue> {
-    return this.rpc<SwarmChannelValue>('swarm.channel.get', { swarm_id: swarmId, key });
+    checkPathValue(SWARM_CHANNEL_ROUTE, 'id', swarmId);
+    checkPathValue(SWARM_CHANNEL_ROUTE, 'key', key);
+    const answer = await this.rest<unknown>(
+      'GET',
+      `/v4/swarms/${encodeURIComponent(swarmId)}/channel/${encodeURIComponent(key)}`,
+    );
+    return declaredMembers<SwarmChannelValue>(SWARM_CHANNEL_ROUTE, answer, ['gas', 'key', 'swarmId', 'value']);
   }
 
   /** Write a channel value. */
@@ -972,31 +999,20 @@ export interface MissionSystemAnswer {
   scope: string;
 }
 
-export interface MissionMetrics {
-  contract_url: string;
-  block_height: number;
-  calls_total: number;
-  calls_per_block: number;
-  error_rate: number;
-  gas_total: number;
-  gas_per_call: { p50: number; p95: number; p99: number; avg: number };
-  unique_callers: number;
-  breaker_state: string;
-  confidence_score: number;
-  anomaly_score: number;
-  uptime: number;
-  active_shape?: string;
-  swarm_id?: string;
+/** What GET /v4/mission/contracts/{contract} answers: every member the route declares. */
+export interface MissionStatus {
+  readonly contract: unknown;
+  /** The contract's metrics. */
+  readonly metrics: unknown;
 }
 
-export interface MissionSLOStatus {
-  name: string;
-  metric: string;
-  target: number;
-  current_value: number;
-  compliance: number;
-  healthy: boolean;
-  burn_rate: number;
+/** What GET /v4/mission/contracts/{contract}/slos answers: every member the route declares. */
+export interface MissionSLOList {
+  readonly contract: unknown;
+  /** The SLOs defined for the contract. */
+  readonly definitions: unknown;
+  /** How each SLO is doing. */
+  readonly status: unknown;
 }
 
 export interface MissionAlert {
@@ -1009,34 +1025,38 @@ export interface MissionAlert {
   status: string;
 }
 
+/** What GET /v4/mission/contracts/{contract}/cost answers: every member the route declares. */
 export interface MissionCostReport {
-  contract_url: string;
-  period: string;
-  total_gas: number;
-  total_cost_usd: number;
-  by_function: { function: string; call_count: number; total_gas: number; cost_usd: number; pct_of_total: number }[];
-  recommendations: { function: string; type: string; description: string }[];
+  readonly contract: unknown;
 }
 
-export interface MissionLogEntry {
-  timestamp: number;
-  level: string;
-  contract: string;
-  function?: string;
-  block_height: number;
-  message: string;
+/** What GET /v4/mission/contracts/{contract}/logs answers: every member the route declares. */
+export interface MissionLogs {
+  readonly contract: unknown;
+  /** The log entries returned. */
+  readonly entries: unknown;
+  /** The level the entries were filtered to. */
+  readonly level: unknown;
 }
 
 /** MissionClient provides production observability methods. */
 export class MissionClient {
-  constructor(private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>) {}
+  constructor(
+    private rpc: <T>(method: string, params: Record<string, unknown>) => Promise<T>,
+    private rest: <T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH', path: string, body?: unknown) => Promise<T>,
+  ) {}
 
-  async status(contract: string): Promise<MissionMetrics> {
-    return this.rpc<MissionMetrics>('mission.status', { contract });
+  /** A contract's status (REST GET /v4/mission/contracts/{contract}): its `metrics`. */
+  async status(contract: string): Promise<MissionStatus> {
+    checkPathValue(MISSION_STATUS_ROUTE, 'contract', contract);
+    const answer = await this.rest<unknown>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}`);
+    return declaredMembers<MissionStatus>(MISSION_STATUS_ROUTE, answer, ['contract', 'metrics']);
   }
-  async sloList(contract: string): Promise<MissionSLOStatus[]> {
-    const r = await this.rpc<{ slos: MissionSLOStatus[] }>('mission.slo.list', { contract });
-    return r.slos;
+  /** A contract's SLOs (REST GET /v4/mission/contracts/{contract}/slos): `definitions` and their `status`. */
+  async sloList(contract: string): Promise<MissionSLOList> {
+    checkPathValue(MISSION_SLOS_ROUTE, 'contract', contract);
+    const answer = await this.rest<unknown>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}/slos`);
+    return declaredMembers<MissionSLOList>(MISSION_SLOS_ROUTE, answer, ['contract', 'definitions', 'status']);
   }
   async sloCreate(contract: string, metric: string, target: number, window: string): Promise<void> {
     await this.rpc<void>('mission.slo.create', { contract, metric, target, window });
@@ -1062,12 +1082,31 @@ export class MissionClient {
     const r = await this.rpc<{ active: MissionAlert[] }>('mission.alert.system', {});
     return r.active ?? [];
   }
-  async cost(contract: string, period = '30d'): Promise<MissionCostReport> {
-    return this.rpc<MissionCostReport>('mission.cost', { contract, period });
+  /**
+   * A contract's cost report (REST GET /v4/mission/contracts/{contract}/cost). The route takes no
+   * parameters: there is no period to ask for (the `period` argument is refused by name), and the answer
+   * declares only the `contract`.
+   */
+  async cost(contract: string, ...removed: never[]): Promise<MissionCostReport> {
+    refuseRemovedArguments('mission.cost', removed, ['period']);
+    checkPathValue(MISSION_COST_ROUTE, 'contract', contract);
+    const answer = await this.rest<unknown>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}/cost`);
+    return declaredMembers<MissionCostReport>(MISSION_COST_ROUTE, answer, ['contract']);
   }
-  async logs(contract: string, opts?: { level?: string; limit?: number }): Promise<MissionLogEntry[]> {
-    const r = await this.rpc<{ logs: MissionLogEntry[] }>('mission.logs', { contract, ...opts });
-    return r.logs;
+  /**
+   * A contract's log entries (REST GET /v4/mission/contracts/{contract}/logs).
+   *
+   * @param opts - Only the parameters the route accepts: `level` and `limit`.
+   */
+  async logs(contract: string, opts: { level?: string; limit?: number } = {}): Promise<MissionLogs> {
+    refuseUnknownOptions('mission.logs', MISSION_LOGS_ROUTE, opts, ['level', 'limit']);
+    checkPathValue(MISSION_LOGS_ROUTE, 'contract', contract);
+    const query = genQuery(MISSION_LOGS_ROUTE, [
+      ['level', opts.level, 'string'],
+      ['limit', opts.limit, 'int'],
+    ]);
+    const answer = await this.rest<unknown>('GET', `/v4/mission/contracts/${encodeURIComponent(contract)}/logs${query}`);
+    return declaredMembers<MissionLogs>(MISSION_LOGS_ROUTE, answer, ['contract', 'entries', 'level']);
   }
   /**
    * The system-wide metrics. Audit/investigation purposes only — the node answers NOT-FOUND to any

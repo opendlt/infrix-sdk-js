@@ -1,11 +1,23 @@
 import { SubClient } from './base';
+import { genQuery } from './gen/runtime';
+import {
+  LIST_MEMBERS,
+  REGISTRY_OBJECT_MEMBERS,
+  checkPathValue,
+  declaredMembers,
+  refuseUnknownOptions,
+} from './routeShapes';
+import type { ListAnswer, RegistryObjectAnswer } from './routeShapes';
 import type {
-  GoverningObject,
-  ObjectAuditEntry,
+  ObjectAuditAnswer,
   ObjectListFilter,
   ObjectCreateOptions,
   ObjectTransitionOptions,
 } from '../types/governance';
+
+const LIST_ROUTE = 'GET /v4/objects/{type}';
+const GET_ROUTE = 'GET /v4/objects/{type}/{id}';
+const AUDIT_ROUTE = 'GET /v4/objects/{type}/{id}/audit';
 
 /**
  * ObjectSubClient provides governed object operations.
@@ -15,29 +27,43 @@ import type {
  */
 export class ObjectSubClient extends SubClient {
   /**
-   * List objects by type with optional filtering.
+   * List the objects of one type the caller can see (REST GET /v4/objects/{type}).
    *
-   * @param type - Object type (e.g. 'credential', 'vault', 'workflow')
-   * @param filter - Optional: status, owner, date range, pagination
+   * @param type - Object type (e.g. 'credential', 'vault', 'workflow'); the route refuses a type
+   *   the registry does not declare
+   * @param filter - Only the filters the route accepts: `state`, and `field` with `value` (and
+   *   `filterLimit`) to match a field; `id` narrows to one object
+   * @returns `items` and `pagination`.
    */
-  async list(
-    type: string,
-    filter?: ObjectListFilter
-  ): Promise<{ objects: GoverningObject[]; total: number }> {
-    return this.rpc<{ objects: GoverningObject[]; total: number }>(
-      'object.list',
-      { type, ...(filter ?? {}) }
-    );
+  async list(type: string, filter: ObjectListFilter = {}): Promise<ListAnswer> {
+    checkPathValue(LIST_ROUTE, 'type', type);
+    refuseUnknownOptions('objects.list', LIST_ROUTE, filter, ['field', 'filterLimit', 'id', 'state', 'value']);
+    const query = genQuery(LIST_ROUTE, [
+      ['field', filter.field, 'string'],
+      ['filterLimit', filter.filterLimit, 'int'],
+      ['id', filter.id, 'string'],
+      ['state', filter.state, 'string'],
+      ['value', filter.value, 'string'],
+    ]);
+    const answer = await this.rest<unknown>('GET', `/v4/objects/${encodeURIComponent(type)}${query}`);
+    return declaredMembers<ListAnswer>(LIST_ROUTE, answer, LIST_MEMBERS);
   }
 
   /**
-   * Get a single object by type and ID.
+   * Get one object by type and ID (REST GET /v4/objects/{type}/{id}); the object's own record is in
+   * `fields`.
    *
    * @param type - Object type
    * @param id - Object ID
    */
-  async get(type: string, id: string): Promise<GoverningObject> {
-    return this.rpc<GoverningObject>('object.get', { type, id });
+  async get(type: string, id: string): Promise<RegistryObjectAnswer> {
+    checkPathValue(GET_ROUTE, 'type', type);
+    checkPathValue(GET_ROUTE, 'id', id);
+    const answer = await this.rest<unknown>(
+      'GET',
+      `/v4/objects/${encodeURIComponent(type)}/${encodeURIComponent(id)}`
+    );
+    return declaredMembers<RegistryObjectAnswer>(GET_ROUTE, answer, REGISTRY_OBJECT_MEMBERS);
   }
 
   /**
@@ -84,18 +110,20 @@ export class ObjectSubClient extends SubClient {
   }
 
   /**
-   * Get the audit trail for an object.
+   * Get the audit trail for an object (REST GET /v4/objects/{type}/{id}/audit).
    *
    * @param type - Object type
    * @param id - Object ID
-   * @returns Chronological list of state changes, policy evaluations, approvals
+   * @returns `audit`, the trail, with the `objectType` and `objectId` it belongs to
    */
-  async audit(type: string, id: string): Promise<ObjectAuditEntry[]> {
-    const result = await this.rpc<{ entries: ObjectAuditEntry[] }>(
-      'object.audit',
-      { type, id }
+  async audit(type: string, id: string): Promise<ObjectAuditAnswer> {
+    checkPathValue(AUDIT_ROUTE, 'type', type);
+    checkPathValue(AUDIT_ROUTE, 'id', id);
+    const answer = await this.rest<unknown>(
+      'GET',
+      `/v4/objects/${encodeURIComponent(type)}/${encodeURIComponent(id)}/audit`
     );
-    return result.entries;
+    return declaredMembers<ObjectAuditAnswer>(AUDIT_ROUTE, answer, ['audit', 'objectId', 'objectType']);
   }
 
   /**

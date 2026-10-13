@@ -6,16 +6,17 @@
  */
 
 /**
- * Result of a read-only simulation. `txHash` and `blockHeight` are
- * provided only when the simulation is pinned to a specific block for
- * determinism; simulations do not mutate state and do not produce
- * anchored receipts.
+ * Result of a read-only simulation (POST /v4/contracts/{addr}/simulate): exactly the members the route
+ * declares. Simulations do not mutate state and do not produce anchored receipts. The route has no
+ * `blockHeight` and no `returnData`: an earlier version of this type read both and so always read undefined.
+ * (The node's answer also carries the call's `return` bytes, events and logs, which the route does not
+ * declare; they are not part of this type until it does.)
  */
 export interface CallResult {
-  txHash: string;
-  returnData: string | string[] | null;
+  success: boolean;
   gasUsed: number;
-  blockHeight: number;
+  stateRoot: unknown;
+  txHash: unknown;
 }
 
 export interface QueryResult {
