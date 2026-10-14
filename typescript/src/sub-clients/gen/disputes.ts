@@ -23,6 +23,8 @@ export interface DisputesForIdAnswer {
   readonly disputeId: unknown;
   readonly lifecycle: unknown;
   readonly panelId: unknown;
+  readonly panelRound: unknown;
+  readonly panelRoundError: unknown;
   readonly reason: unknown;
   readonly submittedBy: unknown;
   readonly verdict: unknown;
@@ -60,9 +62,7 @@ export interface DisputesWriteForIdRouteAnswer {
 /** The body members POST /v4/disputes/{id}/route accepts. */
 export interface DisputesWriteForIdRouteBody {
   readonly actor: unknown;
-  readonly memberIdentity?: unknown;
   readonly remediation?: unknown;
-  readonly signature?: unknown;
   readonly verdict?: unknown;
 }
 
@@ -77,10 +77,9 @@ export interface DisputesWriteForIdSignAnswer {
 /** The body members POST /v4/disputes/{id}/sign accepts. */
 export interface DisputesWriteForIdSignBody {
   readonly actor: unknown;
-  readonly memberIdentity?: unknown;
-  readonly remediation?: unknown;
-  readonly signature?: unknown;
-  readonly verdict?: unknown;
+  readonly memberIdentity: unknown;
+  readonly resolvedAt: unknown;
+  readonly signature: unknown;
 }
 
 /** Typed reads of the node's /v4/disputes routes, generated from the route census. */
@@ -106,6 +105,8 @@ export class DisputesReads extends SubClient {
       disputeId: genDeclared('GET /v4/disputes/{id}', 'disputeId', r.disputeId),
       lifecycle: genDeclared('GET /v4/disputes/{id}', 'lifecycle', r.lifecycle),
       panelId: genDeclared('GET /v4/disputes/{id}', 'panelId', r.panelId),
+      panelRound: genDeclared('GET /v4/disputes/{id}', 'panelRound', r.panelRound),
+      panelRoundError: genDeclared('GET /v4/disputes/{id}', 'panelRoundError', r.panelRoundError),
       reason: genDeclared('GET /v4/disputes/{id}', 'reason', r.reason),
       submittedBy: genDeclared('GET /v4/disputes/{id}', 'submittedBy', r.submittedBy),
       verdict: genDeclared('GET /v4/disputes/{id}', 'verdict', r.verdict),
@@ -134,8 +135,8 @@ export class DisputesWrites extends SubClient {
   /** Send POST /v4/disputes/{id}/route. */
   async forIdRoute(id: string, body: DisputesWriteForIdRouteBody): Promise<DisputesWriteForIdRouteAnswer> {
     genPathValue('POST /v4/disputes/{id}/route', 'id', id, 'string');
-    genCheckBody('POST /v4/disputes/{id}/route', body, [['actor', true], ['memberIdentity', false], ['remediation', false], ['signature', false], ['verdict', false]]);
-    const r = await this.rest<Partial<DisputesWriteForIdRouteAnswer>>('POST', `/v4/disputes/${encodeURIComponent(id)}/route`, { actor: body.actor, memberIdentity: body.memberIdentity, remediation: body.remediation, signature: body.signature, verdict: body.verdict });
+    genCheckBody('POST /v4/disputes/{id}/route', body, [['actor', true], ['remediation', false], ['verdict', false]]);
+    const r = await this.rest<Partial<DisputesWriteForIdRouteAnswer>>('POST', `/v4/disputes/${encodeURIComponent(id)}/route`, { actor: body.actor, remediation: body.remediation, verdict: body.verdict });
     return {
       caseId: genDeclared('POST /v4/disputes/{id}/route', 'caseId', r.caseId),
       governed: genDeclared('POST /v4/disputes/{id}/route', 'governed', r.governed),
@@ -148,8 +149,8 @@ export class DisputesWrites extends SubClient {
   /** Send POST /v4/disputes/{id}/sign. */
   async forIdSign(id: string, body: DisputesWriteForIdSignBody): Promise<DisputesWriteForIdSignAnswer> {
     genPathValue('POST /v4/disputes/{id}/sign', 'id', id, 'string');
-    genCheckBody('POST /v4/disputes/{id}/sign', body, [['actor', true], ['memberIdentity', false], ['remediation', false], ['signature', false], ['verdict', false]]);
-    const r = await this.rest<Partial<DisputesWriteForIdSignAnswer>>('POST', `/v4/disputes/${encodeURIComponent(id)}/sign`, { actor: body.actor, memberIdentity: body.memberIdentity, remediation: body.remediation, signature: body.signature, verdict: body.verdict });
+    genCheckBody('POST /v4/disputes/{id}/sign', body, [['actor', true], ['memberIdentity', true], ['resolvedAt', true], ['signature', true]]);
+    const r = await this.rest<Partial<DisputesWriteForIdSignAnswer>>('POST', `/v4/disputes/${encodeURIComponent(id)}/sign`, { actor: body.actor, memberIdentity: body.memberIdentity, resolvedAt: body.resolvedAt, signature: body.signature });
     return {
       caseId: genDeclared('POST /v4/disputes/{id}/sign', 'caseId', r.caseId),
       governed: genDeclared('POST /v4/disputes/{id}/sign', 'governed', r.governed),

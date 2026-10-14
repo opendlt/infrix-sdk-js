@@ -46,6 +46,7 @@ export interface EscrowsWriteForIdFundBody {
   readonly asset?: unknown;
   readonly assetType?: unknown;
   readonly beneficiary: unknown;
+  readonly conditions?: unknown;
   readonly depositor: unknown;
   readonly holdingAccount?: unknown;
   readonly keyPageRef?: unknown;
@@ -67,7 +68,6 @@ export interface EscrowsWriteForIdRefundAnswer {
 /** The body members POST /v4/escrows/{id}/refund accepts. */
 export interface EscrowsWriteForIdRefundBody {
   readonly actor: unknown;
-  readonly amount?: unknown;
   readonly escrowId?: unknown;
   readonly legId?: unknown;
   readonly reason?: unknown;
@@ -85,7 +85,6 @@ export interface EscrowsWriteForIdReleaseAnswer {
 /** The body members POST /v4/escrows/{id}/release accepts. */
 export interface EscrowsWriteForIdReleaseBody {
   readonly actor: unknown;
-  readonly amount?: unknown;
   readonly escrowId?: unknown;
   readonly legId?: unknown;
   readonly reason?: unknown;
@@ -116,8 +115,8 @@ export class EscrowsWrites extends SubClient {
   /** Send POST /v4/escrows/{id}/fund. */
   async forIdFund(id: string, body: EscrowsWriteForIdFundBody): Promise<EscrowsWriteForIdFundAnswer> {
     genPathValue('POST /v4/escrows/{id}/fund', 'id', id, 'string');
-    genCheckBody('POST /v4/escrows/{id}/fund', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['depositor', true], ['holdingAccount', false], ['keyPageRef', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signerPublicKey', false]]);
-    const r = await this.rest<Partial<EscrowsWriteForIdFundAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/fund`, { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, depositor: body.depositor, holdingAccount: body.holdingAccount, keyPageRef: body.keyPageRef, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signerPublicKey: body.signerPublicKey });
+    genCheckBody('POST /v4/escrows/{id}/fund', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['conditions', false], ['depositor', true], ['holdingAccount', false], ['keyPageRef', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signerPublicKey', false]]);
+    const r = await this.rest<Partial<EscrowsWriteForIdFundAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/fund`, { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, conditions: body.conditions, depositor: body.depositor, holdingAccount: body.holdingAccount, keyPageRef: body.keyPageRef, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signerPublicKey: body.signerPublicKey });
     return {
       escrowId: genDeclared('POST /v4/escrows/{id}/fund', 'escrowId', r.escrowId),
       governed: genDeclared('POST /v4/escrows/{id}/fund', 'governed', r.governed),
@@ -130,8 +129,8 @@ export class EscrowsWrites extends SubClient {
   /** Send POST /v4/escrows/{id}/refund. */
   async forIdRefund(id: string, body: EscrowsWriteForIdRefundBody): Promise<EscrowsWriteForIdRefundAnswer> {
     genPathValue('POST /v4/escrows/{id}/refund', 'id', id, 'string');
-    genCheckBody('POST /v4/escrows/{id}/refund', body, [['actor', true], ['amount', false], ['escrowId', false], ['legId', false], ['reason', false]]);
-    const r = await this.rest<Partial<EscrowsWriteForIdRefundAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/refund`, { actor: body.actor, amount: body.amount, escrowId: body.escrowId, legId: body.legId, reason: body.reason });
+    genCheckBody('POST /v4/escrows/{id}/refund', body, [['actor', true], ['escrowId', false], ['legId', false], ['reason', false]]);
+    const r = await this.rest<Partial<EscrowsWriteForIdRefundAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/refund`, { actor: body.actor, escrowId: body.escrowId, legId: body.legId, reason: body.reason });
     return {
       escrowId: genDeclared('POST /v4/escrows/{id}/refund', 'escrowId', r.escrowId),
       governed: genDeclared('POST /v4/escrows/{id}/refund', 'governed', r.governed),
@@ -144,8 +143,8 @@ export class EscrowsWrites extends SubClient {
   /** Send POST /v4/escrows/{id}/release. */
   async forIdRelease(id: string, body: EscrowsWriteForIdReleaseBody): Promise<EscrowsWriteForIdReleaseAnswer> {
     genPathValue('POST /v4/escrows/{id}/release', 'id', id, 'string');
-    genCheckBody('POST /v4/escrows/{id}/release', body, [['actor', true], ['amount', false], ['escrowId', false], ['legId', false], ['reason', false]]);
-    const r = await this.rest<Partial<EscrowsWriteForIdReleaseAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/release`, { actor: body.actor, amount: body.amount, escrowId: body.escrowId, legId: body.legId, reason: body.reason });
+    genCheckBody('POST /v4/escrows/{id}/release', body, [['actor', true], ['escrowId', false], ['legId', false], ['reason', false]]);
+    const r = await this.rest<Partial<EscrowsWriteForIdReleaseAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/release`, { actor: body.actor, escrowId: body.escrowId, legId: body.legId, reason: body.reason });
     return {
       escrowId: genDeclared('POST /v4/escrows/{id}/release', 'escrowId', r.escrowId),
       governed: genDeclared('POST /v4/escrows/{id}/release', 'governed', r.governed),

@@ -44,13 +44,14 @@ export interface AccountUsageAnswer {
 
 /** What POST /v4/account/plan answers: every member the route declares. */
 export interface AccountWritePlanAnswer {
-  readonly planId: unknown;
-  readonly tenantId: unknown;
+  readonly intent: unknown;
 }
 
 /** The body members POST /v4/account/plan accepts. */
 export interface AccountWritePlanBody {
+  readonly actor?: unknown;
   readonly planId?: unknown;
+  readonly purpose?: unknown;
 }
 
 /** Typed reads of the node's /v4/account routes, generated from the route census. */
@@ -111,11 +112,10 @@ export class AccountWrites extends SubClient {
 
   /** Send POST /v4/account/plan. */
   async plan(body: AccountWritePlanBody): Promise<AccountWritePlanAnswer> {
-    genCheckBody('POST /v4/account/plan', body, [['planId', false]]);
-    const r = await this.rest<Partial<AccountWritePlanAnswer>>('POST', '/v4/account/plan', { planId: body.planId });
+    genCheckBody('POST /v4/account/plan', body, [['actor', false], ['planId', false], ['purpose', false]]);
+    const r = await this.rest<Partial<AccountWritePlanAnswer>>('POST', '/v4/account/plan', { actor: body.actor, planId: body.planId, purpose: body.purpose });
     return {
-      planId: genDeclared('POST /v4/account/plan', 'planId', r.planId),
-      tenantId: genDeclared('POST /v4/account/plan', 'tenantId', r.tenantId),
+      intent: genDeclared('POST /v4/account/plan', 'intent', r.intent),
     };
   }
 }
