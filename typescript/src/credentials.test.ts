@@ -21,11 +21,24 @@ function client() {
   return new InfrixClient('http://node.test', { actor: 'acc://issuer.acme', purpose: 'issue' });
 }
 
-test('createDID derives the canonical did:infrix (offline)', () => {
+const NETWORK_ID = 'g1-e3f3119213a1ead44647659d67e47f4269a2affb13f150aa87b20baacf93cf81';
+
+test('createDID derives the canonical v1 did:infrix (offline)', () => {
   const c = client();
-  assert.equal(c.credentials.createDID('acc://alice.acme'), 'did:infrix:acc://alice.acme');
-  assert.equal(c.credentials.createDID('alice.acme'), 'did:infrix:acc://alice.acme');
-  assert.equal(c.credentials.createDID({ adi: 'acc://bob.acme' }), 'did:infrix:acc://bob.acme');
+  assert.equal(c.credentials.createDID('acc://alice.acme', { networkId: NETWORK_ID }), `did:infrix:v1:acc:${NETWORK_ID}:alice.acme`);
+  assert.equal(c.credentials.createDID('alice.acme', { networkId: NETWORK_ID }), `did:infrix:v1:acc:${NETWORK_ID}:alice.acme`);
+  assert.equal(c.credentials.createDID({ adi: 'acc://Bob.ACME/Book' }, { networkId: NETWORK_ID }), `did:infrix:v1:acc:${NETWORK_ID}:bob.acme:book`);
+});
+
+test('createDID refuses what core refuses: no network id, a mutable label, a port, user info', () => {
+  const c = client();
+  const assertTyped = (fn: () => unknown, code: string) => {
+    assert.throws(fn, (e: unknown) => e instanceof InfrixUserError && (e as InfrixUserError).code === code, `expected ${code}`);
+  };
+  assertTyped(() => c.credentials.createDID('acc://alice.acme'), 'INFRIX_NETWORK_ID_REQUIRED');
+  assertTyped(() => c.credentials.createDID('acc://alice.acme', { networkId: 'kermit' }), 'INFRIX_INVALID_DID');
+  assertTyped(() => c.credentials.createDID('acc://alice.acme:8080', { networkId: NETWORK_ID }), 'INFRIX_INVALID_DID');
+  assertTyped(() => c.credentials.createDID('acc://user@alice.acme', { networkId: NETWORK_ID }), 'INFRIX_INVALID_DID');
 });
 
 test('createDID rejects an empty ADI', () => {

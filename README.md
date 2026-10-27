@@ -117,8 +117,8 @@ set on the client:
 
 ```js
 // Offline — no node needed:
-const did = client.credentials.createDID('acc://alice.acme');
-// → "did:infrix:acc://alice.acme"
+const did = client.credentials.createDID('acc://alice.acme', { networkId: 'g1-<64 hex digits>' });
+// → "did:infrix:v1:acc:g1-<64 hex digits>:alice.acme"  (the legacy did:infrix:acc://... form is refused by the node)
 
 // Issue a verifiable credential (uses the node's vc.issue):
 const vc = await client.credentials.issue({

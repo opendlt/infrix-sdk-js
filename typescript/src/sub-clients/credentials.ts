@@ -7,6 +7,7 @@
 import { SubClient } from './base';
 import type { PredicateProver, PredicateProofEnvelope } from './predicates';
 import { InfrixUserError } from '../userError';
+import { formatAccDID, InfrixDIDError } from '../did/v1';
 
 // credErr builds a typed, agent-branchable error (stable `code` + a `remedy`
 // fix) instead of an opaque Error, so an agent can act on the failure without
@@ -104,20 +105,30 @@ export interface SelectiveDisclosureRequest {
  */
 export class CredentialSubClient extends SubClient {
   /**
-   * Derive the canonical `did:infrix` for an Accumulate ADI or a wallet. This is
-   * offline and deterministic — it never contacts a node.
+   * Derive the canonical `did:infrix` (v1, acc profile) for an Accumulate ADI or a wallet. This is
+   * offline and deterministic — it never contacts a node — and it follows the same construction rules
+   * as infrix core, pinned by the shared vector set. It needs the immutable network identifier
+   * (`g1-` and the 64 hex digits of the Directory genesis root): the legacy spelling
+   * `did:infrix:acc://alice.acme` is refused by the node and is no longer minted.
    *
    * @example
-   *   client.credentials.createDID('acc://alice.acme')
-   *   // → "did:infrix:acc://alice.acme"
+   *   client.credentials.createDID('acc://Alice.ACME', { networkId: 'g1-<64 hex digits>' })
+   *   // → "did:infrix:v1:acc:g1-<64 hex digits>:alice.acme"
    */
-  createDID(adiOrWallet: string | { adi: string }): string {
+  createDID(adiOrWallet: string | { adi: string }, options?: { networkId?: string }): string {
     const raw = typeof adiOrWallet === 'string' ? adiOrWallet : adiOrWallet.adi;
     const trimmed = (raw ?? '').trim();
     if (!trimmed)
       throw credErr('INFRIX_INVALID_ADI', 'createDID: an Accumulate ADI is required', 'Pass an ADI like "acc://alice.acme"');
-    const accURL = /^acc:\/\//i.test(trimmed) ? trimmed : `acc://${trimmed}`;
-    return `did:${DID_METHOD_INFRIX}:${accURL}`;
+    if (!options?.networkId)
+      throw credErr('INFRIX_NETWORK_ID_REQUIRED', 'createDID: the network identifier is required', 'Pass { networkId: "g1-<64 hex digits>" }, the Directory genesis commitment of the network (a label like "kermit" is refused)');
+    try {
+      return formatAccDID(options.networkId, trimmed);
+    } catch (e) {
+      if (e instanceof InfrixDIDError)
+        throw credErr('INFRIX_INVALID_DID', `createDID: ${e.message}`, 'Pass a valid ADI and the g1- network identifier');
+      throw e;
+    }
   }
 
   /**
