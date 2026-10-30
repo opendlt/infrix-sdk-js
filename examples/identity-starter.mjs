@@ -19,7 +19,9 @@ function holderKey() {
 
 // createDID is offline — no connection is made.
 const client = new InfrixClient('local', { actor: 'acc://alice.acme', purpose: 'demo' });
-const holderDID = client.credentials.createDID('acc://alice.acme');
+// The network id is the Directory genesis commitment (g1- and 64 hex digits); a label like "kermit" is refused.
+const NETWORK_ID = 'g1-e3f3119213a1ead44647659d67e47f4269a2affb13f150aa87b20baacf93cf81';
+const holderDID = client.credentials.createDID('acc://alice.acme', { networkId: NETWORK_ID });
 console.log('1. holder DID (offline):', holderDID);
 
 // A credential the holder possesses. In production this is issued by a node
