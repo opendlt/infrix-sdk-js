@@ -99,7 +99,9 @@ export interface IntentsWriteApproveBody {
   readonly signature?: unknown;
   readonly signatureAlgorithm?: unknown;
   readonly signaturePayload?: unknown;
+  readonly signatureTimestamp?: unknown;
   readonly signerPublicKey?: unknown;
+  readonly signerVersion?: unknown;
   readonly stageId: unknown;
   readonly targetId?: unknown;
   readonly targetType?: unknown;
@@ -162,7 +164,9 @@ export interface IntentsWriteForIdApproveBody {
   readonly signature?: unknown;
   readonly signatureAlgorithm?: unknown;
   readonly signaturePayload?: unknown;
+  readonly signatureTimestamp?: unknown;
   readonly signerPublicKey?: unknown;
+  readonly signerVersion?: unknown;
   readonly stageId: unknown;
   readonly targetId?: unknown;
   readonly targetType?: unknown;
@@ -299,8 +303,8 @@ export class IntentsWrites extends SubClient {
 
   /** Send POST /v4/intents/approve. */
   async approve(body: IntentsWriteApproveBody): Promise<IntentsWriteApproveAnswer> {
-    genCheckBody('POST /v4/intents/approve', body, [['identity', true], ['intentId', false], ['keyPageRef', false], ['planHash', true], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signerPublicKey', false], ['stageId', true], ['targetId', false], ['targetType', false]]);
-    const r = await this.rest<Partial<IntentsWriteApproveAnswer>>('POST', '/v4/intents/approve', { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signerPublicKey: body.signerPublicKey, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
+    genCheckBody('POST /v4/intents/approve', body, [['identity', true], ['intentId', false], ['keyPageRef', false], ['planHash', true], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signatureTimestamp', false], ['signerPublicKey', false], ['signerVersion', false], ['stageId', true], ['targetId', false], ['targetType', false]]);
+    const r = await this.rest<Partial<IntentsWriteApproveAnswer>>('POST', '/v4/intents/approve', { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signatureTimestamp: body.signatureTimestamp, signerPublicKey: body.signerPublicKey, signerVersion: body.signerVersion, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
     return {
       approved: genDeclared('POST /v4/intents/approve', 'approved', r.approved),
       detail: genDeclared('POST /v4/intents/approve', 'detail', r.detail),
@@ -313,8 +317,8 @@ export class IntentsWrites extends SubClient {
   /** Send POST /v4/intents/{id}/approve. */
   async forIdApprove(id: string, body: IntentsWriteForIdApproveBody): Promise<IntentsWriteForIdApproveAnswer> {
     genPathValue('POST /v4/intents/{id}/approve', 'id', id, 'string');
-    genCheckBody('POST /v4/intents/{id}/approve', body, [['identity', true], ['intentId', false], ['keyPageRef', false], ['planHash', true], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signerPublicKey', false], ['stageId', true], ['targetId', false], ['targetType', false]]);
-    const r = await this.rest<Partial<IntentsWriteForIdApproveAnswer>>('POST', `/v4/intents/${encodeURIComponent(id)}/approve`, { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signerPublicKey: body.signerPublicKey, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
+    genCheckBody('POST /v4/intents/{id}/approve', body, [['identity', true], ['intentId', false], ['keyPageRef', false], ['planHash', true], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signatureTimestamp', false], ['signerPublicKey', false], ['signerVersion', false], ['stageId', true], ['targetId', false], ['targetType', false]]);
+    const r = await this.rest<Partial<IntentsWriteForIdApproveAnswer>>('POST', `/v4/intents/${encodeURIComponent(id)}/approve`, { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signatureTimestamp: body.signatureTimestamp, signerPublicKey: body.signerPublicKey, signerVersion: body.signerVersion, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
     return {
       approved: genDeclared('POST /v4/intents/{id}/approve', 'approved', r.approved),
       detail: genDeclared('POST /v4/intents/{id}/approve', 'detail', r.detail),

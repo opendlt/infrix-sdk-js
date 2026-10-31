@@ -3,6 +3,19 @@
 // =============================================================================
 
 /** The parsed, validated user intent. */
+/**
+ * The network user-signature types an approval may carry besides the original bare Ed25519 form (the node verifies them through
+ * protocol.VerifyUserSignature, the function L0 runs, and proves the key's page entry, in the width its type stores, is on the signer's key page).
+ * EIP-712 typed data is not among them: the network verifies it only over an Accumulate transaction, so an Ethereum key signs an approval as `eth`.
+ */
+export type ApprovalSignatureType = 'btc' | 'btcLegacy' | 'ecdsaSha256' | 'ed25519' | 'eth' | 'legacyED25519' | 'rcd1' | 'rsaSha256';
+
+/** The signature types, sorted: the same set the node's doors accept (workflow.ApprovalSignatureTypes). */
+export const APPROVAL_SIGNATURE_TYPES: readonly ApprovalSignatureType[] = ['btc', 'btcLegacy', 'ecdsaSha256', 'ed25519', 'eth', 'legacyED25519', 'rcd1', 'rsaSha256'];
+
+/** The signatureAlgorithm of an approval: `ed25519` is the original bare Ed25519 signature over the canonical preimage; `accumulate:<type>` is a network signature. */
+export type ApprovalSignatureAlgorithm = 'ed25519' | `accumulate:${ApprovalSignatureType}`;
+
 export interface Intent {
   id: string;
   userAddress: string;
@@ -725,7 +738,7 @@ export interface ApprovalEnvelope {
   keyPageRef?: string;
   signature: string;
   signerPublicKey: string;
-  signatureAlgorithm: 'ed25519';
+  signatureAlgorithm: ApprovalSignatureAlgorithm;
   /** @deprecated Approvals are signed over the canonical preimage; nodes do not return this. */
   signaturePayload?: string;
   signedAt?: string;          // ISO 8601
