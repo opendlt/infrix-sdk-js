@@ -20,6 +20,8 @@ export type DIDCheckName =
   | 'hosted-context'
   | 'integrity'
   | 'bbs'
+  | 'bbs-issue'
+  | 'bbs-derive'
   | 'vocab'
   | 'did-document';
 
@@ -36,6 +38,12 @@ export interface DIDCheckRequest {
   canonicalId?: string;
   term?: string;
   scenario?: string;
+  /** bbs-issue: `derived` (issuer signs, holder derives) or `base`. */
+  stage?: string;
+  /** bbs-derive: the JSON pointers of the further statements to disclose. */
+  select?: string[];
+  /** bbs-derive: the holder's presentation header, hex. */
+  presentationHeader?: string;
   purpose?: string;
   challenge?: string;
   domain?: string;
@@ -74,6 +82,9 @@ export class DIDCheckSubClient extends SubClient {
       canonicalId: request.canonicalId,
       term: request.term,
       scenario: request.scenario,
+      stage: request.stage,
+      select: request.select,
+      presentationHeader: request.presentationHeader,
       purpose: request.purpose,
       challenge: request.challenge,
       domain: request.domain,
