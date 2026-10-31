@@ -128,6 +128,10 @@
       "description": "Ground a prompt into a named workspace, generate every artifact, and run the workflow through the canonical governed flow to produce a real, independently verifiable proof under .infrixapp/\u003cname\u003e. Local runs reach L3/G2; L4 needs a live Kermit run (a funded testnet ADI). Never mainnet. Writes local workspace state.",
       "mutatesState": true,
       "networkWrites": false,
+      "externalWriteModes": [
+        "kermit",
+        "node"
+      ],
       "requiresApproval": true,
       "dryRunSupported": true,
       "riskLevel": "local_write",
@@ -147,7 +151,11 @@
       "optionalInputs": [
         "network",
         "mode",
-        "endpoint"
+        "endpoint",
+        "rpc",
+        "actor",
+        "workflowDefinition",
+        "l0"
       ],
       "outputs": [
         "workspace",
@@ -158,16 +166,25 @@
         "type": "object",
         "description": "What app to build and prove.",
         "properties": {
+          "actor": {
+            "type": "string",
+            "description": "Node mode: the acting identity (an ADI) the governed intent is submitted as."
+          },
           "endpoint": {
             "type": "string",
             "description": "Kermit L0 endpoint (kermit mode only)."
           },
+          "l0": {
+            "type": "string",
+            "description": "Node mode: the Accumulate L0 endpoint (URL or network name) the verifier confirms the node's anchor against, for L4."
+          },
           "mode": {
             "type": "string",
-            "description": "Run mode override.",
+            "description": "Run mode override: local, kermit, or node (the plan's workflow.execute step is submitted as a governed WORKFLOW_START intent to the node named by rpc, and the proof is the node's own export).",
             "enum": [
               "local",
-              "kermit"
+              "kermit",
+              "node"
             ]
           },
           "name": {
@@ -185,6 +202,14 @@
           "prompt": {
             "type": "string",
             "description": "Plain-language description of the verifiable app you want."
+          },
+          "rpc": {
+            "type": "string",
+            "description": "Node mode: the node's origin (http or https)."
+          },
+          "workflowDefinition": {
+            "type": "string",
+            "description": "Node mode: the id of the workflow definition the node serves, which the plan's workflow.execute step starts."
           }
         },
         "required": [
