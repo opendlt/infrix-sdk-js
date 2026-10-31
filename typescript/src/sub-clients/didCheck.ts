@@ -23,7 +23,8 @@ export type DIDCheckName =
   | 'bbs-issue'
   | 'bbs-derive'
   | 'vocab'
-  | 'did-document';
+  | 'did-document'
+  | 'w3c-vector';
 
 /** The request of POST /v4/did/check: the check and the inputs of its rule. */
 export interface DIDCheckRequest {
