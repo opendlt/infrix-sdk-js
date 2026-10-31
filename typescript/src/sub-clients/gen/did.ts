@@ -28,9 +28,12 @@ export interface DidCheckBody {
   readonly equivalentId?: unknown;
   readonly namespace?: unknown;
   readonly networkId?: unknown;
+  readonly presentationHeader?: unknown;
   readonly purpose?: unknown;
   readonly reference?: unknown;
   readonly scenario?: unknown;
+  readonly select?: unknown;
+  readonly stage?: unknown;
   readonly subject?: unknown;
   readonly term?: unknown;
 }
@@ -50,8 +53,8 @@ export class DidReads extends SubClient {
 
   /** Read POST /v4/did/check. */
   async check(body: DidCheckBody): Promise<DidCheckAnswer> {
-    genCheckBody('POST /v4/did/check', body, [['account', false], ['artifact', false], ['canonicalId', false], ['challenge', false], ['check', false], ['did', false], ['domain', false], ['equivalentId', false], ['namespace', false], ['networkId', false], ['purpose', false], ['reference', false], ['scenario', false], ['subject', false], ['term', false]]);
-    const r = await this.rest<Partial<DidCheckAnswer>>('POST', '/v4/did/check', { account: body.account, artifact: body.artifact, canonicalId: body.canonicalId, challenge: body.challenge, check: body.check, did: body.did, domain: body.domain, equivalentId: body.equivalentId, namespace: body.namespace, networkId: body.networkId, purpose: body.purpose, reference: body.reference, scenario: body.scenario, subject: body.subject, term: body.term });
+    genCheckBody('POST /v4/did/check', body, [['account', false], ['artifact', false], ['canonicalId', false], ['challenge', false], ['check', false], ['did', false], ['domain', false], ['equivalentId', false], ['namespace', false], ['networkId', false], ['presentationHeader', false], ['purpose', false], ['reference', false], ['scenario', false], ['select', false], ['stage', false], ['subject', false], ['term', false]]);
+    const r = await this.rest<Partial<DidCheckAnswer>>('POST', '/v4/did/check', { account: body.account, artifact: body.artifact, canonicalId: body.canonicalId, challenge: body.challenge, check: body.check, did: body.did, domain: body.domain, equivalentId: body.equivalentId, namespace: body.namespace, networkId: body.networkId, presentationHeader: body.presentationHeader, purpose: body.purpose, reference: body.reference, scenario: body.scenario, select: body.select, stage: body.stage, subject: body.subject, term: body.term });
     return {
       verified: genDeclared('POST /v4/did/check', 'verified', r.verified),
     };

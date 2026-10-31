@@ -17,6 +17,7 @@ import { EscrowsWrites } from './escrows';
 import { EvidenceReads } from './evidence';
 import { IndexerWrites } from './indexer';
 import { IntentsReads, IntentsWrites } from './intents';
+import { L0Reads } from './l0';
 import { MissionReads, MissionWrites } from './mission';
 import { ObjectsReads, ObjectsWrites } from './objects';
 import { PendingReads } from './pending';
@@ -47,6 +48,7 @@ export * from './escrows';
 export * from './evidence';
 export * from './indexer';
 export * from './intents';
+export * from './l0';
 export * from './mission';
 export * from './objects';
 export * from './pending';
@@ -122,6 +124,7 @@ export class GeneratedRouteReads {
   readonly disputes: DisputesReads;
   readonly evidence: EvidenceReads;
   readonly intents: IntentsReads;
+  readonly l0: L0Reads;
   readonly mission: MissionReads;
   readonly objects: ObjectsReads;
   readonly pending: PendingReads;
@@ -149,6 +152,7 @@ export class GeneratedRouteReads {
     this.disputes = new DisputesReads(rpc, rest);
     this.evidence = new EvidenceReads(rpc, rest);
     this.intents = new IntentsReads(rpc, rest);
+    this.l0 = new L0Reads(rpc, rest);
     this.mission = new MissionReads(rpc, rest);
     this.objects = new ObjectsReads(rpc, rest);
     this.pending = new PendingReads(rpc, rest);
@@ -211,6 +215,7 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'GET /v4/intents/{id}/outcome', write: false, family: 'intents', method: 'forIdOutcome', path: '/v4/intents/{id}/outcome', members: ['audit', 'created', 'createdByIntentId', 'createdByPlanId', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/intents/{id}/pending', write: false, family: 'intents', method: 'forIdPending', path: '/v4/intents/{id}/pending', members: ['items', 'pagination'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [{ name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }, { name: 'state', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/intents/{id}/plan', write: false, family: 'intents', method: 'forIdPlan', path: '/v4/intents/{id}/plan', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
+  { route: 'GET /v4/l0/state', write: false, family: 'l0', method: 'state', path: '/v4/l0/state', members: ['found', 'id', 'type'], bodyFields: [], pathValues: [], query: [{ name: 'id', kind: 'string', allowed: [] }, { name: 'type', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/mission/contracts/{contract}/dashboard', write: false, family: 'mission', method: 'contractsForContractDashboard', path: '/v4/mission/contracts/{contract}/dashboard', members: ['contract', 'dashboard', 'grafana'], bodyFields: [], pathValues: [{ name: 'contract', kind: 'string', allowed: [] }], query: [{ name: 'template', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/mission/traces', write: false, family: 'mission', method: 'traces', path: '/v4/mission/traces', members: ['count', 'retained', 'traces'], bodyFields: [], pathValues: [], query: [{ name: 'limit', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/mission/traces/{tx_hash}', write: false, family: 'mission', method: 'tracesForTxHash', path: '/v4/mission/traces/{tx_hash}', members: ['trace', 'txHash'], bodyFields: [], pathValues: [{ name: 'tx_hash', kind: 'string', allowed: [] }], query: [] },
@@ -240,7 +245,7 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'POST /v4/committees/{id}/motions/{motionId}/ballots', write: true, family: 'committees', method: 'forIdMotionsForMotionIdBallots', path: '/v4/committees/{id}/motions/{motionId}/ballots', members: ['governed', 'intentId', 'motionId', 'status'], bodyFields: [{ name: 'actor', required: true }, { name: 'ballot', required: true }, { name: 'justification', required: false }], pathValues: [{ name: 'id', kind: 'string', allowed: [] }, { name: 'motionId', kind: 'string', allowed: [] }], query: [] },
   { route: 'POST /v4/committees/{id}/motions/{motionId}/resolve', write: true, family: 'committees', method: 'forIdMotionsForMotionIdResolve', path: '/v4/committees/{id}/motions/{motionId}/resolve', members: ['governed', 'intentId', 'motionId', 'status'], bodyFields: [{ name: 'actor', required: true }], pathValues: [{ name: 'id', kind: 'string', allowed: [] }, { name: 'motionId', kind: 'string', allowed: [] }], query: [] },
   { route: 'POST /v4/credentials', write: true, family: 'credentials', method: 'root', path: '/v4/credentials', members: ['credentialType', 'governed', 'intentId', 'status', 'subjectDid'], bodyFields: [{ name: 'actor', required: true }, { name: 'claims', required: false }, { name: 'credentialType', required: false }, { name: 'credentialTypes', required: false }, { name: 'expirationDate', required: false }, { name: 'idOverride', required: false }, { name: 'subjectDid', required: true }], pathValues: [], query: [] },
-  { route: 'POST /v4/did/check', write: false, family: 'did', method: 'check', path: '/v4/did/check', members: ['verified'], bodyFields: [{ name: 'account', required: false }, { name: 'artifact', required: false }, { name: 'canonicalId', required: false }, { name: 'challenge', required: false }, { name: 'check', required: false }, { name: 'did', required: false }, { name: 'domain', required: false }, { name: 'equivalentId', required: false }, { name: 'namespace', required: false }, { name: 'networkId', required: false }, { name: 'purpose', required: false }, { name: 'reference', required: false }, { name: 'scenario', required: false }, { name: 'subject', required: false }, { name: 'term', required: false }], pathValues: [], query: [] },
+  { route: 'POST /v4/did/check', write: false, family: 'did', method: 'check', path: '/v4/did/check', members: ['verified'], bodyFields: [{ name: 'account', required: false }, { name: 'artifact', required: false }, { name: 'canonicalId', required: false }, { name: 'challenge', required: false }, { name: 'check', required: false }, { name: 'did', required: false }, { name: 'domain', required: false }, { name: 'equivalentId', required: false }, { name: 'namespace', required: false }, { name: 'networkId', required: false }, { name: 'presentationHeader', required: false }, { name: 'purpose', required: false }, { name: 'reference', required: false }, { name: 'scenario', required: false }, { name: 'select', required: false }, { name: 'stage', required: false }, { name: 'subject', required: false }, { name: 'term', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/disclosures', write: true, family: 'disclosures', method: 'root', path: '/v4/disclosures', members: ['governed', 'status'], bodyFields: [{ name: 'actor', required: false }, { name: 'approvalRequired', required: false }, { name: 'approvalWaiverReason', required: false }, { name: 'fields', required: false }, { name: 'grantor', required: false }, { name: 'purpose', required: false }, { name: 'scopeTarget', required: false }, { name: 'scopeType', required: false }, { name: 'targetId', required: false }, { name: 'targetType', required: false }, { name: 'viewer', required: false }, { name: 'workflowStageScope', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/disclosures/keys', write: true, family: 'disclosures', method: 'keys', path: '/v4/disclosures/keys', members: ['authority', 'governed', 'intentId', 'status'], bodyFields: [{ name: 'actor', required: false }, { name: 'authority', required: true }, { name: 'keyPage', required: false }, { name: 'publicKey', required: true }], pathValues: [], query: [] },
   { route: 'POST /v4/disclosures/{id}/revoke', write: true, family: 'disclosures', method: 'forIdRevoke', path: '/v4/disclosures/{id}/revoke', members: ['id', 'reason', 'status'], bodyFields: [{ name: 'identity', required: true }, { name: 'reason', required: false }], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
