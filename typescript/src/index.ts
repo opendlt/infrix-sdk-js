@@ -165,6 +165,7 @@ export {
   ContractSubClient,
   EvmSubClient,
   PredicateSubClient,
+  DIDCheckSubClient,
   CredentialSubClient,
   DID_METHOD_INFRIX,
   EIP712SubClient,
@@ -191,6 +192,9 @@ export type {
   PredicateCatalogEntry,
   PredicateProofEnvelope,
   PredicateVerifyResult,
+  DIDCheckName,
+  DIDCheckRequest,
+  DIDCheckResult,
   PredicateProveRequest,
   PredicateProver,
 } from './sub-clients';
@@ -254,6 +258,7 @@ import {
   ContractSubClient,
   EvmSubClient,
   PredicateSubClient,
+  DIDCheckSubClient,
   CredentialSubClient,
   EIP712SubClient,
   NodeSubClient,
@@ -433,6 +438,8 @@ export class InfrixClient {
 
   /** ZK predicate catalog + read-only proof verification (catalog, verify). */
   readonly predicates: PredicateSubClient;
+  /** POST /v4/did/check: the node's verdict on one did:infrix rule (read-only). */
+  readonly didCheck: DIDCheckSubClient;
 
   /** DID + verifiable-credential ergonomics (createDID, issue, issuerDocument, presentationRequest). */
   readonly credentials: CredentialSubClient;
@@ -582,6 +589,7 @@ export class InfrixClient {
     this.disclosures = new DisclosureSubClient(rpcFn, restFn);
     this.anchors = new AnchorSubClient(rpcFn, restFn);
     this.predicates = new PredicateSubClient(rpcFn, restFn);
+    this.didCheck = new DIDCheckSubClient(rpcFn, restFn);
     this.credentials = new CredentialSubClient(rpcFn, restFn);
     this.eip712 = new EIP712SubClient(rpcFn, restFn);
     this.node = new NodeSubClient(rpcFn, restFn);

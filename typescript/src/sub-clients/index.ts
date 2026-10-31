@@ -29,6 +29,8 @@ export type { PolicyDecisionAnswer, PolicyQuestion } from './policies';
 export { CommitteeSubClient, EmergencySubClient } from './governanceBodies';
 export type { CommitteeList, CommitteeMotions, EmergencyCaseList } from './governanceBodies';
 export { PredicateSubClient } from './predicates';
+export { DIDCheckSubClient } from './didCheck';
+export type { DIDCheckName, DIDCheckRequest, DIDCheckResult } from './didCheck';
 export type {
   PredicateCatalog,
   PredicateCatalogEntry,
