@@ -9,6 +9,7 @@ import { CapabilitiesReads, CapabilitiesWrites } from './capabilities';
 import { CommitteesWrites } from './committees';
 import { ContractsReads } from './contracts';
 import { CredentialsWrites } from './credentials';
+import { DelegatesReads } from './delegates';
 import { DidReads } from './did';
 import { DisclosuresReads, DisclosuresWrites } from './disclosures';
 import { DisputesReads, DisputesWrites } from './disputes';
@@ -40,6 +41,7 @@ export * from './capabilities';
 export * from './committees';
 export * from './contracts';
 export * from './credentials';
+export * from './delegates';
 export * from './did';
 export * from './disclosures';
 export * from './disputes';
@@ -119,6 +121,7 @@ export class GeneratedRouteReads {
   readonly bridge: BridgeReads;
   readonly capabilities: CapabilitiesReads;
   readonly contracts: ContractsReads;
+  readonly delegates: DelegatesReads;
   readonly did: DidReads;
   readonly disclosures: DisclosuresReads;
   readonly disputes: DisputesReads;
@@ -147,6 +150,7 @@ export class GeneratedRouteReads {
     this.bridge = new BridgeReads(rpc, rest);
     this.capabilities = new CapabilitiesReads(rpc, rest);
     this.contracts = new ContractsReads(rpc, rest);
+    this.delegates = new DelegatesReads(rpc, rest);
     this.did = new DidReads(rpc, rest);
     this.disclosures = new DisclosuresReads(rpc, rest);
     this.disputes = new DisputesReads(rpc, rest);
@@ -202,6 +206,9 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'GET /v4/contracts/{addr}/events', write: false, family: 'contracts', method: 'forAddrEvents', path: '/v4/contracts/{addr}/events', members: ['contract', 'count', 'events', 'total'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }], query: [{ name: 'eventName', kind: 'string', allowed: [] }, { name: 'fromBlock', kind: 'int', allowed: [] }, { name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }, { name: 'toBlock', kind: 'int', allowed: [] }, { name: 'topic0', kind: 'string', allowed: [] }, { name: 'topic1', kind: 'string', allowed: [] }, { name: 'topic2', kind: 'string', allowed: [] }, { name: 'topic3', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/contracts/{addr}/state', write: false, family: 'contracts', method: 'forAddrState', path: '/v4/contracts/{addr}/state', members: ['blockNumber', 'contract', 'count', 'keys', 'truncated'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }], query: [{ name: 'limit', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/contracts/{addr}/state/{key}', write: false, family: 'contracts', method: 'forAddrStateForKey', path: '/v4/contracts/{addr}/state/{key}', members: ['blockHash', 'blockNumber', 'exists', 'stateRoot', 'value'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }, { name: 'key', kind: 'string', allowed: [] }], query: [] },
+  { route: 'GET /v4/delegates/{url}', write: false, family: 'delegates', method: 'forUrl', path: '/v4/delegates/{url}', members: ['account', 'count', 'delegates'], bodyFields: [], pathValues: [{ name: 'url', kind: 'string', allowed: [] }], query: [] },
+  { route: 'GET /v4/delegates/{url}/authorization', write: false, family: 'delegates', method: 'forUrlAuthorization', path: '/v4/delegates/{url}/authorization', members: ['account', 'authorized', 'callAllowed', 'delegate', 'expired', 'keyPage', 'reason'], bodyFields: [], pathValues: [{ name: 'url', kind: 'string', allowed: [] }], query: [{ name: 'delegate', kind: 'string', allowed: [] }, { name: 'function', kind: 'string', allowed: [] }, { name: 'gas', kind: 'int', allowed: [] }, { name: 'value', kind: 'int', allowed: [] }] },
+  { route: 'GET /v4/delegates/{url}/chain', write: false, family: 'delegates', method: 'forUrlChain', path: '/v4/delegates/{url}/chain', members: ['account', 'chain', 'depth'], bodyFields: [], pathValues: [{ name: 'url', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/did/{did}', write: false, family: 'did', method: 'forDid', path: '/v4/did/{did}', members: ['didDocument', 'didDocumentMetadata', 'didResolutionMetadata'], bodyFields: [], pathValues: [{ name: 'did', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/disclosures/check', write: false, family: 'disclosures', method: 'check', path: '/v4/disclosures/check', members: ['authorized', 'targetId', 'targetType', 'viewer'], bodyFields: [], pathValues: [], query: [{ name: 'approvalId', kind: 'string', allowed: [] }, { name: 'field', kind: 'string', allowed: [] }, { name: 'grantId', kind: 'string', allowed: [] }, { name: 'targetId', kind: 'string', allowed: [] }, { name: 'targetType', kind: 'string', allowed: [] }, { name: 'viewer', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/disclosures/{id}/proof', write: false, family: 'disclosures', method: 'forIdProof', path: '/v4/disclosures/{id}/proof', members: ['canonical', 'digest', 'payload', 'sigAlgo', 'signature', 'signerKey'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
