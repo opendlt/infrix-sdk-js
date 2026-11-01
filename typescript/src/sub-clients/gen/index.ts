@@ -7,6 +7,7 @@ import { AuditReads } from './audit';
 import { BridgeReads, BridgeWrites } from './bridge';
 import { CapabilitiesReads, CapabilitiesWrites } from './capabilities';
 import { CommitteesWrites } from './committees';
+import { ContractSignersReads } from './contract-signers';
 import { ContractsReads } from './contracts';
 import { CredentialsWrites } from './credentials';
 import { DelegatesReads } from './delegates';
@@ -39,6 +40,7 @@ export * from './audit';
 export * from './bridge';
 export * from './capabilities';
 export * from './committees';
+export * from './contract-signers';
 export * from './contracts';
 export * from './credentials';
 export * from './delegates';
@@ -120,6 +122,7 @@ export class GeneratedRouteReads {
   readonly audit: AuditReads;
   readonly bridge: BridgeReads;
   readonly capabilities: CapabilitiesReads;
+  readonly contractSigners: ContractSignersReads;
   readonly contracts: ContractsReads;
   readonly delegates: DelegatesReads;
   readonly did: DidReads;
@@ -149,6 +152,7 @@ export class GeneratedRouteReads {
     this.audit = new AuditReads(rpc, rest);
     this.bridge = new BridgeReads(rpc, rest);
     this.capabilities = new CapabilitiesReads(rpc, rest);
+    this.contractSigners = new ContractSignersReads(rpc, rest);
     this.contracts = new ContractsReads(rpc, rest);
     this.delegates = new DelegatesReads(rpc, rest);
     this.did = new DidReads(rpc, rest);
@@ -203,6 +207,7 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'GET /v4/capabilities/grants/{id}', write: false, family: 'capabilities', method: 'grantsForId', path: '/v4/capabilities/grants/{id}', members: ['audit', 'created', 'fields', 'id', 'state', 'type', 'updated', 'url', 'version'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/capabilities/grants/{id}/chain', write: false, family: 'capabilities', method: 'grantsForIdChain', path: '/v4/capabilities/grants/{id}/chain', members: ['chain', 'depth', 'grantId'], bodyFields: [], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'GET /v4/capabilities/manifest/{contract}', write: false, family: 'capabilities', method: 'manifestForContract', path: '/v4/capabilities/manifest/{contract}', members: ['contract', 'detail', 'missing', 'provided', 'required'], bodyFields: [], pathValues: [{ name: 'contract', kind: 'string', allowed: [] }], query: [] },
+  { route: 'GET /v4/contract-signers/{url}', write: false, family: 'contract-signers', method: 'forUrl', path: '/v4/contract-signers/{url}', members: ['actor', 'configured', 'contract', 'keyLabel', 'log', 'record', 'recordAccount', 'stats'], bodyFields: [], pathValues: [{ name: 'url', kind: 'string', allowed: [] }], query: [{ name: 'signsFor', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/contracts/{addr}/events', write: false, family: 'contracts', method: 'forAddrEvents', path: '/v4/contracts/{addr}/events', members: ['contract', 'count', 'events', 'total'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }], query: [{ name: 'eventName', kind: 'string', allowed: [] }, { name: 'fromBlock', kind: 'int', allowed: [] }, { name: 'limit', kind: 'int', allowed: [] }, { name: 'offset', kind: 'int', allowed: [] }, { name: 'toBlock', kind: 'int', allowed: [] }, { name: 'topic0', kind: 'string', allowed: [] }, { name: 'topic1', kind: 'string', allowed: [] }, { name: 'topic2', kind: 'string', allowed: [] }, { name: 'topic3', kind: 'string', allowed: [] }] },
   { route: 'GET /v4/contracts/{addr}/state', write: false, family: 'contracts', method: 'forAddrState', path: '/v4/contracts/{addr}/state', members: ['blockNumber', 'contract', 'count', 'keys', 'truncated'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }], query: [{ name: 'limit', kind: 'int', allowed: [] }] },
   { route: 'GET /v4/contracts/{addr}/state/{key}', write: false, family: 'contracts', method: 'forAddrStateForKey', path: '/v4/contracts/{addr}/state/{key}', members: ['blockHash', 'blockNumber', 'exists', 'stateRoot', 'value'], bodyFields: [], pathValues: [{ name: 'addr', kind: 'string', allowed: [] }, { name: 'key', kind: 'string', allowed: [] }], query: [] },
