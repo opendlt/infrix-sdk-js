@@ -69,7 +69,9 @@ export interface ApprovalsWriteRootBody {
   readonly signature?: unknown;
   readonly signatureAlgorithm?: unknown;
   readonly signaturePayload?: unknown;
+  readonly signatureTimestamp?: unknown;
   readonly signerPublicKey?: unknown;
+  readonly signerVersion?: unknown;
   readonly stageId?: unknown;
   readonly targetId?: unknown;
   readonly targetType?: unknown;
@@ -194,8 +196,8 @@ export class ApprovalsWrites extends SubClient {
 
   /** Send POST /v4/approvals. */
   async root(body: ApprovalsWriteRootBody): Promise<ApprovalsWriteRootAnswer> {
-    genCheckBody('POST /v4/approvals', body, [['identity', false], ['intentId', false], ['keyPageRef', false], ['planHash', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signerPublicKey', false], ['stageId', false], ['targetId', false], ['targetType', false]]);
-    const r = await this.rest<Partial<ApprovalsWriteRootAnswer>>('POST', '/v4/approvals', { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signerPublicKey: body.signerPublicKey, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
+    genCheckBody('POST /v4/approvals', body, [['identity', false], ['intentId', false], ['keyPageRef', false], ['planHash', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signatureTimestamp', false], ['signerPublicKey', false], ['signerVersion', false], ['stageId', false], ['targetId', false], ['targetType', false]]);
+    const r = await this.rest<Partial<ApprovalsWriteRootAnswer>>('POST', '/v4/approvals', { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signatureTimestamp: body.signatureTimestamp, signerPublicKey: body.signerPublicKey, signerVersion: body.signerVersion, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
     return {
       approvalId: genDeclared('POST /v4/approvals', 'approvalId', r.approvalId),
       intentId: genDeclared('POST /v4/approvals', 'intentId', r.intentId),

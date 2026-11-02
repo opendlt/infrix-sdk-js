@@ -10,6 +10,10 @@
  * assurance always comes from the verifier, a failed proof is NEVER hidden
  * (verify throws), and a share bundle cannot be produced without a verified
  * result. Local runs cap at L3; nothing targets mainnet.
+ *
+ * With `node` the plan runs through a production node instead of in-process: the plan's workflow.execute step is submitted to that node as a governed
+ * WORKFLOW_START intent, the proof is the node's own export, and with `l0` the verifier confirms the node's anchor on live Accumulate (L4). A node run
+ * is an external write, so it is NOT auto-approved: the caller approves it (`node.approve: true` states that they did).
  */
 
 import { InfrixAgentClient } from '../agent/client.js';
@@ -23,6 +27,22 @@ export interface FromPromptOptions {
   name?: string;
   /** Verification network; 'local' (default) caps at L3, 'kermit' reaches L4. */
   network?: string;
+  /** Run the plan through a production node instead of in-process (app.run mode 'node'). */
+  node?: NodeRun;
+}
+
+/** The node a node-mode run goes through and who acts there. */
+export interface NodeRun {
+  /** The node's origin (http or https). */
+  rpc: string;
+  /** The acting identity (an ADI) the governed intent is submitted as. */
+  actor: string;
+  /** The id of the workflow definition the node serves, which the plan's workflow.execute step starts. */
+  workflowDefinition: string;
+  /** The Accumulate L0 endpoint (URL or network name) the verifier confirms the node's anchor against; without it the proof stays below L4. */
+  l0?: string;
+  /** True when the caller has approved this external write; a node run is never auto-approved. */
+  approve?: boolean;
 }
 
 /** deriveName turns a prompt into a stable, filesystem-safe workspace name. */
@@ -93,16 +113,23 @@ export class HeroApp {
     /** The workspace name. */
     readonly name: string,
     private readonly prompt: string,
-    private readonly network: string
+    private readonly network: string,
+    private readonly node?: NodeRun
   ) {}
 
   /** run builds + runs the app through the canonical governed flow. */
   async run(): Promise<HeroRun> {
-    const r = await this.client.run(
-      'app.run',
-      { name: this.name, prompt: this.prompt, network: this.network },
-      { autoApprove: true }
-    );
+    const node = this.node;
+    const input: Record<string, unknown> = { name: this.name, prompt: this.prompt, network: this.network };
+    if (node) {
+      input.mode = 'node';
+      input.rpc = node.rpc;
+      input.actor = node.actor;
+      input.workflowDefinition = node.workflowDefinition;
+      if (node.l0) input.l0 = node.l0;
+    }
+    // A local run is a local write and is auto-approved; a node run is an external write and is approved only when the caller says they approved it.
+    const r = await this.client.run('app.run', input, { autoApprove: node ? node.approve === true : true });
     if (!r.ok) {
       throw new Error('app.run failed: ' + (r.errors[0]?.code ?? 'unknown'));
     }
@@ -122,11 +149,19 @@ export async function fromPrompt(prompt: string, opts: FromPromptOptions): Promi
   if (network === 'mainnet') {
     throw new Error('fromPrompt: mainnet is not a valid hero-path network');
   }
+  const node = opts.node;
+  if (node) {
+    for (const k of ['rpc', 'actor', 'workflowDefinition'] as const) {
+      if (!node[k] || String(node[k]).trim() === '') {
+        throw new Error('fromPrompt: a node run needs node.' + k);
+      }
+    }
+  }
   const name = opts.name ?? deriveName(prompt);
   // app.ask grounds the prompt read-only; a refusal surfaces here, before run.
   const ask = await opts.client.run('app.ask', { prompt, network });
   if (!ask.ok) {
     throw new Error('fromPrompt: could not ground the prompt: ' + (ask.errors[0]?.code ?? 'unknown'));
   }
-  return new HeroApp(opts.client, name, prompt, network);
+  return new HeroApp(opts.client, name, prompt, network, node);
 }

@@ -2,7 +2,9 @@ import { SubClient } from './base';
 import { genQuery } from './gen/runtime';
 import { LIST_MEMBERS, checkPathValue, declaredMembers, refuseRemovedArguments, refuseUnknownOptions } from './routeShapes';
 import type { ListAnswer } from './routeShapes';
+import { APPROVAL_SIGNATURE_TYPES } from '../types/governance';
 import type {
+  ApprovalSignatureType,
   GovernedApproveResult,
   IntentAnswer,
   IntentEvidenceAnswer,
@@ -98,7 +100,11 @@ export class IntentSubClient extends SubClient {
    *
    * @param intentId - The parked intent
    * @param planHash - Hex plan hash (must equal the active plan's)
-   * @param opts - approver, role, keyPageRef, signature, signerPublicKey, stageId
+   * With `signatureType` the signature is the network's own user signature of that type (btc, eth, rsaSha256, ...) over the approval hash, made with
+   * `signerVersion` (the key page version it names) and `signatureTimestamp`; both are part of what the network signature signs, so both are required
+   * and neither may be given without a type.
+   *
+   * @param opts - approver, role, keyPageRef, signature, signerPublicKey, stageId, signatureType, signerVersion, signatureTimestamp
    */
   async approve(
     intentId: string,
@@ -110,13 +116,31 @@ export class IntentSubClient extends SubClient {
       signature: string;
       signerPublicKey: string;
       stageId?: string;
+      signatureType?: ApprovalSignatureType;
+      signerVersion?: number;
+      signatureTimestamp?: number;
     }
   ): Promise<GovernedApproveResult> {
+    const { signatureType, signerVersion, signatureTimestamp, ...rest } = opts;
+    if (signatureType === undefined) {
+      if (signerVersion !== undefined || signatureTimestamp !== undefined) {
+        throw new Error('signerVersion and signatureTimestamp belong to a network signature (set signatureType); the original ed25519 form signs neither');
+      }
+      return this.rpc<GovernedApproveResult>('intent.approve', { intentId, planHash, signatureAlgorithm: 'ed25519', ...rest });
+    }
+    if (!APPROVAL_SIGNATURE_TYPES.includes(signatureType)) {
+      throw new Error(`signatureType ${JSON.stringify(signatureType)} is not one of ${APPROVAL_SIGNATURE_TYPES.join(', ')}`);
+    }
+    if (signerVersion === undefined || signerVersion <= 0) {
+      throw new Error('signerVersion is required with signatureType: the key page version is part of what the network signature signs');
+    }
     return this.rpc<GovernedApproveResult>('intent.approve', {
       intentId,
       planHash,
-      signatureAlgorithm: 'ed25519',
-      ...opts,
+      signatureAlgorithm: `accumulate:${signatureType}`,
+      signerVersion,
+      ...(signatureTimestamp !== undefined ? { signatureTimestamp } : {}),
+      ...rest,
     });
   }
 
