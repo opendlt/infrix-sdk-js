@@ -7,3 +7,4 @@ export * from './proofReceipt.js';
 export * from './canonicalJson.js';
 export * from './proofStory.js';
 export * from './uxLabels.js';
+export * from './stateRootAccumulator.js';
