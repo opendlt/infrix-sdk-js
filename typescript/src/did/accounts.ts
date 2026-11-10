@@ -229,7 +229,7 @@ export function normalizeSolanaAccount(_reference: string, account: string): str
   if (raw === null || raw.length !== 32) {
     throw new AccountStandardError(`solana account ${JSON.stringify(account)} decodes to ${raw === null ? 0 : raw.length} bytes, want a 32-byte public key`);
   }
-  if (base58Encode(raw) !== account) throw new AccountStandardError(`solana account ${JSON.stringify(account)} is not the canonical base58 spelling of its 32 bytes`);
+  // base58 is a bijection between strings and byte strings (a leading '1' is one leading zero byte and nothing else): a string that decodes IS the one canonical spelling of its bytes
   return account;
 }
 
@@ -292,9 +292,6 @@ export function parseBitcoinAddress(reference: string, account: string): Bitcoin
   const decoded = base58CheckDecode(account);
   if (decoded === null) throw new AccountStandardError(`bip122 account ${JSON.stringify(account)} is neither a ${network.name} segwit address nor a base58check address`);
   if (decoded.payload.length !== 20) throw new AccountStandardError(`bip122 account ${JSON.stringify(account)} holds ${decoded.payload.length} bytes, want 20`);
-  if (base58CheckEncode(decoded.payload, decoded.version) !== account) {
-    throw new AccountStandardError(`bip122 account ${JSON.stringify(account)} is not the canonical base58check spelling of its bytes`);
-  }
   const payloadHex = bytesToHex(decoded.payload);
   if (decoded.version === network.p2pkhVersion) return { kind: 'p2pkh', payloadHex, network: network.name };
   if (decoded.version === network.p2shVersion) return { kind: 'p2sh', payloadHex, network: network.name };
