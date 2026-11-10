@@ -8,6 +8,7 @@
 
 import { keccak_256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
+import { AccountStandardError, normalizeBitcoinAccount, normalizeCosmosAccount, normalizeSolanaAccount } from './accounts';
 
 export const DID_V1_PREFIX = 'did:infrix:v1:';
 
@@ -72,6 +73,13 @@ const CHAIN_NAMESPACES: Record<string, { reference: RegExp; account: RegExp }> =
   bip122: { reference: /^[0-9a-f]{32}$/, account: /^[a-zA-Z0-9]{26,90}$/ },
 };
 
+/** The account standard of each namespace that has one beyond a shape check: the account in its one canonical spelling, or an AccountStandardError. */
+const CHAIN_ACCOUNT_STANDARDS: Record<string, (reference: string, account: string) => string> = {
+  cosmos: normalizeCosmosAccount,
+  solana: normalizeSolanaAccount,
+  bip122: normalizeBitcoinAccount,
+};
+
 function eip55ChecksumValid(hexPart: string): boolean {
   const digest = bytesToHex(keccak_256(new TextEncoder().encode(hexPart.toLowerCase())));
   for (let i = 0; i < hexPart.length; i++) {
@@ -96,6 +104,14 @@ export function formatChainDID(namespace: string, reference: string, account: st
       throw new InfrixDIDError('profile-semantics', `eip155 account ${JSON.stringify(account)} is mixed-case with an invalid EIP-55 checksum`);
     }
     canonical = '0x' + hexPart.toLowerCase();
+  } else {
+    // cosmos, solana and bip122 are validated by their chain's own address standard (accounts.ts), exactly as infrix core validates them
+    try {
+      canonical = CHAIN_ACCOUNT_STANDARDS[namespace](reference, account);
+    } catch (e) {
+      if (e instanceof AccountStandardError) throw new InfrixDIDError('profile-semantics', e.message);
+      throw e;
+    }
   }
   return DID_V1_PREFIX + 'chain:' + [namespace, reference, canonical].map(encodeSegment).join(':');
 }
