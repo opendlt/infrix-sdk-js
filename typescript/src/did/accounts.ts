@@ -46,7 +46,8 @@ export function base58Decode(text: string): Uint8Array | null {
   if (hex.length % 2 === 1) hex = '0' + hex;
   const body = value === 0n ? new Uint8Array(0) : Uint8Array.from(hex.match(/../g)!.map((pair) => parseInt(pair, 16)));
   let zeros = 0;
-  while (zeros < text.length && text[zeros] === '1') zeros++;
+  // an index past the end reads undefined, which is not '1': the loop needs no bound of its own
+  while (text[zeros] === '1') zeros++;
   const out = new Uint8Array(zeros + body.length);
   out.set(body, zeros);
   return out;
@@ -62,7 +63,8 @@ export function base58Encode(bytes: Uint8Array): string {
     value /= 58n;
   }
   let zeros = 0;
-  while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+  // an index past the end reads undefined, which is not 0: the loop needs no bound of its own
+  while (bytes[zeros] === 0) zeros++;
   return '1'.repeat(zeros) + out;
 }
 
@@ -77,7 +79,7 @@ export function base58CheckDecode(text: string): { version: number; payload: Uin
   const body = raw.slice(0, raw.length - 4);
   const sum = raw.slice(raw.length - 4);
   const want = checksum4(body);
-  for (let i = 0; i < 4; i++) if (sum[i] !== want[i]) return null;
+  if (!sum.every((byte, i) => byte === want[i])) return null;
   return { version: body[0], payload: body.slice(1) };
 }
 
@@ -107,7 +109,9 @@ function bech32Polymod(values: number[]): number {
   for (const v of values) {
     const top = chk >>> 25;
     chk = (((chk & 0x1ffffff) << 5) ^ v) >>> 0;
-    for (let i = 0; i < 5; i++) if ((top >>> i) & 1) chk = (chk ^ generator[i]) >>> 0;
+    generator.forEach((g, i) => {
+      if ((top >>> i) & 1) chk = (chk ^ g) >>> 0;
+    });
   }
   return chk >>> 0;
 }
@@ -122,10 +126,10 @@ function bech32HrpExpand(hrp: string): number[] {
 
 function bech32CheckHrp(hrp: string): void {
   if (hrp.length < 1 || hrp.length > 83) throw new AccountStandardError(`bech32: the human-readable part is ${hrp.length} characters, want 1 to 83`);
-  for (let i = 0; i < hrp.length; i++) {
-    const c = hrp.charCodeAt(i);
+  hrp.split('').forEach((unit, i) => {
+    const c = unit.charCodeAt(0);
     if (c < 33 || c > 126) throw new AccountStandardError(`bech32: the human-readable part holds a character outside 33..126 at ${i}`);
-  }
+  });
 }
 
 /**
