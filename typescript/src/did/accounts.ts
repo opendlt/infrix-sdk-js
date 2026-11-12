@@ -46,8 +46,12 @@ export function base58Decode(text: string): Uint8Array | null {
   if (hex.length % 2 === 1) hex = '0' + hex;
   const body = value === 0n ? new Uint8Array(0) : Uint8Array.from(hex.match(/../g)!.map((pair) => parseInt(pair, 16)));
   let zeros = 0;
-  // an index past the end reads undefined, which is not '1': the loop needs no bound of its own
-  while (text[zeros] === '1') zeros++;
+  // the leading '1's, counted by a loop over the characters themselves: it ends with the text whatever its condition says (a cut of the
+  // condition of an index loop ran past the end for ever, part 25f5), and it needs no bound to cut
+  for (const ch of text) {
+    if (ch !== '1') break;
+    zeros++;
+  }
   const out = new Uint8Array(zeros + body.length);
   out.set(body, zeros);
   return out;
@@ -63,8 +67,11 @@ export function base58Encode(bytes: Uint8Array): string {
     value /= 58n;
   }
   let zeros = 0;
-  // an index past the end reads undefined, which is not 0: the loop needs no bound of its own
-  while (bytes[zeros] === 0) zeros++;
+  // the leading zero bytes, counted by a loop over the bytes themselves (it ends with them whatever its condition says)
+  for (const b of bytes) {
+    if (b !== 0) break;
+    zeros++;
+  }
   return '1'.repeat(zeros) + out;
 }
 
