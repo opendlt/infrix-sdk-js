@@ -9,7 +9,8 @@
 // A REGISTRY ENTRY is the JSON of a v2 envelope (version 2, hashAlgorithm "sha-256/jcs-rfc8785"); its document hash is SHA-256 of JCS of the "document" member AS STORED; its storage hash
 // is SHA-256("infrix:did-storage-entry:v1\x00" || the entry's bytes). THE CHAIN and THE AUTHORITY are core's (see verifyHistory and the authorizers below).
 //
-// WHAT THIS MODULE DOES NOT CHECK, AND CORE DOES: that each document is what its statement's typed operations yield from the document before (core's resolver applies the operations).
+// THE DOCUMENTS: every later version's document is re-derived from the one before by applying its statement's operations (derive.ts), and its canonical hash must be the hash the entry
+// binds, so an authentic chain over a document the operations do not yield is refused. derive.ts states the one thing core checks beyond this (the document rules).
 
 import { sha256 } from '@noble/hashes/sha2';
 import { keccak_256 } from '@noble/hashes/sha3';
@@ -20,6 +21,7 @@ import { ed25519 } from '@noble/curves/ed25519';
 import { CanonicalJSONError, JValue, canonicalizeJSON, parseJSON, writeCanonical } from './canonicalJson';
 import { base58Decode, bech32Decode, bech32Encode, convertBits, parseBitcoinAddress } from './accounts';
 import { formatChainDID } from './v1';
+import { deriveDocument } from './derive';
 
 const enc = new TextEncoder();
 export const STATEMENT_DOMAIN = 'infrix:did-statement:v1\u0000';
@@ -203,6 +205,21 @@ export function verifyHistory(did: string, networkId: string, history: Entry[], 
   });
 }
 
+/** Hold every later entry's document to the one its statement's operations yield from the document before it (derive.ts). */
+export function verifyDerivation(history: Entry[]): void {
+  for (let i = 1; i < history.length; i++) {
+    let derived: JValue;
+    try {
+      derived = deriveDocument(history[i - 1].document, history[i].operations);
+    } catch (err) {
+      return chainRefuse(`entry ${i}: the statement's operations do not apply to version ${history[i - 1].versionId}: ${(err as Error).message}`);
+    }
+    if (bytesToHex(sha256(enc.encode(writeCanonical(derived)))) !== bytesToHex(history[i].documentHash)) {
+      chainRefuse(`entry ${i}: the document is not what the statement's operations yield from version ${history[i - 1].versionId}`);
+    }
+  }
+}
+
 // ---- the anon profile ----
 
 /** The Ed25519 keys of a document's authentication relationship that name Multikey verification methods of the document. */
@@ -253,6 +270,7 @@ export function verifyAnonHistory(h: AnonHistory): AnonVerdict {
     return e;
   });
   verifyHistory(h.did, network, history, anonAuthorizer);
+  verifyDerivation(history);
   const tail = history[history.length - 1];
   const signers: string[] = [];
   for (const e of history) if (!signers.includes(bytesToHex(e.signer))) signers.push(bytesToHex(e.signer));

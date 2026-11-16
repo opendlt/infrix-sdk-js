@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha2';
-import { CanonicalJSONError, canonicalizeJSON, canonicalNumber } from './canonicalJson';
+import { CanonicalJSONError, JValue, canonicalizeJSON, canonicalNumber, parseJSON, writeCanonical } from './canonicalJson';
+import { DerivationError, deriveDocument } from './derive';
 import {
   AnonHistory, AnonVerdict, StatementChainError, chainStatementMessage, cosmosADR036SignDoc, eip191PersonalMessageHash, hash160, parseChainDID, verifyAnonHistory, verifyChainSignature,
 } from './statementChain';
@@ -122,5 +123,33 @@ test('PLANTED CUTS: every tamper of the valid anon history is refused by its cla
   assert.throws(() => verifyAnonHistory({ ...ok, entries }), (e: unknown) => e instanceof StatementChainError && e.refusal === 'anon-history-refused' && /I-JSON/.test(e.message));
   for (const bad of [{ ...ok, did: 'did:infrix:v1:anon:x' }, { ...ok, registry: 'acc://a/b' }, { ...ok, entries: ['!'] }, { ...ok, entries: [] }]) {
     assert.throws(() => verifyAnonHistory(bad), (e: unknown) => e instanceof StatementChainError && e.refusal === 'anon-history-refused');
+  }
+});
+
+test('every document-derivation vector is reproduced, and the authentic histories over a document the operations do not yield are refused', () => {
+  const file = JSON.parse(readFileSync(join(__dirname, '..', '..', 'testdata', 'did-vectors-v1.json')).toString('utf8')) as {
+    documentDerivation: { base: unknown; cases: { name: string; operations: Record<string, unknown>[]; valid: boolean; document?: string; sha256?: string }[] };
+  };
+  const base = parseJSON(JSON.stringify(file.documentDerivation.base));
+  let valid = 0;
+  let refused = 0;
+  for (const c of file.documentDerivation.cases) {
+    const ops = c.operations.map((o) => {
+      const parsed = parseJSON(JSON.stringify(o)) as { obj: Map<string, JValue> };
+      return { type: parsed.obj.get('type') as string, members: parsed.obj };
+    });
+    if (!c.valid) {
+      assert.throws(() => deriveDocument(base, ops), DerivationError, c.name);
+      refused++;
+      continue;
+    }
+    const derived = deriveDocument(base, ops);
+    assert.equal(writeCanonical(derived), c.document, c.name);
+    assert.equal(bytesToHex(sha256(new TextEncoder().encode(writeCanonical(derived)))), c.sha256, c.name);
+    valid++;
+  }
+  assert.ok(valid > 0 && refused > 0);
+  for (const v of set.anonHistory.filter((x) => /underived|misordered/.test(x.name))) {
+    assert.throws(() => verifyAnonHistory(v.history), (e: unknown) => e instanceof StatementChainError && e.refusal === 'statement-chain-refused' && /operations (do not apply|yield)/.test(e.message), v.name);
   }
 });

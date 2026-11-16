@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { formatAccDID, formatChainDID, InfrixDIDError } from './v1';
 import { bech32Decode, bech32Encode, convertBits, base58CheckDecode, base58CheckEncode, base58Decode, base58Encode, parseBitcoinAddress } from './accounts';
 
-const PINNED_SHA256 = '43325f58ad1a7ec1b8d117606fc7e891833fa8936a0e1d20b9891c4cbc8790b9';
+const PINNED_SHA256 = '14e6bb157b510c214987cfb734f3295433fcf5ab40ef253593564a89009fea97';
 const raw = readFileSync(join(__dirname, '..', '..', 'testdata', 'did-vectors-v1.json'));
 const set = JSON.parse(raw.toString('utf8')) as {
   spec: string;
@@ -165,7 +165,7 @@ test('the bit regrouping refuses non-canonical padding exactly as BIP-173 says',
 });
 
 test('the anon statement-chain vectors are present and digest-pinned (each is verified to its verdict in statementChain.test.ts)', () => {
-  assert.equal(set.anonHistory.length, 8);
+  assert.equal(set.anonHistory.length, 10);
   assert.equal(set.anonHistory.filter((v) => v.valid).length, 1);
   for (const v of set.anonHistory) {
     assert.ok(v.history.did.startsWith('did:infrix:v1:anon:' + set.networkId + ':'), v.name);
