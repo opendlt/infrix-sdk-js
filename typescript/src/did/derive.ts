@@ -118,8 +118,8 @@ const OPERATIONS: Record<string, Record<string, 'string' | 'object' | 'strings'>
   removeAlsoKnownAs: { identifier: 'string' },
   addRelationship: { relationship: 'string', verificationMethodId: 'string' },
   removeRelationship: { relationship: 'string', verificationMethodId: 'string' },
-  deactivate: {},
-  reactivate: {},
+  deactivate: { reactivationCommitment: 'string' },
+  reactivate: { reactivationKey: 'string', reactivationProof: 'string' },
 };
 const BINDING_MEMBERS = ['infrixDid', 'foreignDid', 'nonce', 'infrixKeyId', 'infrixProofValue', 'foreignKeyId', 'foreignProofValue', 'foreignSigner'];
 

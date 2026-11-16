@@ -85,7 +85,8 @@ test('every anon-history vector reaches its verdict', () => {
 });
 
 test('PLANTED CUTS: every tamper of the valid anon history is refused by its class', () => {
-  const ok = set.anonHistory.find((v) => v.valid)!.history;
+  // the tampers change the entries, so the history is taken without its ledger times (part 25j: the times are held to them in their own test)
+  const { ledgerTimes: _times, ...ok } = set.anonHistory.find((v) => v.valid)!.history;
   const mutate = (index: number, edit: (e: any) => void): AnonHistory => {
     const entry = JSON.parse(Buffer.from(ok.entries[index], 'base64').toString('utf8'));
     edit(entry);
