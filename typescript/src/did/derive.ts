@@ -5,6 +5,7 @@
 // empty optional member omitted). Every version's document is also held to the document rules (validate.ts), as core holds it.
 
 import { JValue } from './canonicalJson';
+import { verifyStoredBinding } from './aliasBinding';
 
 export class DerivationError extends Error {
   constructor(message: string) {
@@ -234,7 +235,7 @@ export function applyOperation(doc: Obj, type: string, members: Map<string, JVal
         if (aliases.includes(identifier)) refuse(`alsoKnownAs already exists: ${identifier}`);
         if (identifier.startsWith('did:')) {
           const method = identifier.slice(4).split(':')[0];
-          if (method !== 'infrix' && method !== 'lattica') refuse(`${identifier} is a DID of another method: its binding proof is not part of a stored statement`);
+          if (method !== 'infrix' && method !== 'lattica') verifyStoredBinding(isObj(binding) ? binding.obj : undefined, identifier, doc, refuse);
         }
         setList(doc, 'alsoKnownAs', [...aliases, identifier], false);
         return;

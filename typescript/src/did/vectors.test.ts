@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { formatAccDID, formatChainDID, InfrixDIDError } from './v1';
 import { bech32Decode, bech32Encode, convertBits, base58CheckDecode, base58CheckEncode, base58Decode, base58Encode, parseBitcoinAddress } from './accounts';
 
-const PINNED_SHA256 = 'e2a75a7108443661e083b9628462549e6b103034711e1bc4ab58a9d80630507e';
+const PINNED_SHA256 = '4e63c80352c0f5d3966350f4131d1aad46d4f4a9f9e592d93c53d7b95d236312';
 const raw = readFileSync(join(__dirname, '..', '..', 'testdata', 'did-vectors-v1.json'));
 const set = JSON.parse(raw.toString('utf8')) as {
   spec: string;
