@@ -9,6 +9,7 @@ import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha2';
 import { CanonicalJSONError, JValue, canonicalizeJSON, canonicalNumber, parseJSON, writeCanonical } from './canonicalJson';
 import { DerivationError, deriveDocument } from './derive';
+import { DocumentRuleError, checkDocumentText } from './validate';
 import {
   AnonHistory, AnonVerdict, StatementChainError, chainStatementMessage, cosmosADR036SignDoc, eip191PersonalMessageHash, hash160, parseChainDID, verifyAnonHistory, verifyChainSignature,
 } from './statementChain';
@@ -170,4 +171,16 @@ test('every chain-history vector reaches its verdict', () => {
     }
   }
   assert.ok(valid === 1 && refused > 0);
+});
+
+test('every document-validity vector reaches its verdict under the document rules', () => {
+  const file = JSON.parse(readFileSync(join(__dirname, '..', '..', 'testdata', 'did-vectors-v1.json')).toString('utf8')) as {
+    documentValidity: { name: string; document: unknown; valid: boolean }[];
+  };
+  assert.ok(file.documentValidity.length > 0);
+  for (const v of file.documentValidity) {
+    const run = () => checkDocumentText(JSON.stringify(v.document));
+    if (v.valid) run();
+    else assert.throws(run, DocumentRuleError, v.name);
+  }
 });

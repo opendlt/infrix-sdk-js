@@ -2,7 +2,7 @@
 // infrix-verify's didchain/derive.go, whose header states every rule). Each later version's document is re-derived by applying its statement's stored operations, in order, to the
 // previous document, and its canonical hash must be the hash the entry binds. The model's member rules: the six list members (controller and the five relationships) are one string for
 // one member, an array for more, omitted when empty; alsoKnownAs, verificationMethod and service are arrays omitted when empty; a method or service is inserted in the model's form (an
-// empty optional member omitted). What core checks beyond this and this module does not: ContractDIDDocument.Validate's document rules and the size limits.
+// empty optional member omitted). Every version's document is also held to the document rules (validate.ts), as core holds it.
 
 import { JValue } from './canonicalJson';
 
@@ -55,12 +55,18 @@ function integral(v: JValue, name: string, min: number, max: number): number {
 }
 
 type Kind = 'string' | 'required' | 'unsigned' | 'signed' | 'strings' | 'any' | 'jwk';
+export const PROOF_MEMBERS: Record<string, Kind> = { type: 'required', created: 'required', verificationMethod: 'required', proofPurpose: 'required', proofValue: 'string', jws: 'string', challenge: 'string' };
 const VM: Record<string, Kind> = { id: 'required', type: 'required', controller: 'required', keyPageUrl: 'string', keyBookUrl: 'string', threshold: 'unsigned', pageIndex: 'unsigned', publicKeyMultibase: 'string', publicKeyJwk: 'jwk', blockchainAccountId: 'string' };
 const SERVICE: Record<string, Kind> = { id: 'required', type: 'required', serviceEndpoint: 'any', routingKeys: 'strings', accept: 'strings', description: 'string', priority: 'signed' };
 const JWK: Record<string, Kind> = { kty: 'required', crv: 'string', x: 'string', y: 'string', n: 'string', e: 'string', kid: 'string', alg: 'string', use: 'string' };
 
 /** An object in its model's form: each member of its kind, an empty optional member omitted, a required string kept (empty when absent). */
 function modelForm(raw: JValue | undefined, members: Record<string, Kind>, what: string): Obj {
+  return modelFormOf(raw, members, what, true);
+}
+
+/** modelForm; strict reads an integer member only as an integer literal (as the model decodes JSON), not strict as a double that is an integer (as an update value is read). */
+export function modelFormOf(raw: JValue | undefined, members: Record<string, Kind>, what: string, strict: boolean): Obj {
   if (!isObj(raw)) return refuse(`${what} is not an object`);
   const out: Obj = new Map();
   for (const [name, value] of raw.obj) {
@@ -75,6 +81,7 @@ function modelForm(raw: JValue | undefined, members: Record<string, Kind>, what:
         break;
       case 'unsigned':
       case 'signed': {
+        if (strict && isNum(value) && /[.eE]/.test(value.num)) refuse(`${what}.${name} is not an integer literal: ${value.num}`);
         const n = kind === 'unsigned' ? integral(value, `${what}.${name}`, 0, MAX_UNSIGNED) : integral(value, `${what}.${name}`, MIN_SIGNED, MAX_SIGNED);
         if (n !== 0) out.set(name, { num: BigInt(n).toString() });
         break;
@@ -84,7 +91,7 @@ function modelForm(raw: JValue | undefined, members: Record<string, Kind>, what:
         if ((value as string[]).length > 0) out.set(name, value);
         break;
       case 'jwk':
-        out.set(name, { obj: modelForm(value, JWK, `${what}.${name}`) });
+        out.set(name, { obj: modelFormOf(value, JWK, `${what}.${name}`, strict) });
         break;
       case 'any':
         out.set(name, value);
@@ -173,7 +180,7 @@ export function applyOperation(doc: Obj, type: string, members: Map<string, JVal
       const target = items.find((x) => x.get('id') === id);
       for (const [name, value] of updates.obj) {
         if (name === 'serviceEndpoint' && value === null) continue;
-        const single = modelForm({ obj: new Map([[name, value]]) }, service ? SERVICE : VM, 'updates');
+        const single = modelFormOf({ obj: new Map([[name, value]]) }, service ? SERVICE : VM, 'updates', false);
         if (!target) continue;
         const v = single.get(name);
         if (v !== undefined && (name !== 'type' || v !== '')) target.set(name, v);
@@ -273,3 +280,6 @@ export function deriveDocument(document: JValue, operations: { type: string; mem
   });
   return copy;
 }
+
+export const VM_MEMBERS = VM;
+export const SERVICE_MEMBERS = SERVICE;

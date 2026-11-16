@@ -22,6 +22,7 @@ import { CanonicalJSONError, JValue, canonicalizeJSON, parseJSON, writeCanonical
 import { base58Decode, bech32Decode, bech32Encode, convertBits, parseBitcoinAddress } from './accounts';
 import { formatChainDID } from './v1';
 import { deriveDocument } from './derive';
+import { checkDocument } from './validate';
 
 const enc = new TextEncoder();
 export const STATEMENT_DOMAIN = 'infrix:did-statement:v1\u0000';
@@ -296,6 +297,13 @@ export function verifyAnonHistory(h: AnonHistory): AnonVerdict {
     return e;
   });
   verifyHistory(h.did, network, history, authorizer);
+  history.forEach((e, i) => {
+    try {
+      checkDocument(e.document);
+    } catch (err) {
+      chainRefuse(`entry ${i}: ${(err as Error).message}`);
+    }
+  });
   verifyDerivation(history);
   const tail = history[history.length - 1];
   const signers: string[] = [];
