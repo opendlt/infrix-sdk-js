@@ -259,17 +259,43 @@ export interface AnonVerdict {
 /** Verify an anon history (core's VerifyAnonHistoryFile, but for the documents re-derived from the operations). */
 export function verifyAnonHistory(h: AnonHistory): AnonVerdict {
   if (!h || h.entries.length === 0) entryRefuse('the history holds no entries');
-  const m = /^did:infrix:v1:anon:(g1-[0-9a-f]{64}):([0-9a-f]{64})$/.exec(h.did);
-  if (!m) return entryRefuse(`${h.did} is not a canonical did:infrix:v1:anon DID`);
-  const [, network, subject] = m;
   if (!/^acc:\/\/[^/]+$/.test(h.registry)) entryRefuse(`registry ${h.registry} is not an Accumulate identity URL`);
-  const account = `${h.registry}/did-anon-${subject}`;
+  let network: string;
+  let account: string;
+  let authorizer: Authorizer;
+  const m = /^did:infrix:v1:anon:(g1-[0-9a-f]{64}):([0-9a-f]{64})$/.exec(h.did);
+  if (m) {
+    network = m[1];
+    account = `${h.registry}/did-anon-${m[2]}`;
+    authorizer = anonAuthorizer;
+  } else if (h.did.startsWith('did:infrix:v1:chain:')) {
+    // a chain DID names no network: the history is held to the network its first entry names, and every entry to it; its account is the registry's did-chain-<digest of the account>
+    let chain: ChainAccount;
+    try {
+      chain = parseChainDID(h.did);
+    } catch (err) {
+      return entryRefuse((err as Error).message);
+    }
+    let first: unknown;
+    try {
+      first = JSON.parse(new TextDecoder().decode(b64(h.entries[0], 'entry 0')));
+    } catch {
+      return entryRefuse('entry 0 is not a registry entry');
+    }
+    const named = (first as { identity?: { networkId?: unknown } })?.identity?.networkId;
+    if (typeof named !== 'string' || !/^g1-[0-9a-f]{64}$/.test(named)) return entryRefuse('entry 0 names no network id');
+    network = named;
+    account = `${h.registry}/did-chain-${bytesToHex(sha256(enc.encode(`infrix:did-chain-registry:v1|${chain.namespace}|${chain.reference}|${chain.account}`)))}`;
+    authorizer = chainAuthorizer;
+  } else {
+    return entryRefuse(`${h.did} is neither a canonical anon nor a chain DID`);
+  }
   const history = h.entries.map((encoded, i) => {
     const e = decodeEntry(b64(encoded, `entry ${i}`));
     if (e.did !== h.did || e.networkId !== network || e.accountUrl !== account) entryRefuse(`entry ${i} is bound to ${e.did} on ${e.networkId} at ${e.accountUrl}, not to ${account}`);
     return e;
   });
-  verifyHistory(h.did, network, history, anonAuthorizer);
+  verifyHistory(h.did, network, history, authorizer);
   verifyDerivation(history);
   const tail = history[history.length - 1];
   const signers: string[] = [];

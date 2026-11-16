@@ -153,3 +153,21 @@ test('every document-derivation vector is reproduced, and the authentic historie
     assert.throws(() => verifyAnonHistory(v.history), (e: unknown) => e instanceof StatementChainError && e.refusal === 'statement-chain-refused' && /operations (do not apply|yield)/.test(e.message), v.name);
   }
 });
+
+test('every chain-history vector reaches its verdict', () => {
+  const file = JSON.parse(readFileSync(join(__dirname, '..', '..', 'testdata', 'did-vectors-v1.json')).toString('utf8')) as {
+    chainHistory: { name: string; valid: boolean; refusal?: string; verdict?: AnonVerdict; history: AnonHistory }[];
+  };
+  let valid = 0;
+  let refused = 0;
+  for (const v of file.chainHistory) {
+    if (v.valid) {
+      assert.deepEqual(verifyAnonHistory(v.history), v.verdict, v.name);
+      valid++;
+    } else {
+      assert.throws(() => verifyAnonHistory(v.history), (e: unknown) => e instanceof StatementChainError && e.refusal === v.refusal, v.name);
+      refused++;
+    }
+  }
+  assert.ok(valid === 1 && refused > 0);
+});
