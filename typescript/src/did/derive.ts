@@ -121,7 +121,7 @@ const OPERATIONS: Record<string, Record<string, 'string' | 'object' | 'strings'>
   deactivate: {},
   reactivate: {},
 };
-const BINDING_MEMBERS = ['infrixDid', 'foreignDid', 'nonce', 'infrixKeyId', 'infrixProofValue', 'foreignKeyId', 'foreignProofValue'];
+const BINDING_MEMBERS = ['infrixDid', 'foreignDid', 'nonce', 'infrixKeyId', 'infrixProofValue', 'foreignKeyId', 'foreignProofValue', 'foreignSigner'];
 
 /** Apply one stored operation (its type and members) to a document, in place. */
 export function applyOperation(doc: Obj, type: string, members: Map<string, JValue>): void {

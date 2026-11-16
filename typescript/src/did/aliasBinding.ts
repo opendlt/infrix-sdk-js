@@ -1,11 +1,16 @@
 // THE STORED FORM OF A CROSS-METHOD ALIAS BINDING (infrix core part 25g: VerifyStoredAliasBinding, rule for rule; infrix-verify didchain/derive.go verifyStoredBinding). A statement
 // carries the binding itself; the alias must be a did:key (its identifier IS its Ed25519 Multikey), the binding must name the alias and the document's own DID, its nonce is at least 16
 // characters, foreignKeyId is <did>#<identifier>, and foreignProofValue is that key's Ed25519 signature of the binding statement (the four lines "infrix-alias-binding/v1", infrixDid,
-// foreignDid, nonce). An infrixProofValue, when present, verifies under the document's authentication key infrixKeyId. A did:web or did:pkh alias is refused by name.
+// foreignDid, nonce). An infrixProofValue, when present, verifies under the document's authentication key infrixKeyId. Part 25h: a did:pkh alias is verified too: its CAIP-10 account
+// must be valid under its namespace's address standard, foreignKeyId is <did>#blockchainAccountId, and foreignProofValue is the account's signature of the binding statement in
+// its namespace's message-signing standard (the chain profile's verifiers, verifyChainSignature) with foreignSigner as the signer; a did:key binding carries no foreignSigner.
+// A did:web alias (its keys are served by its host) or any other method is refused by name.
 
 import { ed25519 } from '@noble/curves/ed25519';
 import { JValue } from './canonicalJson';
 import { base58Decode } from './accounts';
+import { formatChainDID } from './v1';
+import { verifyChainSignature } from './statementChain';
 
 const NEWLINE = String.fromCharCode(10);
 
@@ -33,11 +38,6 @@ export function verifyStoredBinding(binding: Map<string, JValue> | undefined, id
   if (foreign !== identifier) refuse(`the binding names ${foreign}, not the alias ${identifier}`);
   if (infrix !== doc.get('id')) refuse(`the binding names the Infrix DID ${infrix}, not the document's`);
   if (nonce.length < 16) refuse("the binding's nonce is shorter than 16 characters");
-  if (!foreign.startsWith('did:key:')) refuse(`${foreign}: a stored binding verifies only a did:key, whose identifier is its key`);
-  const multikey = foreign.slice('did:key:'.length);
-  const key = ed25519Multikey(multikey);
-  if (!key) return refuse(`the did:key ${foreign} is not an Ed25519 Multikey`);
-  if (str('foreignKeyId') !== `${foreign}#${multikey}`) refuse("the foreign key is not the did:key's own key");
   const statement = new TextEncoder().encode(['infrix-alias-binding/v1', infrix, foreign, nonce].join(NEWLINE));
   const verify = (sig: Uint8Array | null, pub: Uint8Array): boolean => {
     try {
@@ -46,7 +46,34 @@ export function verifyStoredBinding(binding: Map<string, JValue> | undefined, id
       return false;
     }
   };
-  if (!verify(b64(str('foreignProofValue')), key)) refuse("the foreign controller's signature does not verify");
+  const signature = b64(str('foreignProofValue'));
+  const signer = b64(str('foreignSigner'));
+  if (!signature || !signer) refuse("the binding's foreignProofValue or foreignSigner is not base64");
+  if (foreign.startsWith('did:key:')) {
+    const multikey = foreign.slice('did:key:'.length);
+    const key = ed25519Multikey(multikey);
+    if (!key) return refuse(`the did:key ${foreign} is not an Ed25519 Multikey`);
+    if (str('foreignKeyId') !== `${foreign}#${multikey}`) refuse("the foreign key is not the did:key's own key");
+    if (signer!.length !== 0) refuse('a did:key binding carries no foreignSigner: the did:key is its own key');
+    if (!verify(signature, key)) refuse("the foreign controller's signature does not verify");
+  } else if (foreign.startsWith('did:pkh:')) {
+    const parts = foreign.slice('did:pkh:'.length).split(':');
+    if (parts.length !== 3) refuse(`the did:pkh ${foreign} is not namespace:reference:account (CAIP-10)`);
+    let canonical: string;
+    try {
+      canonical = formatChainDID(parts[0], parts[1], parts[2]).split(':')[6];
+    } catch (err) {
+      return refuse(`the did:pkh ${foreign} does not name an account of a supported namespace: ${(err as Error).message}`);
+    }
+    if (str('foreignKeyId') !== `${foreign}#blockchainAccountId`) refuse("the foreign key is not the did:pkh's own method #blockchainAccountId");
+    try {
+      verifyChainSignature({ namespace: parts[0], reference: parts[1], account: canonical }, statement, signer!, signature!);
+    } catch (err) {
+      refuse(`the foreign account's signature does not verify: ${(err as Error).message}`);
+    }
+  } else {
+    refuse(`${foreign}: a stored binding verifies only a did:key (its identifier is its key) or a did:pkh (its account signs in its chain's standard)`);
+  }
   if (str('infrixProofValue') !== '') {
     const keyID = str('infrixKeyId');
     const auth = doc.get('authentication');
