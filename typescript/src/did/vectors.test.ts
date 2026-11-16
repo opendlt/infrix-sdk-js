@@ -6,7 +6,7 @@
 // every repository, not as a silent split.
 //
 // The SDK has a FORMATTER (createDID, formatAccDID, formatChainDID), so the construction vectors run
-// through it in full. It has no parser, so the parse vectors are digest-pinned and structurally checked,
+// through it in full. It has no general parser, so the parse vectors are digest-pinned and structurally checked,
 // and the canonical form of every Infrix-native valid vector is checked for the rules the SDK shares
 // with core (idchars, upper-case percent escapes, lower-case network id).
 
@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { formatAccDID, formatChainDID, InfrixDIDError } from './v1';
 import { bech32Decode, bech32Encode, convertBits, base58CheckDecode, base58CheckEncode, base58Decode, base58Encode, parseBitcoinAddress } from './accounts';
 
-const PINNED_SHA256 = '78f95ed25bdb9164fceea9360065b3d7adf638c0ab454ee5fba824d87df5d9e3';
+const PINNED_SHA256 = '99f68f0dfed1af02c5d0f6864b040981115763558b9ba07d0a4886084bf28e0a';
 const raw = readFileSync(join(__dirname, '..', '..', 'testdata', 'did-vectors-v1.json'));
 const set = JSON.parse(raw.toString('utf8')) as {
   spec: string;
@@ -164,8 +164,8 @@ test('the bit regrouping refuses non-canonical padding exactly as BIP-173 says',
   assert.throws(() => convertBits([32], 5, 8, false), 'a value above the group width');
 });
 
-test('the anon statement-chain vectors are present and digest-pinned (the SDK has no statement-chain verifier yet)', () => {
-  assert.equal(set.anonHistory.length, 8);
+test('the anon statement-chain vectors are present and digest-pinned (each is verified to its verdict in statementChain.test.ts)', () => {
+  assert.equal(set.anonHistory.length, 10);
   assert.equal(set.anonHistory.filter((v) => v.valid).length, 1);
   for (const v of set.anonHistory) {
     assert.ok(v.history.did.startsWith('did:infrix:v1:anon:' + set.networkId + ':'), v.name);
