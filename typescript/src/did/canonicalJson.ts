@@ -21,7 +21,7 @@ export class CanonicalJSONError extends Error {
 export type JValue = null | boolean | string | { num: string } | JValue[] | { obj: Map<string, JValue> };
 
 const NUMBER = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?/;
-const MAX_EXACT = 2n ** 53n;
+const WHITESPACE = /^[ \t\n\r]$/;
 
 class Parser {
   i = 0;
@@ -30,7 +30,8 @@ class Parser {
     throw new CanonicalJSONError('not-json', `the text is not one JSON value: ${message} at ${this.i}`);
   }
   ws(): void {
-    while (this.i < this.s.length && ' \t\n\r'.includes(this.s[this.i])) this.i++;
+    // charAt past the end is '', which is no whitespace: the scan stops there without a bound to state
+    while (WHITESPACE.test(this.s.charAt(this.i))) this.i++;
   }
   value(): JValue {
     this.ws();
@@ -84,7 +85,7 @@ class Parser {
     this.i++;
     let out = '';
     for (;;) {
-      if (this.i >= this.s.length) this.fail('an unterminated string');
+      if (this.i === this.s.length) this.fail('an unterminated string');
       const c = this.s[this.i++];
       if (c === '"') return out;
       if (c < ' ') this.fail('a control character in a string');
@@ -114,18 +115,12 @@ export function canonicalNumber(text: string): string {
   const n = Number(text);
   if (!Number.isFinite(n)) throw new CanonicalJSONError('number-range', `the number ${text} is beyond the range of a double`);
   const canonical = String(n); // ECMAScript's Number.prototype.toString, negative zero written 0
-  if (!/[.eE]/.test(text)) {
-    const exact = BigInt(text);
-    if ((exact < 0n ? -exact : exact) > MAX_EXACT && text !== canonical) {
-      throw new CanonicalJSONError('inexact-integer', `the integer ${text} is above 2^53 and is not the canonical spelling of its double (${canonical})`);
-    }
+  // an integer literal whose text is not its double's spelling is refused: every integer up to 2^53 is spelled by its digits, so these are the integers above 2^53
+  // their double does not spell, and "-0" (the number 0, spelled "0"), which is read (core's rule, part 25i)
+  if (!/[.eE]/.test(text) && text !== canonical && text !== '-0') {
+    throw new CanonicalJSONError('inexact-integer', `the integer ${text} is above 2^53 and is not the canonical spelling of its double (${canonical})`);
   }
   return canonical;
-}
-
-function lessUTF16(a: string, b: string): number {
-  // JavaScript strings ARE UTF-16 code units, and < compares them unit by unit
-  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function writeString(s: string): string {
@@ -153,7 +148,8 @@ export function writeCanonical(v: JValue): string {
   if (typeof v === 'string') return writeString(v);
   if (Array.isArray(v)) return '[' + v.map(writeCanonical).join(',') + ']';
   if ('num' in v) return canonicalNumber(v.num);
-  const names = [...v.obj.keys()].sort(lessUTF16);
+  // the default sort orders strings by their UTF-16 code units, RFC 8785's member order (a member name is unique, so no two compare equal)
+  const names = [...v.obj.keys()].sort();
   return '{' + names.map((n) => writeString(n) + ':' + writeCanonical(v.obj.get(n)!)).join(',') + '}';
 }
 
