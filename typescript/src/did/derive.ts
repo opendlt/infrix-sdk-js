@@ -189,7 +189,7 @@ export function applyOperation(doc: Obj, type: string, members: Map<string, JVal
         else target.delete(name);
       }
       if (!target) refuse(`${service ? 'service' : 'verification method'} not found: ${id}`);
-      setObjects(doc, listName, items);
+      // the items are the document's own objects (objects returns them, not copies), so each update above is in the document already (part 25i)
       return;
     }
     case 'addService': {
