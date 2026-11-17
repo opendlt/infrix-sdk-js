@@ -16,7 +16,16 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const pkgRoot = path.resolve(here, '..');
 const repoRoot = path.resolve(pkgRoot, '..', '..', '..'); // sdk/packages/verify -> repo root
-const webRoot = path.join(repoRoot, 'pkg', 'nexus', 'web');
+// The Nexus SPA source lives in the infrix-nexus-web repo since the split
+// (its web/ directory); the monorepo layout (pkg/nexus/web) is still honoured.
+// The sibling checkout is the one beside this repo: ../infrix-nexus-web/web.
+// repoRoot is the monorepo root (sdk/packages/verify -> root); in the
+// extracted layout it is the directory that holds the sibling checkouts.
+const webCandidates = [
+  path.join(repoRoot, 'pkg', 'nexus', 'web'),
+  path.join(repoRoot, 'infrix-nexus-web', 'web'),
+];
+const webRoot = webCandidates.find((d) => fs.existsSync(d)) ?? webCandidates[1];
 
 // The shared verification closure consumed by proof-receipt (3 lib + the view)
 // and widgets (5 lib). The union is self-contained (each existing consumer
@@ -36,7 +45,7 @@ const rewrite = (src) => src.replace(/from\s+'\/(?:lib|components)\/([^']+)'/g, 
 const outDir = path.join(pkgRoot, 'src');
 
 if (!fs.existsSync(webRoot)) {
-  console.log('@infrix/verify: monorepo source absent — using committed src/ copies (extracted-repo mode).');
+  console.log(`@infrix/verify: Nexus source absent (looked in ${webCandidates.join(' and ')}) — using committed src/ copies; check out infrix-nexus-web beside this repo to re-vendor.`);
   process.exit(0);
 }
 
