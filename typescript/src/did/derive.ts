@@ -190,6 +190,8 @@ export function applyOperation(doc: Obj, type: string, members: Map<string, JVal
       }
       if (!target) refuse(`${service ? 'service' : 'verification method'} not found: ${id}`);
       // the items are the document's own objects (objects returns them, not copies), so each update above is in the document already (part 25i)
+      // restored from part 25i (EQUIVALENT in the cut tables: setObjects writes back the same objects the document holds, so the document is the same with or without it)
+      setObjects(doc, listName, items);
       return;
     }
     case 'addService': {
