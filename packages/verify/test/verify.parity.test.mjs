@@ -4,9 +4,10 @@
 // byte-identical to the (import-rewritten) Nexus source so the published package
 // can never silently drift from what Nexus verifies.
 //
-// In the extracted SDK repo the monorepo source is absent, so this test SKIPS
-// (parity with the monorepo source is a monorepo concern). Re-sync after the
-// Nexus verifier changes with `npm run vendor`.
+// The source is the infrix-nexus-web checkout beside this repo (its web/
+// directory) or, in the monorepo layout, pkg/nexus/web. Only when neither is
+// checked out does this test skip, and a skip here is not a pass: the parity is
+// unchecked. Re-sync after the Nexus verifier changes with `npm run vendor`.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +17,13 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.join(here, '..', 'src');
-const webRoot = path.join(here, '..', '..', '..', '..', 'pkg', 'nexus', 'web');
+// Must match scripts/vendor.mjs's candidates.
+const repoRoot = path.join(here, '..', '..', '..', '..');
+const webCandidates = [
+  path.join(repoRoot, 'pkg', 'nexus', 'web'),
+  path.join(repoRoot, 'infrix-nexus-web', 'web'),
+];
+const webRoot = webCandidates.find((d) => existsSync(d));
 
 // Must match sdk/packages/verify/scripts/vendor.mjs.
 const FILES = [
@@ -30,20 +37,18 @@ const FILES = [
 const HEADER = '// VENDORED from pkg/nexus/web by @infrix/verify scripts/vendor.mjs. Do not edit.\n';
 const rewrite = (src) => src.replace(/from\s+'\/(?:lib|components)\/([^']+)'/g, "from './$1'");
 
-const monorepo = existsSync(webRoot);
-
-test('vendored verifier closure matches the Nexus source of truth', { skip: monorepo ? false : 'monorepo source absent (extracted-repo mode)' }, () => {
+test('vendored verifier closure matches the Nexus source of truth', { skip: webRoot ? false : `Nexus source absent (looked in ${webCandidates.join(' and ')}): a skip here is not a pass, the parity is unchecked` }, () => {
   for (const rel of FILES) {
     const base = path.basename(rel);
     const committed = readFileSync(path.join(srcDir, base), 'utf8');
     const expected = HEADER + rewrite(readFileSync(path.join(webRoot, rel), 'utf8'));
-    assert.equal(committed, expected, `src/${base} drifted from pkg/nexus/web/${rel} — run \`npm run vendor\``);
+    assert.equal(committed, expected, `src/${base} drifted from ${webRoot}/${rel} — run \`npm run vendor\``);
   }
   // Fixtures are copied verbatim (JSON, no header/rewrite).
   const FIXTURES = ['uxcopy.fixture.json', 'portable-fixture.valid.json', 'sample.infrixstory.bundle.json'];
   for (const name of FIXTURES) {
     const committed = readFileSync(path.join(srcDir, name), 'utf8');
     const source = readFileSync(path.join(webRoot, 'testdata', name), 'utf8');
-    assert.equal(committed, source, `src/${name} drifted from pkg/nexus/web/testdata/${name} — run \`npm run vendor\``);
+    assert.equal(committed, source, `src/${name} drifted from ${webRoot}/testdata/${name} — run \`npm run vendor\``);
   }
 });
