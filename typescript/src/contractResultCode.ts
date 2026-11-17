@@ -65,6 +65,7 @@ export const CONTRACT_RESULT_CODES: Readonly<Record<number, string>> = Object.fr
   31: 'CapabilityDenied',
   32: 'RoleRequired',
   33: 'PolicyDenied',
+  34: 'Pending',
   255: 'Unknown',
 });
 
@@ -112,6 +113,9 @@ const INTERNAL_ERROR = new Set([2, 4, 17, 255]);
  */
 export function classifyContractResultCode(code: number): ContractFailureClass {
   if (code >= 0) throw new RangeError(String(code) + ' is a byte count, not a refusal');
+  if (isContractCallPending(code)) {
+    throw new RangeError(String(code) + ' is Pending: the call was accepted to run in a later block, not a refusal');
+  }
   const magnitude = -code;
   if (!(magnitude in CONTRACT_RESULT_CODES)) return 'execution_failed';
   if (INVALID_INPUT.has(magnitude)) return 'invalid_input';
@@ -123,6 +127,20 @@ export function classifyContractResultCode(code: number): ContractFailureClass {
   return 'execution_failed';
 }
 
+/** The registry's Pending (34): not a refusal. */
+const PENDING = 34;
+
+/**
+ * Whether a dispatcher's return is Pending (-34): the call was ACCEPTED to run
+ * in a later block (a contract call to a callee on another partition, admitted
+ * as a governed child intent; the return data is the child intent's id). It is
+ * not a refusal, so it has no failure class and describeContractRefusal answers
+ * null for it.
+ */
+export function isContractCallPending(code: number): boolean {
+  return code === -PENDING;
+}
+
 /** The registry's name for a code, or null when it names none. */
 export function contractResultName(code: number): string | null {
   if (code >= 0) return null;
@@ -132,10 +150,11 @@ export function contractResultName(code: number): string | null {
 
 /**
  * Read a dispatcher's return value. Returns null for a non-negative value,
- * which is a byte count and not a refusal at all.
+ * which is a byte count and not a refusal at all, and for Pending (-34), an
+ * accepted call that runs in a later block.
  */
 export function describeContractRefusal(code: number): ContractRefusal | null {
-  if (code >= 0) return null;
+  if (code >= 0 || isContractCallPending(code)) return null;
   const name = contractResultName(code);
   const failureClass = classifyContractResultCode(code);
   const message =

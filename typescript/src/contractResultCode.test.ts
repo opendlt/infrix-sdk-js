@@ -7,6 +7,7 @@ import {
   classifyContractResultCode,
   contractResultName,
   describeContractRefusal,
+  isContractCallPending,
 } from './contractResultCode';
 
 // Matrix row A.ABI.RESULTCODE.REGISTRY.
@@ -88,7 +89,7 @@ test('every registered code has a class a caller can act on', () => {
   ]);
   for (const key of Object.keys(CONTRACT_RESULT_CODES)) {
     const code = Number(key);
-    if (code === 0) continue; // success is not a refusal
+    if (code === 0 || code === 34) continue; // success and Pending are not refusals
     assert.ok(
       allowed.has(classifyContractResultCode(-code)),
       'code ' + code + ' has no usable class',
@@ -118,4 +119,13 @@ test('a recognised refusal names its variant', () => {
   assert.equal(refusal.name, 'UnknownFunction');
   assert.equal(refusal.failureClass, 'invalid_input');
   assert.match(refusal.message, /UnknownFunction/);
+});
+
+test('Pending (-34) is an accepted call, never a refusal', () => {
+  assert.equal(contractResultName(-34), 'Pending');
+  assert.equal(isContractCallPending(-34), true);
+  assert.equal(isContractCallPending(-33), false);
+  assert.equal(isContractCallPending(34), false);
+  assert.equal(describeContractRefusal(-34), null);
+  assert.throws(() => classifyContractResultCode(-34), /Pending/);
 });
