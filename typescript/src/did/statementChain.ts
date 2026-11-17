@@ -23,6 +23,7 @@ import { base58Decode, bech32Decode, bech32Encode, convertBits, parseBitcoinAddr
 import { formatChainDID } from './v1';
 import { deriveDocument } from './derive';
 import { checkDocument } from './validate';
+import { Instant, LifecycleError, LifecycleRefusal, checkPlacement, parseInstant, parseLedgerTimes, recoveryKey, verifyLifecycle, verifyTimes, withoutProof } from './lifecycle';
 
 const enc = new TextEncoder();
 export const STATEMENT_DOMAIN = 'infrix:did-statement:v1\u0000';
@@ -32,7 +33,7 @@ export const CHAIN_STATEMENT_MESSAGE_PREFIX = 'infrix:did-statement:v1:';
 export const CHAIN_SCHEMES: Record<string, string> = { eip155: 'eip155:eip191', solana: 'solana:ed25519', bip122: 'bip122:bip137', cosmos: 'cosmos:adr036' };
 
 /** The refusal classes: a history that is not a chain of authorized statements, an entry that is not a registry entry of the DID, and a signature the namespace verifier refuses. */
-export type ChainRefusal = 'statement-chain-refused' | 'anon-history-refused' | 'chain-signature-refused';
+export type ChainRefusal = 'statement-chain-refused' | 'anon-history-refused' | 'chain-signature-refused' | LifecycleRefusal;
 
 export class StatementChainError extends Error {
   constructor(public readonly refusal: ChainRefusal, message: string) {
@@ -50,6 +51,22 @@ export interface Entry {
   did: string; networkId: string; accountUrl: string; versionId: string; sequence: bigint;
   predecessorStorageHash: Uint8Array; operations: StoredOperation[]; documentHash: Uint8Array; storageHash: Uint8Array;
   deactivated: boolean; document: JValue; scheme: string; signer: Uint8Array; signature: Uint8Array;
+  /** the times the entry's metadata states (held to the ledger's when the history carries its ledger times: lifecycle.ts) */
+  created: Instant; updated: Instant;
+}
+
+/** Run a lifecycle or time rule, raising its refusal as a StatementChainError of the same name. */
+function lifecycleRule<T>(rule: () => T): T {
+  try {
+    return rule();
+  } catch (err) {
+    if (err instanceof LifecycleError) throw new StatementChainError(err.refusal, err.message);
+    throw err;
+  }
+}
+function instant(v: JValue | undefined, what: string): Instant {
+  const at = typeof v === 'string' ? parseInstant(v) : undefined;
+  return at ?? entryRefuse(`${what} is not an RFC 3339 time`);
 }
 
 function lp(parts: Uint8Array[], b: Uint8Array): void {
@@ -129,6 +146,8 @@ export function decodeEntry(raw: Uint8Array): Entry {
   if (versionId.trim() === '') entryRefuse('the metadata carries no version id');
   const deactivatedValue = metadata.get('deactivated');
   if (deactivatedValue !== undefined && typeof deactivatedValue !== 'boolean') entryRefuse('metadata.deactivated is not a boolean');
+  const created = instant(metadata.get('created'), 'metadata.created');
+  const updated = instant(metadata.get('updated'), 'metadata.updated');
   const identity = obj(top.get('identity'), 'the identity binding', ['canonicalDid', 'accountUrl', 'networkId', 'aliases']);
   const did = str(identity.get('canonicalDid'), 'identity.canonicalDid');
   if (obj(document, 'the document').get('id') !== did) entryRefuse('the document names another DID than the identity binding');
@@ -158,6 +177,7 @@ export function decodeEntry(raw: Uint8Array): Entry {
     did, networkId: str(identity.get('networkId'), 'identity.networkId'), accountUrl: str(identity.get('accountUrl'), 'identity.accountUrl'), versionId,
     sequence: BigInt((seq as { num: string }).num), predecessorStorageHash, operations, documentHash, storageHash: storageHash(raw), deactivated: deactivatedValue === true,
     document, scheme: str(statement.get('scheme'), 'statement.scheme'), signer: b64(statement.get('signer'), 'statement.signer'), signature: b64(statement.get('signature'), 'statement.signature'),
+    created, updated,
   };
 }
 
@@ -187,12 +207,12 @@ export function verifyHistory(did: string, networkId: string, history: Entry[], 
       if (e.sequence !== previous.sequence + 1n) chainRefuse(`entry ${i}'s sequence is not the previous plus one`);
       if (e.versionId !== String(previous.sequence + 1n)) chainRefuse(`entry ${i}'s version is not the previous plus one`);
       if (e.operations.length === 0) chainRefuse(`entry ${i} carries no operation`);
-      const deactivates = e.operations.filter((o) => o.type === 'deactivate').length;
-      const reactivates = e.operations.filter((o) => o.type === 'reactivate').length;
-      if (deactivates + reactivates > 0 && e.operations.length !== 1) chainRefuse(`entry ${i}: a lifecycle operation is its own statement`);
-      if (previous.deactivated && reactivates === 0) chainRefuse(`entry ${i} changes a deactivated subject without a reactivation`);
-      if (reactivates > 0 && !previous.deactivated) chainRefuse(`entry ${i} reactivates a subject that is active`);
-      const want = (previous.deactivated || deactivates > 0) && reactivates === 0;
+      const { deactivates, reactivates } = lifecycleRule(() => checkPlacement(i, e.operations));
+      if (previous.deactivated && !reactivates) chainRefuse(`entry ${i} changes a deactivated subject without a reactivation`);
+      if (reactivates && !previous.deactivated) chainRefuse(`entry ${i} reactivates a subject that is active`);
+      // a reactivation proves the commitment of the deactivation it undoes (the entry before it), over the statement digest without the proof
+      lifecycleRule(() => verifyLifecycle(i, e.operations, previous.operations, deactivates, reactivates, () => statementDigest({ ...e, operations: withoutProof(e.operations) })));
+      const want = (previous.deactivated || deactivates) && !reactivates;
       if (e.deactivated !== want) chainRefuse(`entry ${i} says deactivated=${e.deactivated}, its operations yield ${want}`);
     }
     const scheme = authorizer.scheme(e);
@@ -247,14 +267,22 @@ export const anonAuthorizer: Authorizer = {
   authorize(previous, next, digest) {
     const authority = previous ?? next;
     if (next.signer.length !== 32 || next.signature.length !== 64) throw new Error('the signer and signature are not 32 and 64 bytes (Ed25519)');
+    // the recovery: a reactivation of a committed deactivation is signed by its committed key (verifyHistory held it to the commitment), which need not be listed in the deactivated document
+    if (previous && previous.deactivated) {
+      const recovery = recoveryKey(next.operations);
+      if (!recovery || !equalBytes(recovery, next.signer)) throw new Error(`the reactivation of version ${previous.versionId} is signed by a key that is not its committed recovery key`);
+      if (!ed25519.verify(next.signature, digest, next.signer, { zip215: false })) throw new Error('the signature does not verify over the statement digest');
+      return;
+    }
     if (!authenticationKeys(authority.document).some((k) => equalBytes(k, next.signer))) throw new Error(`the signer is not an authentication key of version ${authority.versionId}`);
     if (!ed25519.verify(next.signature, digest, next.signer, { zip215: false })) throw new Error('the signature does not verify over the statement digest');
   },
 };
 
-export interface AnonHistory { did: string; registry: string; entries: string[] }
+export interface AnonHistory { did: string; registry: string; entries: string[]; ledgerTimes?: string[] }
 export interface AnonVerdict {
   verified: boolean; did: string; networkId: string; account: string; entries: number; tailVersionId: string; tailDeactivated: boolean; tailStorageHash: string; signers: string[];
+  timesProven: boolean; tailLedgerTime?: string;
 }
 
 /** Verify an anon history (core's VerifyAnonHistoryFile, but for the documents re-derived from the operations). */
@@ -291,6 +319,7 @@ export function verifyAnonHistory(h: AnonHistory): AnonVerdict {
   } else {
     return entryRefuse(`${h.did} is neither a canonical anon nor a chain DID`);
   }
+  const ledger = lifecycleRule(() => parseLedgerTimes(h.ledgerTimes, h.entries.length));
   const history = h.entries.map((encoded, i) => {
     const e = decodeEntry(b64(encoded, `entry ${i}`));
     if (e.did !== h.did || e.networkId !== network || e.accountUrl !== account) entryRefuse(`entry ${i} is bound to ${e.did} on ${e.networkId} at ${e.accountUrl}, not to ${account}`);
@@ -305,10 +334,16 @@ export function verifyAnonHistory(h: AnonHistory): AnonVerdict {
     }
   });
   verifyDerivation(history);
+  if (ledger) lifecycleRule(() => verifyTimes(history, ledger));
   const tail = history[history.length - 1];
   const signers: string[] = [];
   for (const e of history) if (!signers.includes(bytesToHex(e.signer))) signers.push(bytesToHex(e.signer));
-  return { verified: true, did: h.did, networkId: network, account, entries: history.length, tailVersionId: tail.versionId, tailDeactivated: tail.deactivated, tailStorageHash: bytesToHex(tail.storageHash), signers };
+  const verdict: AnonVerdict = {
+    verified: true, did: h.did, networkId: network, account, entries: history.length, tailVersionId: tail.versionId, tailDeactivated: tail.deactivated, tailStorageHash: bytesToHex(tail.storageHash), signers,
+    timesProven: ledger !== undefined,
+  };
+  if (ledger) verdict.tailLedgerTime = h.ledgerTimes![h.ledgerTimes!.length - 1];
+  return verdict;
 }
 
 // ---- the chain profile ----

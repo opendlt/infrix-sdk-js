@@ -118,8 +118,8 @@ const OPERATIONS: Record<string, Record<string, 'string' | 'object' | 'strings'>
   removeAlsoKnownAs: { identifier: 'string' },
   addRelationship: { relationship: 'string', verificationMethodId: 'string' },
   removeRelationship: { relationship: 'string', verificationMethodId: 'string' },
-  deactivate: {},
-  reactivate: {},
+  deactivate: { reactivationCommitment: 'string' },
+  reactivate: { reactivationKey: 'string', reactivationProof: 'string' },
 };
 const BINDING_MEMBERS = ['infrixDid', 'foreignDid', 'nonce', 'infrixKeyId', 'infrixProofValue', 'foreignKeyId', 'foreignProofValue', 'foreignSigner'];
 
@@ -190,6 +190,8 @@ export function applyOperation(doc: Obj, type: string, members: Map<string, JVal
       }
       if (!target) refuse(`${service ? 'service' : 'verification method'} not found: ${id}`);
       // the items are the document's own objects (objects returns them, not copies), so each update above is in the document already (part 25i)
+      // restored from part 25i (EQUIVALENT in the cut tables: setObjects writes back the same objects the document holds, so the document is the same with or without it)
+      setObjects(doc, listName, items);
       return;
     }
     case 'addService': {
