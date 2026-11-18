@@ -6,8 +6,10 @@ import { sha256 } from '@noble/hashes/sha2';
 import { ed25519 } from '@noble/curves/ed25519';
 import { JValue } from './canonicalJson';
 import {
-  LifecycleError, LifecycleOperation, checkPlacement, lifecycleMember, parseInstant, parseLedgerTimes, recoveryKey, verifyLifecycle, verifyTimes, withoutProof,
+  LifecycleError, LifecycleOperation, checkPlacement, lifecycleMember, listedEd25519Keys, parseInstant, parseLedgerTimes, recoveryKey, verifyLifecycle, verifyRecoveryKeyNotListed,
+  verifyTimes, withoutProof,
 } from './lifecycle';
+import { base58Encode } from './accounts';
 
 const b64 = (b: Uint8Array): string => btoa(String.fromCharCode(...b));
 const op = (type: string, members: Record<string, JValue> = {}): LifecycleOperation => ({ type, members: new Map(Object.entries(members)) });
@@ -72,4 +74,23 @@ test('the stated times are held to the ledger times the file carries', () => {
   assert.equal(parseInstant('yesterday'), undefined);
   assert.equal(parseInstant('2026-13-45T99:99:99Z'), undefined);
   assert.deepEqual(parseInstant('2026-01-01T00:00:00.123456789Z'), { seconds: 1767225600, nanos: 123456789 });
+});
+
+// core part 28e (L2641): the recovery key MUST NOT be a key the DID's documents list
+test('a deactivation that commits to a key a version of the documents lists is refused by name', () => {
+  const key = (seed: number) => ed25519.getPublicKey(new Uint8Array(32).fill(seed));
+  const [old, current, fresh] = [key(2), key(3), key(4)];
+  const doc = (type: string, k: Uint8Array): JValue => ({
+    obj: new Map<string, JValue>([['verificationMethod', [{ obj: new Map<string, JValue>([['type', type], ['publicKeyMultibase', 'z' + base58Encode(Uint8Array.from([0xed, 0x01, ...k]))]]) }]]]),
+  });
+  const documents = [doc('Multikey', old), doc('Ed25519VerificationKey2020', current)];
+  const deactivate = (k?: Uint8Array) => [op('deactivate', k ? { reactivationCommitment: b64(sha256(k)) } : {})];
+  assert.throws(() => verifyRecoveryKeyNotListed(2, deactivate(current), documents), refused('recovery-key-listed'));
+  assert.throws(() => verifyRecoveryKeyNotListed(2, deactivate(old), documents), refused('recovery-key-listed'));
+  verifyRecoveryKeyNotListed(2, deactivate(fresh), documents);
+  verifyRecoveryKeyNotListed(2, deactivate(), documents);
+  verifyRecoveryKeyNotListed(2, [op('addService')], documents);
+  assert.deepEqual(listedEd25519Keys(doc('EcdsaSecp256k1VerificationKey2019', old)), []);
+  assert.deepEqual(listedEd25519Keys('not an object'), []);
+  assert.deepEqual(listedEd25519Keys(doc('Multikey', current)), [current]);
 });
