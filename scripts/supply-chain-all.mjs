@@ -87,7 +87,8 @@ function packInfo(pkgDir) {
   const raw = execSync(`${npm} pack --dry-run --json --ignore-scripts`, { cwd: pkgDir, encoding: 'utf8' });
   const meta = parsePackJson(raw)[0] || {};
   const files = (meta.files || []).map((f) => f.path.replace(/\\/g, '/'));
-  return { unpackedSize: meta.unpackedSize || 0, files };
+  const sizes = Object.fromEntries((meta.files || []).map((f) => [f.path.replace(/\\/g, '/'), f.size || 0]));
+  return { unpackedSize: meta.unpackedSize || 0, files, sizes };
 }
 
 const kb = (n) => `${(n / 1024).toFixed(1)} KiB`;
@@ -137,10 +138,22 @@ for (const { dir, name, rel, pkg } of packages) {
   }
 
   const budget = cfg.budget ?? DEFAULT_BUDGET;
-  if (info.unpackedSize > budget) {
-    problems.push(`${name}: payload ${kb(info.unpackedSize)} exceeds budget ${kb(budget)}`);
-  } else {
-    console.log(`  ${name}: ${kb(info.unpackedSize)} / ${kb(budget)} — ${info.files.length} files — MIT — ok  (${rel})`);
+  // A package whose generated route clients grow with the node's surface holds them to a budget of their own, and everything else to the package
+  // budget unchanged, so a hand-written addition or an accidental file still fails on the same line it always did (cfg.generatedClients).
+  const gen = cfg.generatedClients;
+  const genSize = gen ? info.files.filter((f) => f.startsWith(gen.prefix)).reduce((n, f) => n + (info.sizes[f] || 0), 0) : 0;
+  const restSize = info.unpackedSize - genSize;
+  if (gen && genSize === 0) {
+    problems.push(`${name}: no file under ${gen.prefix}: the generated-client budget is measuring nothing`);
+  }
+  if (gen && genSize > gen.budget) {
+    problems.push(`${name}: generated clients (${gen.prefix}) ${kb(genSize)} exceed their budget ${kb(gen.budget)}`);
+  }
+  if (restSize > budget) {
+    problems.push(`${name}: payload${gen ? ` outside ${gen.prefix}` : ''} ${kb(restSize)} exceeds budget ${kb(budget)}`);
+  } else if (!gen || genSize <= gen.budget) {
+    const genNote = gen ? ` + generated ${kb(genSize)} / ${kb(gen.budget)}` : '';
+    console.log(`  ${name}: ${kb(restSize)} / ${kb(budget)}${genNote} — ${info.files.length} files — MIT — ok  (${rel})`);
   }
 
   manifest.packages[name] = {
