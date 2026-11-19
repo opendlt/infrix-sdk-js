@@ -63,6 +63,13 @@ export interface IntentsForIdPlanAnswer {
   readonly version: unknown;
 }
 
+/** What GET /v4/intents/{id}/steps answers: every member the route declares. */
+export interface IntentsForIdStepsAnswer {
+  readonly intentId: unknown;
+  readonly planId: unknown;
+  readonly steps: unknown;
+}
+
 /** What POST /v4/intents answers: every member the route declares. */
 export interface IntentsWriteRootAnswer {
   readonly intent: unknown;
@@ -143,6 +150,20 @@ export interface IntentsEip712ChallengeVerifyAnswer {
 export interface IntentsEip712ChallengeVerifyBody {
   readonly challenge?: unknown;
   readonly signature?: unknown;
+}
+
+/** What POST /v4/intents/resolve answers: every member the route declares. */
+export interface IntentsWriteResolveAnswer {
+  readonly confidence: unknown;
+  readonly input: unknown;
+  readonly status: unknown;
+  readonly warnings: unknown;
+}
+
+/** The body members POST /v4/intents/resolve accepts. */
+export interface IntentsWriteResolveBody {
+  readonly actor: unknown;
+  readonly input: unknown;
 }
 
 /** What POST /v4/intents/{id}/approve answers: every member the route declares. */
@@ -253,6 +274,17 @@ export class IntentsReads extends SubClient {
     };
   }
 
+  /** Read GET /v4/intents/{id}/steps. */
+  async forIdSteps(id: string): Promise<IntentsForIdStepsAnswer> {
+    genPathValue('GET /v4/intents/{id}/steps', 'id', id, 'string');
+    const r = await this.rest<Partial<IntentsForIdStepsAnswer>>('GET', `/v4/intents/${encodeURIComponent(id)}/steps`);
+    return {
+      intentId: genDeclared('GET /v4/intents/{id}/steps', 'intentId', r.intentId),
+      planId: genDeclared('GET /v4/intents/{id}/steps', 'planId', r.planId),
+      steps: genDeclared('GET /v4/intents/{id}/steps', 'steps', r.steps),
+    };
+  }
+
   /** Read POST /v4/intents/eip712/challenge. */
   async eip712Challenge(body: IntentsEip712ChallengeBody): Promise<IntentsEip712ChallengeAnswer> {
     genCheckBody('POST /v4/intents/eip712/challenge', body, [['address', false], ['domain', false], ['signer', false], ['ttlSeconds', false]]);
@@ -311,6 +343,18 @@ export class IntentsWrites extends SubClient {
       executed: genDeclared('POST /v4/intents/approve', 'executed', r.executed),
       intentId: genDeclared('POST /v4/intents/approve', 'intentId', r.intentId),
       stageId: genDeclared('POST /v4/intents/approve', 'stageId', r.stageId),
+    };
+  }
+
+  /** Send POST /v4/intents/resolve. */
+  async resolve(body: IntentsWriteResolveBody): Promise<IntentsWriteResolveAnswer> {
+    genCheckBody('POST /v4/intents/resolve', body, [['actor', true], ['input', true]]);
+    const r = await this.rest<Partial<IntentsWriteResolveAnswer>>('POST', '/v4/intents/resolve', { actor: body.actor, input: body.input });
+    return {
+      confidence: genDeclared('POST /v4/intents/resolve', 'confidence', r.confidence),
+      input: genDeclared('POST /v4/intents/resolve', 'input', r.input),
+      status: genDeclared('POST /v4/intents/resolve', 'status', r.status),
+      warnings: genDeclared('POST /v4/intents/resolve', 'warnings', r.warnings),
     };
   }
 

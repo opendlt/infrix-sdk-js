@@ -4,6 +4,15 @@ import { SubClient } from '../base';
 import { genCheckBody, genDeclared, genParkedGuard, genPathValue, genQuery } from './runtime';
 import type { GenRest, GenRpc } from './runtime';
 
+/** What GET /v4/contracts/{addr} answers: every member the route declares. */
+export interface ContractsForAddrAnswer {
+  readonly abiHash: unknown;
+  readonly codeHash: unknown;
+  readonly deployedAt: unknown;
+  readonly name: unknown;
+  readonly version: unknown;
+}
+
 /** What GET /v4/contracts/{addr}/events answers: every member the route declares. */
 export interface ContractsForAddrEventsAnswer {
   readonly contract: unknown;
@@ -48,8 +57,33 @@ export interface ContractsForAddrStateForKeyAnswer {
   readonly value: unknown;
 }
 
+/** What GET /v4/contracts/{addr}/state/{key}/proof answers: every member the route declares. */
+export interface ContractsForAddrStateForKeyProofAnswer {
+  readonly blockHeight: unknown;
+  readonly contract: unknown;
+  readonly contractRoot: unknown;
+  readonly inclusion: unknown;
+  readonly key: unknown;
+  readonly keyPath: unknown;
+  readonly nodeRoot: unknown;
+  readonly value: unknown;
+}
+
 /** Typed reads of the node's /v4/contracts routes, generated from the route census. */
 export class ContractsReads extends SubClient {
+  /** Read GET /v4/contracts/{addr}. */
+  async forAddr(addr: string): Promise<ContractsForAddrAnswer> {
+    genPathValue('GET /v4/contracts/{addr}', 'addr', addr, 'string');
+    const r = await this.rest<Partial<ContractsForAddrAnswer>>('GET', `/v4/contracts/${encodeURIComponent(addr)}`);
+    return {
+      abiHash: genDeclared('GET /v4/contracts/{addr}', 'abiHash', r.abiHash),
+      codeHash: genDeclared('GET /v4/contracts/{addr}', 'codeHash', r.codeHash),
+      deployedAt: genDeclared('GET /v4/contracts/{addr}', 'deployedAt', r.deployedAt),
+      name: genDeclared('GET /v4/contracts/{addr}', 'name', r.name),
+      version: genDeclared('GET /v4/contracts/{addr}', 'version', r.version),
+    };
+  }
+
   /** Read GET /v4/contracts/{addr}/events. */
   async forAddrEvents(addr: string, opts: ContractsForAddrEventsQuery = {}): Promise<ContractsForAddrEventsAnswer> {
     genPathValue('GET /v4/contracts/{addr}/events', 'addr', addr, 'string');
@@ -88,6 +122,23 @@ export class ContractsReads extends SubClient {
       exists: genDeclared('GET /v4/contracts/{addr}/state/{key}', 'exists', r.exists),
       stateRoot: genDeclared('GET /v4/contracts/{addr}/state/{key}', 'stateRoot', r.stateRoot),
       value: genDeclared('GET /v4/contracts/{addr}/state/{key}', 'value', r.value),
+    };
+  }
+
+  /** Read GET /v4/contracts/{addr}/state/{key}/proof. */
+  async forAddrStateForKeyProof(addr: string, key: string): Promise<ContractsForAddrStateForKeyProofAnswer> {
+    genPathValue('GET /v4/contracts/{addr}/state/{key}/proof', 'addr', addr, 'string');
+    genPathValue('GET /v4/contracts/{addr}/state/{key}/proof', 'key', key, 'string');
+    const r = await this.rest<Partial<ContractsForAddrStateForKeyProofAnswer>>('GET', `/v4/contracts/${encodeURIComponent(addr)}/state/${encodeURIComponent(key)}/proof`);
+    return {
+      blockHeight: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'blockHeight', r.blockHeight),
+      contract: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'contract', r.contract),
+      contractRoot: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'contractRoot', r.contractRoot),
+      inclusion: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'inclusion', r.inclusion),
+      key: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'key', r.key),
+      keyPath: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'keyPath', r.keyPath),
+      nodeRoot: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'nodeRoot', r.nodeRoot),
+      value: genDeclared('GET /v4/contracts/{addr}/state/{key}/proof', 'value', r.value),
     };
   }
 }

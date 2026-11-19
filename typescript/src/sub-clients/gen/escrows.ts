@@ -27,6 +27,7 @@ export interface EscrowsWriteRootBody {
   readonly conditions?: unknown;
   readonly depositor: unknown;
   readonly holdingAccount?: unknown;
+  readonly parties?: unknown;
 }
 
 /** What POST /v4/escrows/{id}/fund answers: every member the route declares. */
@@ -50,6 +51,7 @@ export interface EscrowsWriteForIdFundBody {
   readonly depositor: unknown;
   readonly holdingAccount?: unknown;
   readonly keyPageRef?: unknown;
+  readonly parties?: unknown;
   readonly role?: unknown;
   readonly signature?: unknown;
   readonly signatureAlgorithm?: unknown;
@@ -98,8 +100,8 @@ export class EscrowsWrites extends SubClient {
 
   /** Send POST /v4/escrows. */
   async root(body: EscrowsWriteRootBody): Promise<EscrowsWriteRootAnswer> {
-    genCheckBody('POST /v4/escrows', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['conditions', false], ['depositor', true], ['holdingAccount', false]]);
-    const r = await this.rest<Partial<EscrowsWriteRootAnswer>>('POST', '/v4/escrows', { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, conditions: body.conditions, depositor: body.depositor, holdingAccount: body.holdingAccount });
+    genCheckBody('POST /v4/escrows', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['conditions', false], ['depositor', true], ['holdingAccount', false], ['parties', false]]);
+    const r = await this.rest<Partial<EscrowsWriteRootAnswer>>('POST', '/v4/escrows', { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, conditions: body.conditions, depositor: body.depositor, holdingAccount: body.holdingAccount, parties: body.parties });
     return {
       amount: genDeclared('POST /v4/escrows', 'amount', r.amount),
       asset: genDeclared('POST /v4/escrows', 'asset', r.asset),
@@ -115,8 +117,8 @@ export class EscrowsWrites extends SubClient {
   /** Send POST /v4/escrows/{id}/fund. */
   async forIdFund(id: string, body: EscrowsWriteForIdFundBody): Promise<EscrowsWriteForIdFundAnswer> {
     genPathValue('POST /v4/escrows/{id}/fund', 'id', id, 'string');
-    genCheckBody('POST /v4/escrows/{id}/fund', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['conditions', false], ['depositor', true], ['holdingAccount', false], ['keyPageRef', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signerPublicKey', false]]);
-    const r = await this.rest<Partial<EscrowsWriteForIdFundAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/fund`, { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, conditions: body.conditions, depositor: body.depositor, holdingAccount: body.holdingAccount, keyPageRef: body.keyPageRef, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signerPublicKey: body.signerPublicKey });
+    genCheckBody('POST /v4/escrows/{id}/fund', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['conditions', false], ['depositor', true], ['holdingAccount', false], ['keyPageRef', false], ['parties', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signerPublicKey', false]]);
+    const r = await this.rest<Partial<EscrowsWriteForIdFundAnswer>>('POST', `/v4/escrows/${encodeURIComponent(id)}/fund`, { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, conditions: body.conditions, depositor: body.depositor, holdingAccount: body.holdingAccount, keyPageRef: body.keyPageRef, parties: body.parties, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signerPublicKey: body.signerPublicKey });
     return {
       escrowId: genDeclared('POST /v4/escrows/{id}/fund', 'escrowId', r.escrowId),
       governed: genDeclared('POST /v4/escrows/{id}/fund', 'governed', r.governed),
