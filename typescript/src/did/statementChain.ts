@@ -23,7 +23,7 @@ import { base58Decode, bech32Decode, bech32Encode, convertBits, parseBitcoinAddr
 import { formatChainDID } from './v1';
 import { deriveDocument } from './derive';
 import { checkDocument } from './validate';
-import { Instant, LifecycleError, LifecycleRefusal, checkPlacement, parseInstant, parseLedgerTimes, recoveryKey, verifyLifecycle, verifyTimes, withoutProof } from './lifecycle';
+import { Instant, LifecycleError, LifecycleRefusal, checkPlacement, parseInstant, parseLedgerTimes, recoveryKey, verifyLifecycle, verifyRecoveryKeyNotListed, verifyTimes, withoutProof } from './lifecycle';
 
 const enc = new TextEncoder();
 export const STATEMENT_DOMAIN = 'infrix:did-statement:v1\u0000';
@@ -212,6 +212,7 @@ export function verifyHistory(did: string, networkId: string, history: Entry[], 
       if (reactivates && !previous.deactivated) chainRefuse(`entry ${i} reactivates a subject that is active`);
       // a reactivation proves the commitment of the deactivation it undoes (the entry before it), over the statement digest without the proof
       lifecycleRule(() => verifyLifecycle(i, e.operations, previous.operations, deactivates, reactivates, () => statementDigest({ ...e, operations: withoutProof(e.operations) })));
+      lifecycleRule(() => verifyRecoveryKeyNotListed(i, e.operations, history.slice(0, i + 1).map((h) => h.document)));
       const want = (previous.deactivated || deactivates) && !reactivates;
       if (e.deactivated !== want) chainRefuse(`entry ${i} says deactivated=${e.deactivated}, its operations yield ${want}`);
     }

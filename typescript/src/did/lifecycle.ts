@@ -12,8 +12,9 @@
 import { sha256 } from '@noble/hashes/sha2';
 import { ed25519 } from '@noble/curves/ed25519';
 import { JValue } from './canonicalJson';
+import { base58Decode } from './accounts';
 
-export type LifecycleRefusal = 'reactivation-final' | 'reactivation-key' | 'reactivation-proof' | 'time-after-ledger' | 'time-before-predecessor' | 'created-time' | 'ledger-time';
+export type LifecycleRefusal = 'reactivation-final' | 'reactivation-key' | 'reactivation-proof' | 'recovery-key-listed' | 'time-after-ledger' | 'time-before-predecessor' | 'created-time' | 'ledger-time';
 
 export const MEMBER_REACTIVATION_COMMITMENT = 'reactivationCommitment';
 export const MEMBER_REACTIVATION_KEY = 'reactivationKey';
@@ -143,5 +144,37 @@ export function verifyTimes(history: { versionId: string; created: Instant; upda
     if (i > 0 && stated < ledger[i - 1]) throw new LifecycleError('time-before-predecessor', `entry ${i}: version ${e.versionId} states a time before the entry before it landed`);
     if (i === 0) created = e.versionId === '1' ? e.updated : e.created;
     if (!sameInstant(e.created, created!)) throw new LifecycleError('created-time', `entry ${i}: version ${e.versionId} states a created time that is not the first entry's`);
+  });
+}
+
+/** Every Ed25519 public key a document's verification methods list (a Multikey or Ed25519VerificationKey2020 whose publicKeyMultibase is z and the base58btc of 0xed 0x01 and 32 bytes),
+ *  rule for rule as core's ContractDIDDocument.ListedEd25519Keys and infrix-verify's listedEd25519Keys. A document that is not an object lists none. */
+export function listedEd25519Keys(document: JValue): Uint8Array[] {
+  const member = (v: JValue | undefined, name: string): JValue | undefined => (v !== null && typeof v === 'object' && 'obj' in v ? v.obj.get(name) : undefined);
+  const methods = member(document, 'verificationMethod');
+  if (!Array.isArray(methods)) return [];
+  const keys: Uint8Array[] = [];
+  for (const vm of methods) {
+    const type = member(vm, 'type');
+    const mb = member(vm, 'publicKeyMultibase');
+    if ((type !== 'Multikey' && type !== 'Ed25519VerificationKey2020') || typeof mb !== 'string' || !mb.startsWith('z')) continue;
+    const raw = base58Decode(mb.slice(1));
+    if (raw && raw.length === 34 && raw[0] === 0xed && raw[1] === 0x01) keys.push(raw.slice(2));
+  }
+  return keys;
+}
+
+/** Refuse a deactivation whose reactivation commitment is the SHA-256 of an Ed25519 key any of the documents (the history's versions up to and including it) lists: the method
+ *  specification's Deactivate says the recovery key MUST NOT be a key the DID's documents list, and core refuses it since part 28e. */
+export function verifyRecoveryKeyNotListed(i: number, ops: LifecycleOperation[], documents: JValue[]): void {
+  if (ops.length !== 1 || ops[0].type !== 'deactivate') return;
+  const commitment = lifecycleMember(ops[0], MEMBER_REACTIVATION_COMMITMENT, 32);
+  if (commitment === undefined) return;
+  documents.forEach((doc, j) => {
+    for (const key of listedEd25519Keys(doc)) {
+      if (equalBytes(sha256(key), commitment)) {
+        throw new LifecycleError('recovery-key-listed', `entry ${i}: the reactivation commitment names a key version ${j + 1}'s document lists, so the key a deactivation stops could undo it`);
+      }
+    }
   });
 }

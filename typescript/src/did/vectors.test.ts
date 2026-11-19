@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { formatAccDID, formatChainDID, InfrixDIDError } from './v1';
 import { bech32Decode, bech32Encode, convertBits, base58CheckDecode, base58CheckEncode, base58Decode, base58Encode, parseBitcoinAddress } from './accounts';
 
-const PINNED_SHA256 = '79b2ffe2e63ecfbe3b7f7fd531bfca1d9ecc67fb410a0f0638c014bf93a065f3';
+const PINNED_SHA256 = 'cb65df93d854df65d8fd69a80b1f79566a4560da316e428ed311ce1adcf53ad6';
 const raw = readFileSync(join(__dirname, '..', '..', 'testdata', 'did-vectors-v1.json'));
 const set = JSON.parse(raw.toString('utf8')) as {
   spec: string;
@@ -165,11 +165,11 @@ test('the bit regrouping refuses non-canonical padding exactly as BIP-173 says',
 });
 
 test('the anon statement-chain vectors are present and digest-pinned (each is verified to its verdict in statementChain.test.ts)', () => {
-  assert.equal(set.anonHistory.length, 14);
+  assert.equal(set.anonHistory.length, 15);
   assert.equal(set.anonHistory.filter((v) => v.valid).length, 1);
   for (const v of set.anonHistory) {
     assert.ok(v.history.did.startsWith('did:infrix:v1:anon:' + set.networkId + ':'), v.name);
     assert.ok(v.history.entries.length >= 5, v.name);
-    if (!v.valid) assert.match(v.refusal ?? '', /^(statement-chain-refused|anon-history-refused|reactivation-final|reactivation-proof|time-after-ledger|time-before-predecessor)$/, v.name);
+    if (!v.valid) assert.match(v.refusal ?? '', /^(statement-chain-refused|anon-history-refused|reactivation-final|reactivation-proof|recovery-key-listed|time-after-ledger|time-before-predecessor)$/, v.name);
   }
 });
