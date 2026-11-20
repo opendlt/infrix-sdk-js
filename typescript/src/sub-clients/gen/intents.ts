@@ -22,6 +22,20 @@ export interface IntentsOutcomeQuery {
   readonly intentId?: string;
 }
 
+/** What GET /v4/intents/submission-signing answers: every member the route declares. */
+export interface IntentsSubmissionSigningAnswer {
+  readonly canonical: unknown;
+  readonly digest: unknown;
+  readonly domain: unknown;
+  readonly networkId: unknown;
+  readonly preimage: unknown;
+}
+
+/** The query parameters GET /v4/intents/submission-signing declares. */
+export interface IntentsSubmissionSigningQuery {
+  readonly request?: string;
+}
+
 /** What GET /v4/intents/{id}/outcome answers: every member the route declares. */
 export interface IntentsForIdOutcomeAnswer {
   readonly audit: unknown;
@@ -242,6 +256,19 @@ export class IntentsReads extends SubClient {
       updated: genDeclared('GET /v4/intents/outcome', 'updated', r.updated),
       url: genDeclared('GET /v4/intents/outcome', 'url', r.url),
       version: genDeclared('GET /v4/intents/outcome', 'version', r.version),
+    };
+  }
+
+  /** Read GET /v4/intents/submission-signing. */
+  async submissionSigning(opts: IntentsSubmissionSigningQuery = {}): Promise<IntentsSubmissionSigningAnswer> {
+    const query = genQuery('GET /v4/intents/submission-signing', [['request', opts.request, 'string']]);
+    const r = await this.rest<Partial<IntentsSubmissionSigningAnswer>>('GET', `/v4/intents/submission-signing${query}`);
+    return {
+      canonical: genDeclared('GET /v4/intents/submission-signing', 'canonical', r.canonical),
+      digest: genDeclared('GET /v4/intents/submission-signing', 'digest', r.digest),
+      domain: genDeclared('GET /v4/intents/submission-signing', 'domain', r.domain),
+      networkId: genDeclared('GET /v4/intents/submission-signing', 'networkId', r.networkId),
+      preimage: genDeclared('GET /v4/intents/submission-signing', 'preimage', r.preimage),
     };
   }
 
