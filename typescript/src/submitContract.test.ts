@@ -102,7 +102,7 @@ test('requester metadata is bounded exactly as the node bounds it', async () => 
   assert.equal(requesterMetadataSize(at), MAX_REQUESTER_METADATA_BYTES);
   const call = await sent((c) => c.intents.submit({ type: 'SWAP', sourceAssets: FULL_GOAL.sourceAssets }, { metadata: at }));
   assert.deepEqual(call.params.metadata, at);
-  const sep = { v: '<&> ' + 'x'.repeat(pad - 3) };
+  const sep = { v: '<&>\u2028' + 'x'.repeat(pad - 3) };
   assert.equal(requesterMetadataSize(sep), 4099);
   const c = new InfrixClient('http://node.test', { actor: 'acc://alice.acme', purpose: 'operational', workflowInstance: 'wf-28aa' });
   await assert.rejects(c.intents.submit({ type: 'SWAP' }, { metadata: sep }), /metadata encodes to 4099 bytes, over the 4096-byte bound/);

@@ -117,7 +117,7 @@ test('the wallet refuses to sign material that is not its own derivation, and re
     await assert.rejects(() => submit({ type: 'SWAP', goal: {} }, OPTS), /goal member goal is not part of the governed-submit contract/);
     await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: 'a=b' }), /metadata must be a JSON object of string keys and JSON values, not a string/);
     await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: [1] }), /not an array/);
-    await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: { v: '<&> ' + 'x'.repeat(4096 - 11 - 3) } }), /metadata encodes to 4099 bytes, over the 4096-byte bound/);
+    await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: { v: '<&>\u2028' + 'x'.repeat(4096 - 11 - 3) } }), /metadata encodes to 4099 bytes, over the 4096-byte bound/);
   });
   assert.deepEqual(sent.map((s) => s.method), ['intent.submissionSigning'], 'a refused submission reached the node');
   const keyless = new InfrixWallet('acc://alice.acme', { rpcUrl: 'http://node.test/rpc' });

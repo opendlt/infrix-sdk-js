@@ -8,7 +8,7 @@
  *   - it must be a JSON object (a string, number, array, boolean or null is refused by name);
  *   - each key is 1 to MAX_REQUESTER_METADATA_KEY_BYTES UTF-8 bytes;
  *   - its compact JSON encoding is at most MAX_REQUESTER_METADATA_BYTES UTF-8 bytes, measured as JSON.stringify
- *     writes it, except that U+2028 and U+2029 count six bytes each (the node writes them as   and  ).
+ *     writes it, except that U+2028 and U+2029 count six bytes each (the node writes them as \u2028 and \u2029).
  *
  * checkRequesterMetadata refuses, by name and before anything is sent, exactly what the node refuses. The size
  * vector is the one infrix-schema's TestRequesterMetadataIsMeasuredAsAClientMeasuresIt pins.
@@ -27,7 +27,7 @@ export function requesterMetadataSize(metadata: Record<string, unknown>): number
   const json = JSON.stringify(metadata);
   let separators = 0;
   for (const ch of json) {
-    if (ch === ' ' || ch === ' ') separators++;
+    if (ch === '\u2028' || ch === '\u2029') separators++;
   }
   // each separator is three UTF-8 bytes as written, six as the node writes it
   return utf8.encode(json).length + 3 * separators;
