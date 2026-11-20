@@ -4,6 +4,30 @@ import { SubClient } from '../base';
 import { genCheckBody, genDeclared, genParkedGuard, genPathValue, genQuery } from './runtime';
 import type { GenRest, GenRpc } from './runtime';
 
+/** What GET /v4/shapes/contracts/{contract}/cinema answers: every member the route declares. */
+export interface ShapesContractsForContractCinemaAnswer {
+  readonly badge: unknown;
+  readonly contract: unknown;
+  readonly events: unknown;
+  readonly panel: unknown;
+  readonly timeline: unknown;
+}
+
+/** The query parameters GET /v4/shapes/contracts/{contract}/cinema declares. */
+export interface ShapesContractsForContractCinemaQuery {
+  readonly block?: number;
+  readonly from?: string;
+  readonly to?: string;
+}
+
+/** What GET /v4/shapes/contracts/{contract}/shapes answers: every member the route declares. */
+export interface ShapesContractsForContractShapesAnswer {
+  readonly contract: unknown;
+  readonly defaultShape: unknown;
+  readonly ruleCount: unknown;
+  readonly shapes: unknown;
+}
+
 /** What GET /v4/shapes/contracts/{contract}/simulate answers: every member the route declares. */
 export interface ShapesContractsForContractSimulateAnswer {
   readonly candidates: unknown;
@@ -21,6 +45,32 @@ export interface ShapesContractsForContractSimulateQuery {
 
 /** Typed reads of the node's /v4/shapes routes, generated from the route census. */
 export class ShapesReads extends SubClient {
+  /** Read GET /v4/shapes/contracts/{contract}/cinema. */
+  async contractsForContractCinema(contract: string, opts: ShapesContractsForContractCinemaQuery = {}): Promise<ShapesContractsForContractCinemaAnswer> {
+    genPathValue('GET /v4/shapes/contracts/{contract}/cinema', 'contract', contract, 'string');
+    const query = genQuery('GET /v4/shapes/contracts/{contract}/cinema', [['block', opts.block, 'int'], ['from', opts.from, 'string'], ['to', opts.to, 'string']]);
+    const r = await this.rest<Partial<ShapesContractsForContractCinemaAnswer>>('GET', `/v4/shapes/contracts/${encodeURIComponent(contract)}/cinema${query}`);
+    return {
+      badge: genDeclared('GET /v4/shapes/contracts/{contract}/cinema', 'badge', r.badge),
+      contract: genDeclared('GET /v4/shapes/contracts/{contract}/cinema', 'contract', r.contract),
+      events: genDeclared('GET /v4/shapes/contracts/{contract}/cinema', 'events', r.events),
+      panel: genDeclared('GET /v4/shapes/contracts/{contract}/cinema', 'panel', r.panel),
+      timeline: genDeclared('GET /v4/shapes/contracts/{contract}/cinema', 'timeline', r.timeline),
+    };
+  }
+
+  /** Read GET /v4/shapes/contracts/{contract}/shapes. */
+  async contractsForContractShapes(contract: string): Promise<ShapesContractsForContractShapesAnswer> {
+    genPathValue('GET /v4/shapes/contracts/{contract}/shapes', 'contract', contract, 'string');
+    const r = await this.rest<Partial<ShapesContractsForContractShapesAnswer>>('GET', `/v4/shapes/contracts/${encodeURIComponent(contract)}/shapes`);
+    return {
+      contract: genDeclared('GET /v4/shapes/contracts/{contract}/shapes', 'contract', r.contract),
+      defaultShape: genDeclared('GET /v4/shapes/contracts/{contract}/shapes', 'defaultShape', r.defaultShape),
+      ruleCount: genDeclared('GET /v4/shapes/contracts/{contract}/shapes', 'ruleCount', r.ruleCount),
+      shapes: genDeclared('GET /v4/shapes/contracts/{contract}/shapes', 'shapes', r.shapes),
+    };
+  }
+
   /** Read GET /v4/shapes/contracts/{contract}/simulate. */
   async contractsForContractSimulate(contract: string, opts: ShapesContractsForContractSimulateQuery = {}): Promise<ShapesContractsForContractSimulateAnswer> {
     genPathValue('GET /v4/shapes/contracts/{contract}/simulate', 'contract', contract, 'string');

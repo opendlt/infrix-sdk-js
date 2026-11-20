@@ -26,8 +26,11 @@ export interface AccountInvoicesAnswer {
 /** What GET /v4/account/limits answers: every member the route declares. */
 export interface AccountLimitsAnswer {
   readonly limits: unknown;
+  readonly period: unknown;
+  readonly plan: unknown;
   readonly planId: unknown;
   readonly tenantId: unknown;
+  readonly usage: unknown;
 }
 
 /** What GET /v4/account/usage answers: every member the route declares. */
@@ -52,6 +55,33 @@ export interface AccountWritePlanBody {
   readonly actor?: unknown;
   readonly planId?: unknown;
   readonly purpose?: unknown;
+}
+
+/** What POST /v4/account/store/migrate answers: every member the route declares. */
+export interface AccountWriteStoreMigrateAnswer {
+  readonly intent: unknown;
+}
+
+/** The body members POST /v4/account/store/migrate accepts. */
+export interface AccountWriteStoreMigrateBody {
+  readonly actor?: unknown;
+  readonly from?: unknown;
+  readonly fromType?: unknown;
+  readonly purpose?: unknown;
+}
+
+/** What POST /v4/account/tenants answers: every member the route declares. */
+export interface AccountWriteTenantsAnswer {
+  readonly intent: unknown;
+}
+
+/** The body members POST /v4/account/tenants accepts. */
+export interface AccountWriteTenantsBody {
+  readonly actor?: unknown;
+  readonly ownerDid?: unknown;
+  readonly planId?: unknown;
+  readonly purpose?: unknown;
+  readonly tenantId?: unknown;
 }
 
 /** Typed reads of the node's /v4/account routes, generated from the route census. */
@@ -83,8 +113,11 @@ export class AccountReads extends SubClient {
     const r = await this.rest<Partial<AccountLimitsAnswer>>('GET', '/v4/account/limits');
     return {
       limits: genDeclared('GET /v4/account/limits', 'limits', r.limits),
+      period: genDeclared('GET /v4/account/limits', 'period', r.period),
+      plan: genDeclared('GET /v4/account/limits', 'plan', r.plan),
       planId: genDeclared('GET /v4/account/limits', 'planId', r.planId),
       tenantId: genDeclared('GET /v4/account/limits', 'tenantId', r.tenantId),
+      usage: genDeclared('GET /v4/account/limits', 'usage', r.usage),
     };
   }
 
@@ -116,6 +149,24 @@ export class AccountWrites extends SubClient {
     const r = await this.rest<Partial<AccountWritePlanAnswer>>('POST', '/v4/account/plan', { actor: body.actor, planId: body.planId, purpose: body.purpose });
     return {
       intent: genDeclared('POST /v4/account/plan', 'intent', r.intent),
+    };
+  }
+
+  /** Send POST /v4/account/store/migrate. */
+  async storeMigrate(body: AccountWriteStoreMigrateBody): Promise<AccountWriteStoreMigrateAnswer> {
+    genCheckBody('POST /v4/account/store/migrate', body, [['actor', false], ['from', false], ['fromType', false], ['purpose', false]]);
+    const r = await this.rest<Partial<AccountWriteStoreMigrateAnswer>>('POST', '/v4/account/store/migrate', { actor: body.actor, from: body.from, fromType: body.fromType, purpose: body.purpose });
+    return {
+      intent: genDeclared('POST /v4/account/store/migrate', 'intent', r.intent),
+    };
+  }
+
+  /** Send POST /v4/account/tenants. */
+  async tenants(body: AccountWriteTenantsBody): Promise<AccountWriteTenantsAnswer> {
+    genCheckBody('POST /v4/account/tenants', body, [['actor', false], ['ownerDid', false], ['planId', false], ['purpose', false], ['tenantId', false]]);
+    const r = await this.rest<Partial<AccountWriteTenantsAnswer>>('POST', '/v4/account/tenants', { actor: body.actor, ownerDid: body.ownerDid, planId: body.planId, purpose: body.purpose, tenantId: body.tenantId });
+    return {
+      intent: genDeclared('POST /v4/account/tenants', 'intent', r.intent),
     };
   }
 }
