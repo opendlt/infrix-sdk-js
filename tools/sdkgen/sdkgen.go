@@ -25,6 +25,21 @@
 // goal it declares must be in the vendored vocabulary, so a published release
 // can never add a goal this SDK silently lacks.
 //
+// THE PRIORITY VOCABULARY. The same document carries the intent priorities the
+// node's admission validates (`priorities`, from infrix-schema
+// intent.ValidIntentPriorities through infrix-core's alias). They are rendered
+// between
+//
+//	// SDKGEN-BEGIN(intent_priority)
+//	...generated body...
+//	// SDKGEN-END(intent_priority)
+//
+// markers as INTENT_PRIORITIES with IntentPriority derived from it, in the
+// TypeScript client and in the wallet's lean types, so IntentGoal.priority in
+// each is typed by the node's words and never by a hand-copied string. The
+// pinned schema is their floor too: every priority it declares must be in the
+// vendored vocabulary.
+//
 // `sdkgen -check` (run by the parity test + CI) fails if any target would be
 // rewritten or the floor is breached. The Rust half of the generator lives in
 // opendlt/infrix-crates.
@@ -132,7 +147,74 @@ func parseGoals(path string) ([]goalConst, error) {
 	return goals, nil
 }
 
+// parsePriorities parses the schema's intent/types.go and returns the declared
+// IntentPriority wire words (the IntentPriority-typed consts), asserting that
+// they and the ValidIntentPriorities map agree, as parseGoals does for goals.
+func parsePriorities(path string) ([]string, error) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	var words []string
+	declared := map[string]struct{}{}
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok || len(vs.Names) != 1 || len(vs.Values) != 1 {
+				continue
+			}
+			id, ok := vs.Type.(*ast.Ident)
+			if !ok || id.Name != "IntentPriority" {
+				continue
+			}
+			lit, ok := vs.Values[0].(*ast.BasicLit)
+			if !ok || lit.Kind != token.STRING {
+				return nil, fmt.Errorf("%s: IntentPriority const %s is not a string literal", path, vs.Names[0].Name)
+			}
+			word, err := strconv.Unquote(lit.Value)
+			if err != nil {
+				return nil, fmt.Errorf("%s: IntentPriority const %s: %w", path, vs.Names[0].Name, err)
+			}
+			words = append(words, word)
+			declared[vs.Names[0].Name] = struct{}{}
+		}
+	}
+	if len(words) == 0 {
+		return nil, fmt.Errorf("%s: no IntentPriority const declarations found", path)
+	}
+	valid := parseMapKeys(file, "ValidIntentPriorities")
+	var missingFromValid, missingFromDeclared []string
+	for ident := range declared {
+		if _, ok := valid[ident]; !ok {
+			missingFromValid = append(missingFromValid, ident)
+		}
+	}
+	for ident := range valid {
+		if _, ok := declared[ident]; !ok {
+			missingFromDeclared = append(missingFromDeclared, ident)
+		}
+	}
+	if len(missingFromValid) > 0 || len(missingFromDeclared) > 0 {
+		sort.Strings(missingFromValid)
+		sort.Strings(missingFromDeclared)
+		return nil, fmt.Errorf("%s: Go source drift between IntentPriority consts and ValidIntentPriorities: missing-from-ValidIntentPriorities=%v missing-from-consts=%v",
+			path, missingFromValid, missingFromDeclared)
+	}
+	return words, nil
+}
+
 func parseValidGoalTypes(file *ast.File) map[string]struct{} {
+	return parseMapKeys(file, "ValidGoalTypes")
+}
+
+// parseMapKeys returns the identifier keys of the package-level map literal
+// named varName.
+func parseMapKeys(file *ast.File, varName string) map[string]struct{} {
 	out := map[string]struct{}{}
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
@@ -141,7 +223,7 @@ func parseValidGoalTypes(file *ast.File) map[string]struct{} {
 		}
 		for _, spec := range gd.Specs {
 			vs, ok := spec.(*ast.ValueSpec)
-			if !ok || len(vs.Names) != 1 || vs.Names[0].Name != "ValidGoalTypes" || len(vs.Values) != 1 {
+			if !ok || len(vs.Names) != 1 || vs.Names[0].Name != varName || len(vs.Values) != 1 {
 				continue
 			}
 			cl, ok := vs.Values[0].(*ast.CompositeLit)
@@ -184,27 +266,43 @@ func assertParity(goals []goalConst, validKeys map[string]struct{}) error {
 		missingFromValid, missingFromDeclared)
 }
 
-// target is one SDK file whose marker region this tool owns.
+// vocabulary is what the vendored goal-vocabulary.json carries: the node's goal
+// set and the intent priorities its admission validates.
+type vocabulary struct {
+	Goals      []goalConst
+	Priorities []string
+}
+
+// target is one marker region in one SDK file that this tool owns.
 type target struct {
 	Label   string
 	RelPath string // relative to repo root
-	Render  func(goals []goalConst, indent string) string
+	Region  string // the marker name: SDKGEN-BEGIN(<Region>) ... SDKGEN-END(<Region>)
+	Render  func(v vocabulary, indent string) string
 }
 
+const (
+	goalRegion     = "intent_goal_type"
+	priorityRegion = "intent_priority"
+)
+
 func allTargets() []target {
+	governance := filepath.Join("typescript", "src", "types", "governance.ts")
 	return []target{
-		{Label: "typescript", RelPath: filepath.Join("typescript", "src", "types", "governance.ts"), Render: renderTypeScript},
-		{Label: "assemblyscript", RelPath: filepath.Join("assemblyscript", "assembly", "governance.ts"), Render: renderAssemblyScript},
+		{Label: "typescript", RelPath: governance, Region: goalRegion, Render: renderTypeScript},
+		{Label: "assemblyscript", RelPath: filepath.Join("assemblyscript", "assembly", "governance.ts"), Region: goalRegion, Render: renderAssemblyScript},
+		{Label: "typescript priority", RelPath: governance, Region: priorityRegion, Render: renderTypeScriptPriorities},
+		{Label: "wallet priority", RelPath: filepath.Join("typescript-wallet", "src", "governance-types.ts"), Region: priorityRegion, Render: renderTypeScriptPriorities},
 	}
 }
 
-func renderTypeScript(goals []goalConst, indent string) string {
+func renderTypeScript(v vocabulary, indent string) string {
 	// One list, with the type DERIVED from it: the runtime list and the union
 	// cannot disagree, and a client can validate a goal string against the same
 	// source the compiler checks.
 	var b strings.Builder
 	fmt.Fprintf(&b, "%sexport const INTENT_GOAL_TYPES = [\n", indent)
-	for _, g := range goals {
+	for _, g := range v.Goals {
 		fmt.Fprintf(&b, "%s  '%s',\n", indent, g.Wire)
 	}
 	fmt.Fprintf(&b, "%s] as const;\n", indent)
@@ -212,67 +310,96 @@ func renderTypeScript(goals []goalConst, indent string) string {
 	return b.String()
 }
 
-func renderAssemblyScript(goals []goalConst, indent string) string {
+func renderAssemblyScript(v vocabulary, indent string) string {
 	var b strings.Builder
-	for _, g := range goals {
+	for _, g := range v.Goals {
 		fmt.Fprintf(&b, "%sexport const GOAL_%s: string = %q;\n", indent, g.Wire, g.Wire)
 	}
 	return b.String()
 }
 
-const (
-	beginMarker = "// SDKGEN-BEGIN(intent_goal_type)"
-	endMarker   = "// SDKGEN-END(intent_goal_type)"
-)
+// renderTypeScriptPriorities renders the priority list with the type derived
+// from it, the same shape as the goal list: the compiler and a runtime check
+// read one source.
+func renderTypeScriptPriorities(v vocabulary, indent string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%sexport const INTENT_PRIORITIES = [\n", indent)
+	for _, p := range v.Priorities {
+		fmt.Fprintf(&b, "%s  '%s',\n", indent, p)
+	}
+	fmt.Fprintf(&b, "%s] as const;\n", indent)
+	fmt.Fprintf(&b, "%sexport type IntentPriority = (typeof INTENT_PRIORITIES)[number];\n", indent)
+	return b.String()
+}
+
+func beginMarker(region string) string { return "// SDKGEN-BEGIN(" + region + ")" }
+func endMarker(region string) string   { return "// SDKGEN-END(" + region + ")" }
 
 // vocabularyRel is the vendored vocabulary file, relative to the repo root.
 const vocabularyRel = "goal-vocabulary.json"
 
-var wireShape = regexp.MustCompile(`^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$`)
+var (
+	wireShape     = regexp.MustCompile(`^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$`)
+	priorityShape = regexp.MustCompile(`^[a-z]+$`)
+)
 
-// loadVocabulary reads the vendored goal vocabulary: the node's goal set as
-// infrix-core's fence last generated it. Wire strings are validated, because
-// they are emitted verbatim into source code.
-func loadVocabulary(repoRoot string) ([]goalConst, error) {
+// loadVocabulary reads the vendored goal vocabulary: the node's goal set and
+// priorities as infrix-core's fence last generated them. Every word is
+// validated, because it is emitted verbatim into source code.
+func loadVocabulary(repoRoot string) (vocabulary, error) {
 	raw, err := os.ReadFile(filepath.Join(repoRoot, vocabularyRel))
 	if err != nil {
-		return nil, fmt.Errorf("read the vendored goal vocabulary: %w (generate it with `go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary` in infrix-core)", err)
+		return vocabulary{}, fmt.Errorf("read the vendored goal vocabulary: %w (generate it with `go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary` in infrix-core)", err)
 	}
 	var doc struct {
 		Count int `json:"count"`
 		Goals []struct {
 			Goal string `json:"goal"`
 		} `json:"goals"`
+		Priorities []string `json:"priorities"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return nil, fmt.Errorf("%s is not valid JSON: %w", vocabularyRel, err)
+		return vocabulary{}, fmt.Errorf("%s is not valid JSON: %w", vocabularyRel, err)
 	}
 	if len(doc.Goals) == 0 {
-		return nil, fmt.Errorf("%s lists no goals", vocabularyRel)
+		return vocabulary{}, fmt.Errorf("%s lists no goals", vocabularyRel)
 	}
 	if doc.Count != len(doc.Goals) {
-		return nil, fmt.Errorf("%s declares count %d but lists %d goals", vocabularyRel, doc.Count, len(doc.Goals))
+		return vocabulary{}, fmt.Errorf("%s declares count %d but lists %d goals", vocabularyRel, doc.Count, len(doc.Goals))
 	}
 	seen := map[string]bool{}
 	goals := make([]goalConst, 0, len(doc.Goals))
 	for _, g := range doc.Goals {
 		if !wireShape.MatchString(g.Goal) {
-			return nil, fmt.Errorf("%s: %q is not an UPPER_SNAKE_CASE goal wire string", vocabularyRel, g.Goal)
+			return vocabulary{}, fmt.Errorf("%s: %q is not an UPPER_SNAKE_CASE goal wire string", vocabularyRel, g.Goal)
 		}
 		if seen[g.Goal] {
-			return nil, fmt.Errorf("%s lists %s twice", vocabularyRel, g.Goal)
+			return vocabulary{}, fmt.Errorf("%s lists %s twice", vocabularyRel, g.Goal)
 		}
 		seen[g.Goal] = true
 		goals = append(goals, goalConst{Wire: g.Goal})
 	}
-	return goals, nil
+	if len(doc.Priorities) == 0 {
+		return vocabulary{}, fmt.Errorf("%s lists no priorities; refresh it from infrix-core, whose fence writes the priorities admission validates", vocabularyRel)
+	}
+	seenPriority := map[string]bool{}
+	for _, p := range doc.Priorities {
+		if !priorityShape.MatchString(p) {
+			return vocabulary{}, fmt.Errorf("%s: %q is not a lowercase priority word", vocabularyRel, p)
+		}
+		if seenPriority[p] {
+			return vocabulary{}, fmt.Errorf("%s lists the priority %s twice", vocabularyRel, p)
+		}
+		seenPriority[p] = true
+	}
+	return vocabulary{Goals: goals, Priorities: append([]string(nil), doc.Priorities...)}, nil
 }
 
 // assertPublishedFloor fails when the pinned, published infrix-schema declares a
-// goal the vendored vocabulary lacks.
-func assertPublishedFloor(vocab []goalConst, published []goalConst) error {
-	have := make(map[string]bool, len(vocab))
-	for _, g := range vocab {
+// goal or a priority the vendored vocabulary lacks.
+func assertPublishedFloor(vocab vocabulary, published []goalConst, publishedPriorities []string) error {
+	have := make(map[string]bool, len(vocab.Goals))
+	for _, g := range vocab.Goals {
 		have[g.Wire] = true
 	}
 	var missing []string
@@ -281,18 +408,32 @@ func assertPublishedFloor(vocab []goalConst, published []goalConst) error {
 			missing = append(missing, g.Wire)
 		}
 	}
-	if len(missing) == 0 {
-		return nil
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return fmt.Errorf("the pinned infrix-schema declares %d goal(s) the vendored %s lacks: %v — refresh it from infrix-core "+
+			"(`go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary`) and re-run sdkgen", len(missing), vocabularyRel, missing)
 	}
-	sort.Strings(missing)
-	return fmt.Errorf("the pinned infrix-schema declares %d goal(s) the vendored %s lacks: %v — refresh it from infrix-core "+
-		"(`go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary`) and re-run sdkgen", len(missing), vocabularyRel, missing)
+	havePriority := make(map[string]bool, len(vocab.Priorities))
+	for _, p := range vocab.Priorities {
+		havePriority[p] = true
+	}
+	for _, p := range publishedPriorities {
+		if !havePriority[p] {
+			missing = append(missing, p)
+		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return fmt.Errorf("the pinned infrix-schema declares %d priority(ies) the vendored %s lacks: %v — refresh it from infrix-core "+
+			"(`go test ./pkg/release -run SDKGoalParity -count=1 -update-sdk-vocabulary`) and re-run sdkgen", len(missing), vocabularyRel, missing)
+	}
+	return nil
 }
 
 // generate runs every target. When check is true it writes nothing and returns
 // the labels that WOULD change; otherwise it rewrites in place.
 func generate(repoRoot string, check bool) ([]string, error) {
-	goals, err := loadVocabulary(repoRoot)
+	vocab, err := loadVocabulary(repoRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -304,12 +445,16 @@ func generate(repoRoot string, check bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := assertPublishedFloor(goals, published); err != nil {
+	publishedPriorities, err := parsePriorities(src)
+	if err != nil {
+		return nil, err
+	}
+	if err := assertPublishedFloor(vocab, published, publishedPriorities); err != nil {
 		return nil, err
 	}
 	var changed []string
 	for _, t := range allTargets() {
-		ch, err := applyTarget(repoRoot, t, goals, check)
+		ch, err := applyTarget(repoRoot, t, vocab, check)
 		if err != nil {
 			return changed, err
 		}
@@ -320,20 +465,21 @@ func generate(repoRoot string, check bool) ([]string, error) {
 	return changed, nil
 }
 
-func applyTarget(repoRoot string, t target, goals []goalConst, check bool) (bool, error) {
+func applyTarget(repoRoot string, t target, vocab vocabulary, check bool) (bool, error) {
 	full := filepath.Join(repoRoot, t.RelPath)
 	raw, err := os.ReadFile(full)
 	if err != nil {
 		return false, fmt.Errorf("%s: read: %w", t.Label, err)
 	}
 	srcStr := string(raw)
+	begin, end := beginMarker(t.Region), endMarker(t.Region)
 
-	bIdx := strings.Index(srcStr, beginMarker)
+	bIdx := strings.Index(srcStr, begin)
 	if bIdx < 0 {
-		return false, fmt.Errorf("%s: BEGIN marker not found in %s", t.Label, t.RelPath)
+		return false, fmt.Errorf("%s: BEGIN marker %s not found in %s", t.Label, begin, t.RelPath)
 	}
-	if strings.Count(srcStr, beginMarker) != 1 {
-		return false, fmt.Errorf("%s: BEGIN marker appears more than once in %s", t.Label, t.RelPath)
+	if strings.Count(srcStr, begin) != 1 {
+		return false, fmt.Errorf("%s: BEGIN marker %s appears more than once in %s", t.Label, begin, t.RelPath)
 	}
 	lineStart := bIdx
 	for lineStart > 0 && srcStr[lineStart-1] != '\n' {
@@ -347,9 +493,9 @@ func applyTarget(repoRoot string, t target, goals []goalConst, check bool) (bool
 	}
 	bodyStart := bIdx + begLineEnd + 1
 
-	endIdx := strings.Index(srcStr[bodyStart:], endMarker)
+	endIdx := strings.Index(srcStr[bodyStart:], end)
 	if endIdx < 0 {
-		return false, fmt.Errorf("%s: END marker not found after BEGIN in %s", t.Label, t.RelPath)
+		return false, fmt.Errorf("%s: END marker %s not found after BEGIN in %s", t.Label, end, t.RelPath)
 	}
 	endIdx += bodyStart
 	endLineStart := endIdx
@@ -357,7 +503,7 @@ func applyTarget(repoRoot string, t target, goals []goalConst, check bool) (bool
 		endLineStart--
 	}
 
-	rendered := t.Render(goals, indent)
+	rendered := t.Render(vocab, indent)
 	if normalizeLF(srcStr[bodyStart:endLineStart]) == rendered {
 		return false, nil
 	}

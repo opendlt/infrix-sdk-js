@@ -26,7 +26,7 @@
  *     function: 'increment',
  *     args: '[]',
  *   },
- * });
+ * }, { purpose: 'operational', workflowInstance: 'counter-1' });
  * ```
  */
 
@@ -345,21 +345,46 @@ export class InfrixWallet {
   /**
    * Submit an intent signed with the wallet's active key.
    *
+   * The request is the shape the node's intent.submit doors read, on both roots:
+   * the goal flattened to `goalType` + `customParams` with every other goal key
+   * (`priority`, `sourceAssets`, ...) beside them at the top level, and the
+   * submitting ADI as `actor`. It used to nest the goal under `goal` and name the
+   * ADI `userAddress`; no door reads either, so every structured submission was
+   * refused for a missing goalType and actor. Both roots refuse a submission
+   * without its Gap 12 disclosure context, so `purpose` and `workflowInstance`
+   * are required and refused here, by name, when absent.
+   *
    * @param goal - Intent goal (structured or natural language)
-   * @param opts - Optional constraints, preferences
+   * @param opts - purpose and workflowInstance (required); constraints, preferences, metadata
    * @returns IntentResult with intentId and status
    */
   async submitIntent(
     goal: IntentGoal | string,
     opts?: IntentSubmitOptions
   ): Promise<IntentResult> {
+    if (!opts || !opts.purpose || !opts.workflowInstance) {
+      throw new Error(
+        'purpose and workflowInstance are required: the node refuses an intent.submit without its Gap 12 disclosure context (actor, purpose, workflowInstance)',
+      );
+    }
     const params: Record<string, unknown> = {
-      userAddress: this.adi,
+      actor: this.adi,
+      purpose: opts.purpose,
+      workflowInstance: opts.workflowInstance,
     };
     if (typeof goal === 'string') {
       params.rawInput = goal;
     } else {
-      params.goal = goal;
+      const g = goal as unknown as Record<string, unknown>;
+      params.goalType = goal.type;
+      if (goal.customParams !== undefined) params.customParams = goal.customParams;
+      for (const k of Object.keys(g)) {
+        if (k === 'type' || k === 'customParams' || g[k] === undefined) continue;
+        if (params[k] !== undefined) {
+          throw new Error(`the goal key ${JSON.stringify(k)} collides with the submission's own ${JSON.stringify(k)}`);
+        }
+        params[k] = g[k];
+      }
     }
     if (opts?.constraints) params.constraints = opts.constraints;
     if (opts?.preferences) params.preferences = opts.preferences;
