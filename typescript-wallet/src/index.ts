@@ -42,6 +42,8 @@ export type {
 // Canonical approval signing (session 37, S24)
 export { approvalSigningPreimage, approvalSigningDigest, bindApprovalSigningRequest, settlementApprovalPreimage } from './approval-signing';
 export type { ApprovalSigningRequest, SettlementApprovalStatement } from './approval-signing';
+export { SUBMISSION_SIGNING_DOMAIN, canonicalJSON, canonicalRequest, submissionPreimage, checkSubmissionSigningRequest } from './submission-signing';
+export type { SubmissionSigningRequest } from './submission-signing';
 
 // Key store
 export { MemoryKeyStore } from './keystore';
@@ -55,6 +57,8 @@ export type { SessionScope, SessionKey } from './session';
 export { INTENT_PRIORITIES } from './governance-types';
 export type {
   IntentGoal,
+  AssetAmount,
+  TargetStateSpec,
   IntentPriority,
   IntentResult,
   IntentSubmitOptions,

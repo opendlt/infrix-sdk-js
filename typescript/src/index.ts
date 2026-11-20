@@ -292,6 +292,9 @@ export interface SdkTelemetry {
   onEvent(event: SdkTelemetryEvent): void;
 }
 
+/** The methods whose request is the strict governed-submit contract, which carries no identity member. */
+const STRICT_SUBMIT_METHODS: ReadonlySet<string> = new Set(['intent.submit', 'governed.submit', 'intent.submissionSigning']);
+
 /** Options for {@link InfrixClient}. */
 export interface InfrixClientOptions {
   telemetry?: SdkTelemetry;
@@ -615,7 +618,12 @@ export class InfrixClient {
     // caller did not already set. Keeps callers from having to thread
     // actor / purpose / workflowInstance through every sub-client call.
     const mergedParams: Record<string, unknown> = { ...params };
-    for (const k of ['actor', 'purpose', 'workflowInstance', 'identity'] as const) {
+    // The governed-submit contract (intent.submit, governed.submit, intent.submissionSigning) is decoded strictly and names no identity: the
+    // default identity is injected into every other method only (core item 2c part 28aa).
+    const injected = STRICT_SUBMIT_METHODS.has(method)
+      ? (['actor', 'purpose', 'workflowInstance'] as const)
+      : (['actor', 'purpose', 'workflowInstance', 'identity'] as const);
+    for (const k of injected) {
       if (mergedParams[k] === undefined && this.defaultDisclosure[k] !== undefined) {
         mergedParams[k] = this.defaultDisclosure[k];
       }

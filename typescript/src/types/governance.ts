@@ -241,7 +241,8 @@ export interface IntentConstraints {
   maxSlippage?: number;
   requiredContracts?: string[];
   excludedContracts?: string[];
-  deadline?: string;           // ISO 8601
+  /** Unix seconds after which the intent's constraints refuse it (the node's IntentConstraints.deadline). */
+  deadline?: number;
   allowedImmuneStates?: string[];
 }
 
@@ -285,12 +286,21 @@ export interface IntentResult {
 }
 
 /** Options for intent submission. */
+/**
+ * The submit options of the governed-submit contract (core item 2c part 28aa), each sent under its own name.
+ * There is no metadata: an intent's metadata is the node's attribution, and the node refuses a request that states any.
+ */
 export interface IntentSubmitOptions {
   constraints?: IntentConstraints;
   preferences?: IntentPreferences;
+  /** When stated, must be the actor: the intent's user address is the identity that submits it. */
   userAddress?: string;
-  metadata?: Record<string, string>;
-  expiresAt?: string;
+  /** The natural-language words the stated goal was resolved from (recorded on the intent); never a goal by itself. */
+  rawInput?: string;
+  /** The block height the intent expires at (the plan's deadline); the node refuses a height already reached. */
+  expiresAt?: number;
+  /** Compile the plan and execute nothing. */
+  preview?: boolean;
 }
 
 /** Filter for listing intents: the parameters GET /v4/intents accepts, and no others. */
