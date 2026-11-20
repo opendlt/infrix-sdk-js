@@ -11,6 +11,9 @@
   },
   "files": [
     "src/",
+    "!src/uxcopy.fixture.json",
+    "!src/sample.infrixstory.bundle.json",
+    "!src/portable-fixture.valid.json",
     "README.md"
   ],
   "publishConfig": {

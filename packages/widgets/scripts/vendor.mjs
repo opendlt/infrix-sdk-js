@@ -51,7 +51,21 @@ const fixtureRaw = fs.readFileSync(path.join(verifySrc, 'uxcopy.fixture.json'), 
 fs.writeFileSync(path.join(outDir, 'uxcopy.fixture.json'), fixtureRaw);
 fs.writeFileSync(
   path.join(outDir, 'uxFixture.ts'),
-  HEADER + '/* eslint-disable */\nexport default ' + JSON.stringify(JSON.parse(fixtureRaw)) + ' as const;\n',
+  // Typed by a small structural interface, never `as const`: a literal type makes tsc emit the whole fixture again as a ~300 KB
+  // declaration in dist, which ships to every consumer and broke the published-size budget. The runtime object is unchanged, and
+  // setUxFixture takes it as it is.
+  HEADER +
+    '/* eslint-disable */\n' +
+    'export interface UxFixture {\n' +
+    '  readonly _generatedBy: string;\n' +
+    '  readonly _source: string;\n' +
+    '  readonly _schemaVersion: number;\n' +
+    '  readonly _contentSha256: string;\n' +
+    '  readonly version: string;\n' +
+    '  readonly [section: string]: unknown;\n' +
+    '}\n' +
+    'const uxFixture: UxFixture = ' + JSON.stringify(JSON.parse(fixtureRaw)) + ';\n' +
+    'export default uxFixture;\n',
 );
 
 console.log(`@infrix/widgets: vendored ${LIB_FILES.length} module(s) + the UX label fixture from @infrix/verify into src/vendor/`);

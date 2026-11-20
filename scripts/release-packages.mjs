@@ -65,7 +65,9 @@ export const GUARD_CONFIG = {
   '@infrix/golden-escrow': { budget: 64 * 1024 },
   '@infrix/prover': { budget: 26 * 1024 * 1024, generated: ['assets'], requiredFiles: ['assets/infrix-prover.wasm', 'assets/manifest.json', 'assets/wasm_exec.js'] },
   '@infrix/templates': { budget: 64 * 1024 },
-  '@infrix/client': { budget: 1024 * 1024, generated: ['dist'] },
+  // the route clients generated from the node's censuses (dist/sub-clients/gen) grow with the node's served surface: measured 254.6 KiB on
+  // 2026-11-19, held to their own 384 KiB; everything else keeps the 1 MiB it always had
+  '@infrix/client': { budget: 1024 * 1024, generated: ['dist'], generatedClients: { prefix: 'dist/sub-clients/gen/', budget: 384 * 1024 } },
   '@infrix/wallet': { budget: 256 * 1024, generated: ['dist'] },
   '@infrix/sdk': { budget: 512 * 1024, generated: ['build'], requiredFiles: ['build/release.wasm'] },
 };
