@@ -123,6 +123,17 @@ const OPERATIONS: Record<string, Record<string, 'string' | 'object' | 'strings'>
 };
 const BINDING_MEMBERS = ['infrixDid', 'foreignDid', 'nonce', 'infrixKeyId', 'infrixProofValue', 'foreignKeyId', 'foreignProofValue', 'foreignSigner'];
 
+/**
+ * The service id an operation names, as the document stores it: a relative DID URL that is only a fragment ("#name", W3C DID Core 3.2.2) is resolved against the id
+ * of the document the operation is applied to, so the document holds the absolute id and either form names the same service. Its base is this document's own id,
+ * never anything the operation carries. The reference implementation's did.ResolveServiceReference, one rule pinned by the shared vectors.
+ */
+export function resolveServiceReference(doc: Obj, ref: string): string {
+  const id = doc.get('id');
+  if (ref.startsWith('#') && ref.length > 1 && typeof id === 'string' && id !== '' && !id.includes('#')) return id + ref;
+  return ref;
+}
+
 /** Apply one stored operation (its type and members) to a document, in place. */
 export function applyOperation(doc: Obj, type: string, members: Map<string, JValue>): void {
   const defined = OPERATIONS[type];
@@ -168,7 +179,8 @@ export function applyOperation(doc: Obj, type: string, members: Map<string, JVal
     case 'updateVerificationMethod':
     case 'updateService': {
       const service = type === 'updateService';
-      const id = str(service ? 'serviceId' : 'verificationMethodId');
+      const named = str(service ? 'serviceId' : 'verificationMethodId');
+      const id = service ? resolveServiceReference(doc, named) : named;
       const allowed = service ? ['type', 'description', 'priority', 'serviceEndpoint'] : ['controller', 'keyPageUrl', 'keyBookUrl', 'threshold'];
       const updates = m.get('updates');
       if (!isObj(updates) || updates.obj.size === 0) return refuse('no updates specified');
@@ -197,13 +209,14 @@ export function applyOperation(doc: Obj, type: string, members: Map<string, JVal
     case 'addService': {
       const svc = modelForm(m.get('service'), SERVICE, 'service');
       if (svc.get('id') === '' || svc.get('type') === '' || svc.get('serviceEndpoint') === null) refuse("the service's id, type and endpoint are required");
+      svc.set('id', resolveServiceReference(doc, svc.get('id') as string));
       const services = objects(doc, 'service');
       if (services.some((x) => x.get('id') === svc.get('id'))) refuse(`service already exists: ${svc.get('id')}`);
       setObjects(doc, 'service', [...services, svc]);
       return;
     }
     case 'removeService': {
-      const id = str('serviceId');
+      const id = resolveServiceReference(doc, str('serviceId'));
       const services = objects(doc, 'service');
       const kept = services.filter((x) => x.get('id') !== id);
       if (kept.length === services.length) refuse(`service not found: ${id}`);
