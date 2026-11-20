@@ -34,6 +34,7 @@ import { toHex } from './crypto';
 import { ApprovalSigningRequest, bindApprovalSigningRequest, hash32Hex } from './approval-signing';
 import { MemoryKeyStore, KeyStore, KeyInfo } from './keystore';
 import { SubmissionSigningRequest, checkSubmissionSigningRequest } from './submission-signing';
+import { checkRequesterMetadata } from './requester-metadata';
 import { SessionManager, SessionScope, SessionKey } from './session';
 import type {
   IntentGoal,
@@ -131,7 +132,7 @@ export interface ApprovalSubmitResult {
 const SUBMIT_GOAL_MEMBERS = ['type', 'sourceAssets', 'targetAssets', 'targetState', 'via', 'customType', 'customParams', 'priority'] as const;
 
 /** The submit options the governed-submit contract carries under their own names. */
-const SUBMIT_OPTION_MEMBERS = ['constraints', 'preferences', 'rawInput', 'expiresAt', 'preview'] as const;
+const SUBMIT_OPTION_MEMBERS = ['constraints', 'preferences', 'rawInput', 'expiresAt', 'preview', 'metadata'] as const;
 
 export class InfrixWallet {
   /** The wallet's Accumulate Digital Identifier URL. */
@@ -395,7 +396,8 @@ export class InfrixWallet {
     for (const [k, v] of Object.entries(opts)) {
       if (v === undefined || k === 'purpose' || k === 'workflowInstance' || k === 'keyPageRef') continue;
       if (k === 'metadata') {
-        throw new Error("submitIntent: metadata cannot be carried: an intent's metadata is the node's attribution, never the requester's; state the goal's own data in customParams");
+        // the requester's own annotation (core item 2c part 28ac row 3), refused by name when the node would refuse it; it is signed content
+        checkRequesterMetadata('submitIntent', v);
       }
       if (!(SUBMIT_OPTION_MEMBERS as readonly string[]).includes(k)) {
         throw new Error(`submitIntent: the option ${k} is not part of the governed-submit contract (${SUBMIT_OPTION_MEMBERS.join(', ')})`);

@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { InfrixClient } from './index';
 import type { IntentGoal, IntentSubmitOptions } from './types/governance';
+import { MAX_REQUESTER_METADATA_BYTES, requesterMetadataSize } from './sub-clients/requesterMetadata';
 
 type FetchLike = (url: unknown, init: unknown) => Promise<unknown>;
 
@@ -27,6 +28,7 @@ export const FULL_SDK_SUBMISSION = {
   rawInput: 'swap 10 ACME for at least 9 USD',
   expiresAt: 5000,
   preview: true,
+  metadata: { ref: 'order-7', tags: ['a', 'b'], n: 3 },
 };
 
 const FULL_GOAL: IntentGoal = {
@@ -47,6 +49,7 @@ const FULL_OPTS: IntentSubmitOptions = {
   rawInput: 'swap 10 ACME for at least 9 USD',
   expiresAt: 5000,
   preview: true,
+  metadata: { ref: 'order-7', tags: ['a', 'b'], n: 3 },
 };
 
 async function sent(fn: (c: InfrixClient) => Promise<unknown>): Promise<{ method: string; params: Record<string, unknown> }> {
@@ -83,7 +86,25 @@ test('what the node refuses is refused by name before anything is sent', async (
   const submit = c.intents.submit.bind(c.intents) as unknown as (g: unknown, o?: unknown) => Promise<unknown>;
   await assert.rejects(submit('swap 10 ACME for 9 USD'), /intent\.resolve/);
   await assert.rejects(submit({ type: 'SWAP', goal: {} }), /goal member goal is not part of the governed-submit contract/);
-  await assert.rejects(submit({ type: 'SWAP' }, { metadata: { a: 'b' } }), /metadata cannot be carried/);
+  await assert.rejects(submit({ type: 'SWAP' }, { metadata: 'a=b' }), /metadata must be a JSON object of string keys and JSON values, not a string/);
+  await assert.rejects(submit({ type: 'SWAP' }, { metadata: ['a'] }), /metadata must be a JSON object of string keys and JSON values, not an array/);
+  await assert.rejects(submit({ type: 'SWAP' }, { metadata: null }), /metadata must be a JSON object of string keys and JSON values, not null/);
+  await assert.rejects(submit({ type: 'SWAP' }, { metadata: { '': 1 } }), /a metadata key is empty/);
   await assert.rejects(submit({ type: 'SWAP' }, { signature: 'aa' }), /option signature is not part of the governed-submit contract/);
   await assert.rejects(submit({ customParams: {} }), /the goal has no type/);
+});
+
+// The requester's metadata bound, measured as the node measures it (infrix-schema TestRequesterMetadataIsMeasuredAsAClientMeasuresIt):
+// '<', '&' and '>' count one byte each, U+2028 counts six; at the bound it is sent, over it it is refused by name.
+test('requester metadata is bounded exactly as the node bounds it', async () => {
+  const pad = MAX_REQUESTER_METADATA_BYTES - '{"v":"<&>"}'.length;
+  const at = { v: '<&>' + 'x'.repeat(pad) };
+  assert.equal(requesterMetadataSize(at), MAX_REQUESTER_METADATA_BYTES);
+  const call = await sent((c) => c.intents.submit({ type: 'SWAP', sourceAssets: FULL_GOAL.sourceAssets }, { metadata: at }));
+  assert.deepEqual(call.params.metadata, at);
+  const sep = { v: '<&> ' + 'x'.repeat(pad - 3) };
+  assert.equal(requesterMetadataSize(sep), 4099);
+  const c = new InfrixClient('http://node.test', { actor: 'acc://alice.acme', purpose: 'operational', workflowInstance: 'wf-28aa' });
+  await assert.rejects(c.intents.submit({ type: 'SWAP' }, { metadata: sep }), /metadata encodes to 4099 bytes, over the 4096-byte bound/);
+  await assert.rejects(c.intents.submit({ type: 'SWAP' }, { metadata: { ['k'.repeat(129)]: 1 } }), /a metadata key is 129 bytes, over the 128-byte bound/);
 });

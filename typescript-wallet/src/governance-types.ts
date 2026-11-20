@@ -75,6 +75,12 @@ export interface IntentSubmitOptions {
   /** Compile the plan and execute nothing. */
   preview?: boolean;
   /**
+   * The requester's own annotation of the intent: one JSON object of string keys (1 to 128 UTF-8 bytes) and JSON values,
+   * at most 4096 bytes encoded. The node records it as the intent's RequesterMetadata and governs nothing by it; the
+   * wallet refuses, by name, metadata the node would refuse. On a signed submission it is signed content.
+   */
+  metadata?: Record<string, unknown>;
+  /**
    * The wallet ADI's key page whose entry is sha256(active public key). With it the submission is signed over the
    * node's canonical submission preimage (intent.submissionSigning) and the node verifies the signature against this
    * page; without it the submission is sent unsigned, which the node accepts as it always has.

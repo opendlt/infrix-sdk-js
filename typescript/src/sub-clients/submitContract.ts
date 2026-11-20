@@ -10,6 +10,7 @@
  * targetAssets, targetState, via, customType, customParams, priority) at the top level.
  */
 import type { IntentGoal, IntentSubmitOptions } from '../types/governance';
+import { checkRequesterMetadata } from './requesterMetadata';
 
 /** The IntentGoal members the contract carries (goal.type travels as goalType). */
 export const SUBMIT_GOAL_MEMBERS = [
@@ -24,13 +25,14 @@ export const SUBMIT_GOAL_MEMBERS = [
 ] as const;
 
 /** The submit options the contract carries, each under its own name. */
-export const SUBMIT_OPTION_MEMBERS = ['constraints', 'preferences', 'userAddress', 'rawInput', 'expiresAt', 'preview'] as const;
+export const SUBMIT_OPTION_MEMBERS = ['constraints', 'preferences', 'userAddress', 'rawInput', 'expiresAt', 'preview', 'metadata'] as const;
 
 /**
  * buildSubmitParams is the governed-submit request for goal and opts (the disclosure context — actor, purpose,
  * workflowInstance — is the caller's to add). It throws, naming the member, for anything the node refuses:
- * a natural-language string as the goal, a goal member or option the contract does not name, and metadata,
- * which is the node's attribution and never the requester's.
+ * a natural-language string as the goal, a goal member or option the contract does not name, and metadata that is
+ * not a bounded JSON object (checkRequesterMetadata: the requester's own annotation, recorded as the intent's
+ * RequesterMetadata, core item 2c part 28ac row 3).
  */
 export function buildSubmitParams(method: string, goal: IntentGoal | string, opts?: IntentSubmitOptions): Record<string, unknown> {
   if (typeof goal === 'string') {
@@ -57,9 +59,7 @@ export function buildSubmitParams(method: string, goal: IntentGoal | string, opt
   for (const [k, v] of Object.entries(opts ?? {})) {
     if (v === undefined) continue;
     if (k === 'metadata') {
-      throw new Error(
-        `${method}: metadata cannot be carried: an intent's metadata is the node's attribution, never the requester's; state the goal's own data in customParams`,
-      );
+      checkRequesterMetadata(method, v);
     }
     if (!(SUBMIT_OPTION_MEMBERS as readonly string[]).includes(k)) {
       throw new Error(`${method}: the option ${k} is not part of the governed-submit contract (${SUBMIT_OPTION_MEMBERS.join(', ')})`);

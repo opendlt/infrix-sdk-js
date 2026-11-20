@@ -71,9 +71,11 @@ const OPTS = {
   preferences: { optimize: 'minimize_cost', maxAlternatives: 3 },
   rawInput: 'swap 10 ACME for at least 9 USD',
   expiresAt: 5000,
+  // the requester's own annotation (core item 2c part 28ac row 3): sent as metadata, signed content on a signed submission
+  metadata: { ref: 'order-7', nested: { n: 2 }, tags: ['a'] },
 };
 
-test('a fully populated goal, constraints, preferences, rawInput and expiresAt are sent as exactly the contract, unsigned without a key page', async () => {
+test('a fully populated goal, constraints, preferences, rawInput, expiresAt and metadata are sent as exactly the contract, unsigned without a key page', async () => {
   const sent: Sent[] = [];
   node(sent);
   const wallet = new InfrixWallet('acc://alice.acme', { rpcUrl: 'http://node.test/rpc' });
@@ -113,7 +115,9 @@ test('the wallet refuses to sign material that is not its own derivation, and re
     const submit = wallet.submitIntent.bind(wallet) as unknown as (g: unknown, o: unknown) => Promise<unknown>;
     await assert.rejects(() => submit('swap 10 ACME', OPTS), /intent\.resolve/);
     await assert.rejects(() => submit({ type: 'SWAP', goal: {} }, OPTS), /goal member goal is not part of the governed-submit contract/);
-    await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: { a: 'b' } }), /metadata cannot be carried/);
+    await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: 'a=b' }), /metadata must be a JSON object of string keys and JSON values, not a string/);
+    await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: [1] }), /not an array/);
+    await assert.rejects(() => submit({ type: 'SWAP' }, { ...OPTS, metadata: { v: '<&> ' + 'x'.repeat(4096 - 11 - 3) } }), /metadata encodes to 4099 bytes, over the 4096-byte bound/);
   });
   assert.deepEqual(sent.map((s) => s.method), ['intent.submissionSigning'], 'a refused submission reached the node');
   const keyless = new InfrixWallet('acc://alice.acme', { rpcUrl: 'http://node.test/rpc' });
