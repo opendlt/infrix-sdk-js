@@ -164,6 +164,37 @@ export interface CapabilityGrantScope {
   contractUrl?: string;
 }
 
+/**
+ * Intent priorities: exactly the words the node's admission accepts (infrix-schema
+ * `intent.ValidIntentPriorities`). An intent that states none is priced as
+ * `normal`; any other word is refused at admission, by exact match. The governed
+ * gas schedule prices each by its priority multiplier.
+ *
+ * The body of this list is generated, not written: `tools/sdkgen` rewrites the
+ * region between the SDKGEN markers from the `priorities` of
+ * `goal-vocabulary.json`, which infrix-core generates from the set its admission
+ * validates. infrix-core's SDKGoalParity fence parses this list independently of
+ * the generator.
+ */
+// SDKGEN-BEGIN(intent_priority)
+export const INTENT_PRIORITIES = [
+  'high',
+  'normal',
+  'urgent',
+] as const;
+export type IntentPriority = (typeof INTENT_PRIORITIES)[number];
+// SDKGEN-END(intent_priority)
+
+const INTENT_PRIORITY_SET: ReadonlySet<string> = new Set<string>(INTENT_PRIORITIES);
+
+/**
+ * True when `value` is a priority the node accepts. Use it to validate a priority
+ * that did not come from the typed union (CLI input, JSON, a prompt).
+ */
+export function isIntentPriority(value: unknown): value is IntentPriority {
+  return typeof value === 'string' && INTENT_PRIORITY_SET.has(value);
+}
+
 /** The desired outcome of an intent. */
 export interface IntentGoal {
   type: IntentGoalType;
@@ -173,6 +204,11 @@ export interface IntentGoal {
   via?: string;
   customType?: string;
   customParams?: Record<string, unknown>;
+  /**
+   * The priority the submitter declares; omitted means `normal`. `intents.submit`
+   * sends it beside `goalType`, as the top-level `priority` the submit doors read.
+   */
+  priority?: IntentPriority;
 }
 
 /** Asset and quantity. */
@@ -205,7 +241,8 @@ export interface IntentConstraints {
   maxSlippage?: number;
   requiredContracts?: string[];
   excludedContracts?: string[];
-  deadline?: string;           // ISO 8601
+  /** Unix seconds after which the intent's constraints refuse it (the node's IntentConstraints.deadline). */
+  deadline?: number;
   allowedImmuneStates?: string[];
 }
 
@@ -249,12 +286,27 @@ export interface IntentResult {
 }
 
 /** Options for intent submission. */
+/**
+ * The submit options of the governed-submit contract (core item 2c part 28aa), each sent under its own name.
+ * metadata is the requester's own annotation (core item 2c part 28ac row 3); the node's attribution metadata is never the requester's to set.
+ */
 export interface IntentSubmitOptions {
   constraints?: IntentConstraints;
   preferences?: IntentPreferences;
+  /** When stated, must be the actor: the intent's user address is the identity that submits it. */
   userAddress?: string;
-  metadata?: Record<string, string>;
-  expiresAt?: string;
+  /** The natural-language words the stated goal was resolved from (recorded on the intent); never a goal by itself. */
+  rawInput?: string;
+  /** The block height the intent expires at (the plan's deadline); the node refuses a height already reached. */
+  expiresAt?: number;
+  /** Compile the plan and execute nothing. */
+  preview?: boolean;
+  /**
+   * The requester's own annotation of the intent: one JSON object of string keys (1 to 128 UTF-8 bytes) and JSON values,
+   * at most 4096 bytes encoded. The node records it as the intent's RequesterMetadata and governs nothing by it; the
+   * client refuses, by name, metadata the node would refuse (checkRequesterMetadata).
+   */
+  metadata?: Record<string, unknown>;
 }
 
 /** Filter for listing intents: the parameters GET /v4/intents accepts, and no others. */

@@ -26,8 +26,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-import { INTENT_GOAL_TYPES, isIntentGoalType, withGovernanceSugar, InfrixClient } from './index';
-import type { InfrixClient as InfrixClientType } from './index';
+import { INTENT_GOAL_TYPES, INTENT_PRIORITIES, isIntentGoalType, isIntentPriority, withGovernanceSugar, InfrixClient } from './index';
+import type { InfrixClient as InfrixClientType, IntentGoal } from './index';
 
 // dist/goalVocabulary.test.js -> typescript/ -> repo root.
 const pkgRoot = join(__dirname, '..');
@@ -44,6 +44,7 @@ interface GoalDeclaration {
 interface Vocabulary {
   count: number;
   goals: GoalDeclaration[];
+  priorities: string[];
 }
 
 const vocabulary: Vocabulary = JSON.parse(readFileSync(vocabularyPath, 'utf8'));
@@ -440,4 +441,67 @@ test('shapeProblems flags what the Rust SDK got wrong and what the TypeScript gr
     /workflowStageScope[\s\S]*purpose/,
   );
   assert.match(shapeProblems('SEND_TOKENS', {}).join('\n'), /not a goal the node accepts/);
+});
+
+// ---------------------------------------------------------------------------
+// 5. The intent priority: the vocabulary is the node's, and a declared priority
+//    reaches the request the submit doors read; an undeclared one is absent.
+// ---------------------------------------------------------------------------
+
+test('INTENT_PRIORITIES is exactly the node priority vocabulary', () => {
+  assert.ok(Array.isArray(vocabulary.priorities) && vocabulary.priorities.length > 0, 'goal-vocabulary.json carries no priorities');
+  assert.deepEqual([...INTENT_PRIORITIES], vocabulary.priorities);
+});
+
+test('isIntentPriority accepts every node priority and refuses any other word, by exact match', () => {
+  for (const p of vocabulary.priorities) assert.equal(isIntentPriority(p), true, `${p} should be accepted`);
+  for (const bad of ['URGENT', ' urgent', 'urgent ', 'critical', '', undefined, null, 1, ['urgent']]) {
+    assert.equal(isIntentPriority(bad), false, `${JSON.stringify(bad)} must be refused`);
+  }
+});
+
+async function submittedParams(goal: IntentGoal): Promise<Record<string, unknown>> {
+  const realFetch = (globalThis as { fetch?: FetchLike }).fetch;
+  const sent: Array<{ method: string; params: Record<string, unknown> }> = [];
+  (globalThis as { fetch?: FetchLike }).fetch = async (_url: unknown, init: unknown) => {
+    const body = JSON.parse((init as { body: string }).body);
+    sent.push({ method: body.method, params: body.params });
+    return { json: async () => ({ result: { intentId: 'i-1', status: 'pending' } }) };
+  };
+  try {
+    const c = new InfrixClient('http://node.test', { actor: 'acc://alice.acme', purpose: 'operational', workflowInstance: 'wf-1' });
+    await c.intents.submit(goal);
+  } finally {
+    (globalThis as { fetch?: FetchLike }).fetch = realFetch;
+  }
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].method, 'intent.submit');
+  return sent[0].params;
+}
+
+const CALL_GOAL: IntentGoal = {
+  type: 'CONTRACT_CALL',
+  customParams: { contract: 'acc://alice.acme/counter', function: 'increment', args: '[]' },
+};
+
+test('a goal with priority "urgent" is sent as the top-level priority beside goalType', async () => {
+  const params = await submittedParams({ ...CALL_GOAL, priority: 'urgent' });
+  assert.equal(params.goalType, 'CONTRACT_CALL');
+  assert.equal(params.priority, 'urgent');
+  assert.deepEqual(params.customParams, CALL_GOAL.customParams);
+  assert.equal(params.actor, 'acc://alice.acme');
+});
+
+test('an omitted priority is absent from the request', async () => {
+  const params = await submittedParams(CALL_GOAL);
+  assert.equal(params.goalType, 'CONTRACT_CALL');
+  assert.equal(Object.prototype.hasOwnProperty.call(params, 'priority'), false, 'an undeclared priority must not be sent');
+});
+
+test('the goal round-trips through JSON with its priority as goal.priority, and without one when omitted', () => {
+  const goal: IntentGoal = { ...CALL_GOAL, priority: 'urgent' };
+  const wire = JSON.parse(JSON.stringify({ goal }));
+  assert.equal(wire.goal.priority, 'urgent');
+  assert.deepEqual(wire.goal, goal);
+  assert.equal('priority' in JSON.parse(JSON.stringify({ goal: CALL_GOAL })).goal, false);
 });

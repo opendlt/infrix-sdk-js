@@ -19,7 +19,7 @@
  *     function: 'increment',
  *     args: '[]',
  *   },
- * });
+ * }, { purpose: 'operational', workflowInstance: 'counter-1' });
  *
  * if (InfrixProvider.isAvailable()) {
  *   const wallet = await InfrixProvider.connect();
@@ -42,6 +42,8 @@ export type {
 // Canonical approval signing (session 37, S24)
 export { approvalSigningPreimage, approvalSigningDigest, bindApprovalSigningRequest, settlementApprovalPreimage } from './approval-signing';
 export type { ApprovalSigningRequest, SettlementApprovalStatement } from './approval-signing';
+export { SUBMISSION_SIGNING_DOMAIN, canonicalJSON, canonicalRequest, submissionPreimage, checkSubmissionSigningRequest } from './submission-signing';
+export type { SubmissionSigningRequest } from './submission-signing';
 
 // Key store
 export { MemoryKeyStore } from './keystore';
@@ -52,8 +54,12 @@ export { SessionManager } from './session';
 export type { SessionScope, SessionKey } from './session';
 
 // Governance types (re-exported from wallet governance types)
+export { INTENT_PRIORITIES } from './governance-types';
 export type {
   IntentGoal,
+  AssetAmount,
+  TargetStateSpec,
+  IntentPriority,
   IntentResult,
   IntentSubmitOptions,
   ApprovalEnvelope,
