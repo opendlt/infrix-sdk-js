@@ -78,13 +78,31 @@ export interface IntentsWriteRootAnswer {
 /** The body members POST /v4/intents accepts. */
 export interface IntentsWriteRootBody {
   readonly actor: unknown;
+  readonly authority?: unknown;
+  readonly autoApprove?: unknown;
+  readonly code?: unknown;
   readonly constraints?: unknown;
   readonly customParams?: unknown;
+  readonly customType?: unknown;
+  readonly deadline?: unknown;
+  readonly expiresAt?: unknown;
   readonly goalType: unknown;
+  readonly keyPageRef?: unknown;
+  readonly maxGas?: unknown;
+  readonly metadata?: unknown;
   readonly preferences?: unknown;
   readonly preview?: unknown;
+  readonly priority?: unknown;
+  readonly purpose?: unknown;
+  readonly rawInput?: unknown;
+  readonly signature?: unknown;
+  readonly signerPublicKey?: unknown;
   readonly sourceAssets?: unknown;
   readonly targetAssets?: unknown;
+  readonly targetState?: unknown;
+  readonly userAddress?: unknown;
+  readonly via?: unknown;
+  readonly workflowInstance?: unknown;
 }
 
 /** What POST /v4/intents/approve answers: every member the route declares. */
@@ -326,8 +344,8 @@ export class IntentsWrites extends SubClient {
 
   /** Send POST /v4/intents. */
   async root(body: IntentsWriteRootBody): Promise<IntentsWriteRootAnswer> {
-    genCheckBody('POST /v4/intents', body, [['actor', true], ['constraints', false], ['customParams', false], ['goalType', true], ['preferences', false], ['preview', false], ['sourceAssets', false], ['targetAssets', false]]);
-    const r = await this.rest<Partial<IntentsWriteRootAnswer>>('POST', '/v4/intents', { actor: body.actor, constraints: body.constraints, customParams: body.customParams, goalType: body.goalType, preferences: body.preferences, preview: body.preview, sourceAssets: body.sourceAssets, targetAssets: body.targetAssets });
+    genCheckBody('POST /v4/intents', body, [['actor', true], ['authority', false], ['autoApprove', false], ['code', false], ['constraints', false], ['customParams', false], ['customType', false], ['deadline', false], ['expiresAt', false], ['goalType', true], ['keyPageRef', false], ['maxGas', false], ['metadata', false], ['preferences', false], ['preview', false], ['priority', false], ['purpose', false], ['rawInput', false], ['signature', false], ['signerPublicKey', false], ['sourceAssets', false], ['targetAssets', false], ['targetState', false], ['userAddress', false], ['via', false], ['workflowInstance', false]]);
+    const r = await this.rest<Partial<IntentsWriteRootAnswer>>('POST', '/v4/intents', { actor: body.actor, authority: body.authority, autoApprove: body.autoApprove, code: body.code, constraints: body.constraints, customParams: body.customParams, customType: body.customType, deadline: body.deadline, expiresAt: body.expiresAt, goalType: body.goalType, keyPageRef: body.keyPageRef, maxGas: body.maxGas, metadata: body.metadata, preferences: body.preferences, preview: body.preview, priority: body.priority, purpose: body.purpose, rawInput: body.rawInput, signature: body.signature, signerPublicKey: body.signerPublicKey, sourceAssets: body.sourceAssets, targetAssets: body.targetAssets, targetState: body.targetState, userAddress: body.userAddress, via: body.via, workflowInstance: body.workflowInstance });
     return {
       intent: genDeclared('POST /v4/intents', 'intent', r.intent),
     };

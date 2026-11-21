@@ -3,6 +3,7 @@ import { genQuery } from './gen/runtime';
 import { LIST_MEMBERS, checkPathValue, declaredMembers, refuseRemovedArguments, refuseUnknownOptions } from './routeShapes';
 import type { ListAnswer } from './routeShapes';
 import { APPROVAL_SIGNATURE_TYPES } from '../types/governance';
+import { buildSubmitParams } from './submitContract';
 import type {
   ApprovalSignatureType,
   GovernedApproveResult,
@@ -35,8 +36,8 @@ export class IntentSubClient extends SubClient {
    * The system parses the goal, generates candidate execution plans,
    * and returns an IntentResult with the intent ID and initial status.
    *
-   * @param goal - The desired outcome (IntentGoal object or shorthand string)
-   * @param opts - Optional constraints, preferences, metadata
+   * @param goal - The desired outcome (a structured IntentGoal; natural-language text is resolved by intent.resolve)
+   * @param opts - Optional constraints, preferences, userAddress (must be the actor), rawInput, expiresAt (block height), preview
    * @returns IntentResult with intentId, status, and candidate plans
    *
    * @example
@@ -52,31 +53,12 @@ export class IntentSubClient extends SubClient {
    * ```
    */
   async submit(
-    goal: IntentGoal | string,
+    goal: IntentGoal,
     opts?: IntentSubmitOptions
   ): Promise<IntentResult> {
-    const params: Record<string, unknown> = {};
-    if (typeof goal === 'string') {
-      params.rawInput = goal;
-    } else {
-      // Server wire shape: flatten { type, customParams } at the top
-      // level as { goalType, customParams } (Gap 12 govSubmitParams).
-      const g = goal as unknown as Record<string, unknown>;
-      if (g.type !== undefined) params.goalType = g.type;
-      if (g.customParams !== undefined) params.customParams = g.customParams;
-      // Forward any other goal-level keys verbatim for forward-compat.
-      for (const k of Object.keys(g)) {
-        if (k !== 'type' && k !== 'customParams' && params[k] === undefined) {
-          params[k] = g[k];
-        }
-      }
-    }
-    if (opts?.constraints) params.constraints = opts.constraints;
-    if (opts?.preferences) params.preferences = opts.preferences;
-    if (opts?.userAddress) params.userAddress = opts.userAddress;
-    if (opts?.metadata) params.metadata = opts.metadata;
-    if (opts?.expiresAt) params.expiresAt = opts.expiresAt;
-    return this.rpc<IntentResult>('intent.submit', params);
+    // THE governed-submit contract (core item 2c part 28aa): the goal flattened to goalType and its other members, the options under their
+    // own names, and anything the node would refuse refused here by name (buildSubmitParams).
+    return this.rpc<IntentResult>('intent.submit', buildSubmitParams('intents.submit', goal, opts));
   }
 
   /**

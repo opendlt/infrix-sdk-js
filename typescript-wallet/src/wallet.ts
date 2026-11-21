@@ -33,6 +33,7 @@
 import { toHex } from './crypto';
 import { ApprovalSigningRequest, bindApprovalSigningRequest, hash32Hex } from './approval-signing';
 import { MemoryKeyStore, KeyStore, KeyInfo } from './keystore';
+import { SubmissionSigningRequest, checkSubmissionSigningRequest } from './submission-signing';
 import { SessionManager, SessionScope, SessionKey } from './session';
 import type {
   IntentGoal,
@@ -125,6 +126,12 @@ export interface ApprovalSubmitResult {
   anchorId?: string;
   detail?: string;
 }
+
+/** The IntentGoal members the governed-submit contract carries (goal.type travels as goalType). */
+const SUBMIT_GOAL_MEMBERS = ['type', 'sourceAssets', 'targetAssets', 'targetState', 'via', 'customType', 'customParams', 'priority'] as const;
+
+/** The submit options the governed-submit contract carries under their own names. */
+const SUBMIT_OPTION_MEMBERS = ['constraints', 'preferences', 'rawInput', 'expiresAt', 'preview'] as const;
 
 export class InfrixWallet {
   /** The wallet's Accumulate Digital Identifier URL. */
@@ -354,12 +361,12 @@ export class InfrixWallet {
    * without its Gap 12 disclosure context, so `purpose` and `workflowInstance`
    * are required and refused here, by name, when absent.
    *
-   * @param goal - Intent goal (structured or natural language)
-   * @param opts - purpose and workflowInstance (required); constraints, preferences, metadata
+   * @param goal - Intent goal (structured; natural-language text is resolved by intent.resolve)
+   * @param opts - purpose and workflowInstance (required); constraints, preferences, rawInput, expiresAt, preview; keyPageRef to sign
    * @returns IntentResult with intentId and status
    */
   async submitIntent(
-    goal: IntentGoal | string,
+    goal: IntentGoal,
     opts?: IntentSubmitOptions
   ): Promise<IntentResult> {
     if (!opts || !opts.purpose || !opts.workflowInstance) {
@@ -367,35 +374,47 @@ export class InfrixWallet {
         'purpose and workflowInstance are required: the node refuses an intent.submit without its Gap 12 disclosure context (actor, purpose, workflowInstance)',
       );
     }
+    if (typeof goal === 'string') {
+      throw new Error(
+        'submitIntent takes a structured goal: natural-language text is resolved by intent.resolve (POST /v4/intents/resolve), which previews the goal it parses; submit that goal, with the text as opts.rawInput',
+      );
+    }
     const params: Record<string, unknown> = {
       actor: this.adi,
       purpose: opts.purpose,
       workflowInstance: opts.workflowInstance,
     };
-    if (typeof goal === 'string') {
-      params.rawInput = goal;
-    } else {
-      const g = goal as unknown as Record<string, unknown>;
-      params.goalType = goal.type;
-      if (goal.customParams !== undefined) params.customParams = goal.customParams;
-      for (const k of Object.keys(g)) {
-        if (k === 'type' || k === 'customParams' || g[k] === undefined) continue;
-        if (params[k] !== undefined) {
-          throw new Error(`the goal key ${JSON.stringify(k)} collides with the submission's own ${JSON.stringify(k)}`);
-        }
-        params[k] = g[k];
+    const g = goal as unknown as Record<string, unknown>;
+    for (const [k, v] of Object.entries(g)) {
+      if (v === undefined) continue;
+      if (!(SUBMIT_GOAL_MEMBERS as readonly string[]).includes(k)) {
+        throw new Error(`submitIntent: the goal member ${k} is not part of the governed-submit contract (${SUBMIT_GOAL_MEMBERS.join(', ')})`);
       }
+      params[k === 'type' ? 'goalType' : k] = v;
     }
-    if (opts?.constraints) params.constraints = opts.constraints;
-    if (opts?.preferences) params.preferences = opts.preferences;
-    if (opts?.metadata) params.metadata = opts.metadata;
+    for (const [k, v] of Object.entries(opts)) {
+      if (v === undefined || k === 'purpose' || k === 'workflowInstance' || k === 'keyPageRef') continue;
+      if (k === 'metadata') {
+        throw new Error("submitIntent: metadata cannot be carried: an intent's metadata is the node's attribution, never the requester's; state the goal's own data in customParams");
+      }
+      if (!(SUBMIT_OPTION_MEMBERS as readonly string[]).includes(k)) {
+        throw new Error(`submitIntent: the option ${k} is not part of the governed-submit contract (${SUBMIT_OPTION_MEMBERS.join(', ')})`);
+      }
+      params[k] = v;
+    }
 
-    // Sign the intent submission
-    if (this.activeKey) {
-      const message = new TextEncoder().encode(JSON.stringify(params));
-      const signature = await this.keyStore.sign(this.activeKey, message);
-      params.signature = toHex(signature);
-      params.publicKey = toHex(this.activeKey);
+    // THE SUBMITTER SIGNATURE (core item 2c part 28aa row 6b): with a key page, the wallet signs the node's canonical submission preimage — the
+    // request it derives itself, checked against the material intent.submissionSigning publishes — and the node verifies it against that page.
+    // It used to sign JSON.stringify(params) and send signature/publicKey, which no door read.
+    if (opts.keyPageRef) {
+      if (!this.activeKey) {
+        throw new Error('submitIntent: keyPageRef names the page to sign with, and the wallet has no active key: call generateKey() first');
+      }
+      params.keyPageRef = opts.keyPageRef;
+      params.signerPublicKey = toHex(this.activeKey);
+      const material = (await this.rpc('intent.submissionSigning', params)) as unknown as SubmissionSigningRequest;
+      const preimage = await checkSubmissionSigningRequest(params, material);
+      params.signature = toHex(await this.keyStore.sign(this.activeKey, preimage));
     }
 
     return this.rpc('intent.submit', params) as unknown as IntentResult;

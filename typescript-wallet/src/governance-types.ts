@@ -22,11 +22,29 @@ export const INTENT_PRIORITIES = [
 export type IntentPriority = (typeof INTENT_PRIORITIES)[number];
 // SDKGEN-END(intent_priority)
 
+/** An asset and quantity: the node's intent.AssetAmount member for member (core item 2c part 28aa). */
+export interface AssetAmount {
+  asset: string;
+  amount: number;
+  amountDecimal?: string;
+  isMinimum?: boolean;
+  isMaximum?: boolean;
+  tokenStandard?: string;
+  contractUrl?: string;
+}
+
+/** A desired on-chain state: the node's intent.TargetStateSpec under its own names (stateType is the one spelling). */
+export interface TargetStateSpec {
+  stateType: string;
+  parameters: Record<string, string>;
+  contract?: string;
+}
+
 export interface IntentGoal {
   type: string;
-  sourceAssets?: Array<{ asset: string; amount: number }>;
-  targetAssets?: Array<{ asset: string; amount: number }>;
-  targetState?: { stateType: string; parameters: Record<string, string> };
+  sourceAssets?: AssetAmount[];
+  targetAssets?: AssetAmount[];
+  targetState?: TargetStateSpec;
   via?: string;
   customType?: string;
   customParams?: Record<string, unknown>;
@@ -50,7 +68,18 @@ export interface IntentSubmitOptions {
   workflowInstance: string;
   constraints?: Record<string, unknown>;
   preferences?: Record<string, unknown>;
-  metadata?: Record<string, string>;
+  /** The natural-language words the stated goal was resolved from (recorded on the intent); never a goal by itself. */
+  rawInput?: string;
+  /** The block height the intent expires at (the plan's deadline); the node refuses a height already reached. */
+  expiresAt?: number;
+  /** Compile the plan and execute nothing. */
+  preview?: boolean;
+  /**
+   * The wallet ADI's key page whose entry is sha256(active public key). With it the submission is signed over the
+   * node's canonical submission preimage (intent.submissionSigning) and the node verifies the signature against this
+   * page; without it the submission is sent unsigned, which the node accepts as it always has.
+   */
+  keyPageRef?: string;
 }
 
 export interface ApprovalEnvelope {

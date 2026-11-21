@@ -220,6 +220,11 @@ export class GenRpcReads extends SubClient {
     return this.rpc<T>('integration.run', params);
   }
 
+  /** Call intent.submissionSigning. */
+  intentSubmissionSigning<T = unknown>(params: GenRpcExtraParams = {}): Promise<T> {
+    return this.rpc<T>('intent.submissionSigning', params);
+  }
+
   /** Call l0.accountProof. */
   l0AccountProof<T = unknown>(params: GenRpcExtraParams = {}): Promise<T> {
     return this.rpc<T>('l0.accountProof', params);
