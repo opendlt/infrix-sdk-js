@@ -89,7 +89,12 @@ func TestUnmodifiedScratchRepoIsInSync(t *testing.T) {
 // missing goals the vocabulary has.
 func TestCheckDetectsAStaleRegion(t *testing.T) {
 	root := scratchRepo(t)
+	goalTargets := 0
 	for _, tg := range allTargets() {
+		if tg.Region != goalRegion {
+			continue
+		}
+		goalTargets++
 		rewrite(t, root, tg.RelPath, func(s string) string {
 			// Drop the SVM_EXEC entry, in whichever notation the target uses.
 			var kept []string
@@ -106,8 +111,8 @@ func TestCheckDetectsAStaleRegion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if len(changed) != len(allTargets()) {
-		t.Fatalf("a region missing SVM_EXEC was reported as %v; every target (%d) is stale", changed, len(allTargets()))
+	if goalTargets == 0 || len(changed) != goalTargets {
+		t.Fatalf("a region missing SVM_EXEC was reported as %v; every goal-type target (%d) is stale", changed, goalTargets)
 	}
 }
 
@@ -174,5 +179,113 @@ func TestLoadVocabularyRefusesMalformedInput(t *testing.T) {
 	}
 	if _, err := loadVocabulary(t.TempDir()); err == nil {
 		t.Error("a missing vocabulary file was accepted")
+	}
+}
+
+// TestCheckDetectsAHandEditedPriorityList plants the defects the priority rule
+// forbids: a rendered priority list edited by hand (a word the node does not
+// accept added to the wallet's copy) and a word missing from the client's copy.
+// Each is reported against the region it is in.
+func TestCheckDetectsAHandEditedPriorityList(t *testing.T) {
+	root := scratchRepo(t)
+	rewrite(t, root, filepath.Join("typescript-wallet", "src", "governance-types.ts"), func(s string) string {
+		return strings.Replace(s, "  'urgent',\n", "  'urgent',\n  'critical',\n", 1)
+	})
+	rewrite(t, root, filepath.Join("typescript", "src", "types", "governance.ts"), func(s string) string {
+		return strings.Replace(s, "  'urgent',\n", "", 1)
+	})
+	changed, err := generate(root, true)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	want := map[string]bool{"wallet priority": true, "typescript priority": true}
+	if len(changed) != len(want) || !want[changed[0]] || !want[changed[1]] {
+		t.Fatalf("a hand-edited wallet list and a client list missing urgent were reported as %v; want exactly %v", changed, want)
+	}
+	// Regenerating repairs both, and the repaired copy is in sync.
+	if _, err := generate(root, false); err != nil {
+		t.Fatalf("regenerate: %v", err)
+	}
+	if changed, err := generate(root, true); err != nil || len(changed) != 0 {
+		t.Fatalf("after regeneration the copy is still stale: %v %v", changed, err)
+	}
+}
+
+// TestFloorRejectsAVocabularyMissingAPriority: a vendored vocabulary that lacks a
+// priority the pinned schema declares fails, naming the priority, so the SDKs
+// cannot be generated short of what admission accepts.
+func TestFloorRejectsAVocabularyMissingAPriority(t *testing.T) {
+	root := scratchRepo(t)
+	rewrite(t, root, vocabularyRel, func(s string) string {
+		return strings.Replace(s, `,"urgent"]`, `]`, 1)
+	})
+	_, err := generate(root, true)
+	if err == nil {
+		t.Fatal("a vocabulary lacking a priority the pinned schema declares was accepted")
+	}
+	if !strings.Contains(err.Error(), "urgent") || !strings.Contains(err.Error(), "priority") {
+		t.Fatalf("the floor failure does not name the missing priority: %v", err)
+	}
+}
+
+// TestParsePrioritiesReadsThePinnedSchema: the floor's priorities are the
+// pinned schema's declared set, and that set agrees with ValidIntentPriorities.
+func TestParsePrioritiesReadsThePinnedSchema(t *testing.T) {
+	src, err := resolveSchemaGoalSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := parsePriorities(src)
+	if err != nil {
+		t.Fatalf("parse the pinned schema's priorities: %v", err)
+	}
+	have := map[string]bool{}
+	for _, p := range got {
+		have[p] = true
+	}
+	for _, p := range []string{"normal", "high", "urgent"} {
+		if !have[p] {
+			t.Errorf("the pinned schema's priorities %v lack %q", got, p)
+		}
+	}
+	// A const the map does not list is drift, refused by name.
+	dir := t.TempDir()
+	drift := filepath.Join(dir, "types.go")
+	body := "package intent\n\ntype IntentPriority string\n\nconst (\n\tPriorityNormal IntentPriority = \"normal\"\n\tPriorityLow IntentPriority = \"low\"\n)\n\n" +
+		"var ValidIntentPriorities = map[IntentPriority]bool{\n\tPriorityNormal: true,\n}\n"
+	if err := os.WriteFile(drift, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parsePriorities(drift); err == nil || !strings.Contains(err.Error(), "PriorityLow") {
+		t.Fatalf("a priority const missing from ValidIntentPriorities was not refused by name: %v", err)
+	}
+}
+
+func TestLoadVocabularyRefusesMalformedPriorities(t *testing.T) {
+	goals := `"count":1,"goals":[{"goal":"A_B"}]`
+	cases := map[string]string{
+		"no priorities":    `{` + goals + `}`,
+		"empty priorities": `{` + goals + `,"priorities":[]}`,
+		"upper case":       `{` + goals + `,"priorities":["URGENT"]}`,
+		"padded":           `{` + goals + `,"priorities":[" urgent"]}`,
+		"injection":        `{` + goals + `,"priorities":["a'; drop"]}`,
+		"duplicate":        `{` + goals + `,"priorities":["high","high"]}`,
+	}
+	for name, body := range cases {
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, vocabularyRel), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := loadVocabulary(root); err == nil {
+			t.Errorf("%s: a malformed priority vocabulary was accepted", name)
+		}
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, vocabularyRel), []byte(`{`+goals+`,"priorities":["high","normal","urgent"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	v, err := loadVocabulary(root)
+	if err != nil || strings.Join(v.Priorities, ",") != "high,normal,urgent" {
+		t.Fatalf("a well-formed vocabulary was not read as written: %v %v", v.Priorities, err)
 	}
 }

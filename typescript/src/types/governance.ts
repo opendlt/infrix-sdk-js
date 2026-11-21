@@ -164,6 +164,37 @@ export interface CapabilityGrantScope {
   contractUrl?: string;
 }
 
+/**
+ * Intent priorities: exactly the words the node's admission accepts (infrix-schema
+ * `intent.ValidIntentPriorities`). An intent that states none is priced as
+ * `normal`; any other word is refused at admission, by exact match. The governed
+ * gas schedule prices each by its priority multiplier.
+ *
+ * The body of this list is generated, not written: `tools/sdkgen` rewrites the
+ * region between the SDKGEN markers from the `priorities` of
+ * `goal-vocabulary.json`, which infrix-core generates from the set its admission
+ * validates. infrix-core's SDKGoalParity fence parses this list independently of
+ * the generator.
+ */
+// SDKGEN-BEGIN(intent_priority)
+export const INTENT_PRIORITIES = [
+  'high',
+  'normal',
+  'urgent',
+] as const;
+export type IntentPriority = (typeof INTENT_PRIORITIES)[number];
+// SDKGEN-END(intent_priority)
+
+const INTENT_PRIORITY_SET: ReadonlySet<string> = new Set<string>(INTENT_PRIORITIES);
+
+/**
+ * True when `value` is a priority the node accepts. Use it to validate a priority
+ * that did not come from the typed union (CLI input, JSON, a prompt).
+ */
+export function isIntentPriority(value: unknown): value is IntentPriority {
+  return typeof value === 'string' && INTENT_PRIORITY_SET.has(value);
+}
+
 /** The desired outcome of an intent. */
 export interface IntentGoal {
   type: IntentGoalType;
@@ -173,6 +204,11 @@ export interface IntentGoal {
   via?: string;
   customType?: string;
   customParams?: Record<string, unknown>;
+  /**
+   * The priority the submitter declares; omitted means `normal`. `intents.submit`
+   * sends it beside `goalType`, as the top-level `priority` the submit doors read.
+   */
+  priority?: IntentPriority;
 }
 
 /** Asset and quantity. */

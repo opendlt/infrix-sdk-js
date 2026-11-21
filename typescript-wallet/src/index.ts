@@ -19,7 +19,7 @@
  *     function: 'increment',
  *     args: '[]',
  *   },
- * });
+ * }, { purpose: 'operational', workflowInstance: 'counter-1' });
  *
  * if (InfrixProvider.isAvailable()) {
  *   const wallet = await InfrixProvider.connect();
@@ -52,8 +52,10 @@ export { SessionManager } from './session';
 export type { SessionScope, SessionKey } from './session';
 
 // Governance types (re-exported from wallet governance types)
+export { INTENT_PRIORITIES } from './governance-types';
 export type {
   IntentGoal,
+  IntentPriority,
   IntentResult,
   IntentSubmitOptions,
   ApprovalEnvelope,
