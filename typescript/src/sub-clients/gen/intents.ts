@@ -22,6 +22,20 @@ export interface IntentsOutcomeQuery {
   readonly intentId?: string;
 }
 
+/** What GET /v4/intents/submission-signing answers: every member the route declares. */
+export interface IntentsSubmissionSigningAnswer {
+  readonly canonical: unknown;
+  readonly digest: unknown;
+  readonly domain: unknown;
+  readonly networkId: unknown;
+  readonly preimage: unknown;
+}
+
+/** The query parameters GET /v4/intents/submission-signing declares. */
+export interface IntentsSubmissionSigningQuery {
+  readonly request?: string;
+}
+
 /** What GET /v4/intents/{id}/outcome answers: every member the route declares. */
 export interface IntentsForIdOutcomeAnswer {
   readonly audit: unknown;
@@ -96,7 +110,10 @@ export interface IntentsWriteRootBody {
   readonly purpose?: unknown;
   readonly rawInput?: unknown;
   readonly signature?: unknown;
+  readonly signatureAlgorithm?: unknown;
+  readonly signatureTimestamp?: unknown;
   readonly signerPublicKey?: unknown;
+  readonly signerVersion?: unknown;
   readonly sourceAssets?: unknown;
   readonly targetAssets?: unknown;
   readonly targetState?: unknown;
@@ -245,6 +262,19 @@ export class IntentsReads extends SubClient {
     };
   }
 
+  /** Read GET /v4/intents/submission-signing. */
+  async submissionSigning(opts: IntentsSubmissionSigningQuery = {}): Promise<IntentsSubmissionSigningAnswer> {
+    const query = genQuery('GET /v4/intents/submission-signing', [['request', opts.request, 'string']]);
+    const r = await this.rest<Partial<IntentsSubmissionSigningAnswer>>('GET', `/v4/intents/submission-signing${query}`);
+    return {
+      canonical: genDeclared('GET /v4/intents/submission-signing', 'canonical', r.canonical),
+      digest: genDeclared('GET /v4/intents/submission-signing', 'digest', r.digest),
+      domain: genDeclared('GET /v4/intents/submission-signing', 'domain', r.domain),
+      networkId: genDeclared('GET /v4/intents/submission-signing', 'networkId', r.networkId),
+      preimage: genDeclared('GET /v4/intents/submission-signing', 'preimage', r.preimage),
+    };
+  }
+
   /** Read GET /v4/intents/{id}/outcome. */
   async forIdOutcome(id: string): Promise<IntentsForIdOutcomeAnswer> {
     genPathValue('GET /v4/intents/{id}/outcome', 'id', id, 'string');
@@ -344,8 +374,8 @@ export class IntentsWrites extends SubClient {
 
   /** Send POST /v4/intents. */
   async root(body: IntentsWriteRootBody): Promise<IntentsWriteRootAnswer> {
-    genCheckBody('POST /v4/intents', body, [['actor', true], ['authority', false], ['autoApprove', false], ['code', false], ['constraints', false], ['customParams', false], ['customType', false], ['deadline', false], ['expiresAt', false], ['goalType', true], ['keyPageRef', false], ['maxGas', false], ['metadata', false], ['preferences', false], ['preview', false], ['priority', false], ['purpose', false], ['rawInput', false], ['signature', false], ['signerPublicKey', false], ['sourceAssets', false], ['targetAssets', false], ['targetState', false], ['userAddress', false], ['via', false], ['workflowInstance', false]]);
-    const r = await this.rest<Partial<IntentsWriteRootAnswer>>('POST', '/v4/intents', { actor: body.actor, authority: body.authority, autoApprove: body.autoApprove, code: body.code, constraints: body.constraints, customParams: body.customParams, customType: body.customType, deadline: body.deadline, expiresAt: body.expiresAt, goalType: body.goalType, keyPageRef: body.keyPageRef, maxGas: body.maxGas, metadata: body.metadata, preferences: body.preferences, preview: body.preview, priority: body.priority, purpose: body.purpose, rawInput: body.rawInput, signature: body.signature, signerPublicKey: body.signerPublicKey, sourceAssets: body.sourceAssets, targetAssets: body.targetAssets, targetState: body.targetState, userAddress: body.userAddress, via: body.via, workflowInstance: body.workflowInstance });
+    genCheckBody('POST /v4/intents', body, [['actor', true], ['authority', false], ['autoApprove', false], ['code', false], ['constraints', false], ['customParams', false], ['customType', false], ['deadline', false], ['expiresAt', false], ['goalType', true], ['keyPageRef', false], ['maxGas', false], ['metadata', false], ['preferences', false], ['preview', false], ['priority', false], ['purpose', false], ['rawInput', false], ['signature', false], ['signatureAlgorithm', false], ['signatureTimestamp', false], ['signerPublicKey', false], ['signerVersion', false], ['sourceAssets', false], ['targetAssets', false], ['targetState', false], ['userAddress', false], ['via', false], ['workflowInstance', false]]);
+    const r = await this.rest<Partial<IntentsWriteRootAnswer>>('POST', '/v4/intents', { actor: body.actor, authority: body.authority, autoApprove: body.autoApprove, code: body.code, constraints: body.constraints, customParams: body.customParams, customType: body.customType, deadline: body.deadline, expiresAt: body.expiresAt, goalType: body.goalType, keyPageRef: body.keyPageRef, maxGas: body.maxGas, metadata: body.metadata, preferences: body.preferences, preview: body.preview, priority: body.priority, purpose: body.purpose, rawInput: body.rawInput, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signatureTimestamp: body.signatureTimestamp, signerPublicKey: body.signerPublicKey, signerVersion: body.signerVersion, sourceAssets: body.sourceAssets, targetAssets: body.targetAssets, targetState: body.targetState, userAddress: body.userAddress, via: body.via, workflowInstance: body.workflowInstance });
     return {
       intent: genDeclared('POST /v4/intents', 'intent', r.intent),
     };

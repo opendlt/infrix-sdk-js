@@ -288,7 +288,7 @@ export interface IntentResult {
 /** Options for intent submission. */
 /**
  * The submit options of the governed-submit contract (core item 2c part 28aa), each sent under its own name.
- * There is no metadata: an intent's metadata is the node's attribution, and the node refuses a request that states any.
+ * metadata is the requester's own annotation (core item 2c part 28ac row 3); the node's attribution metadata is never the requester's to set.
  */
 export interface IntentSubmitOptions {
   constraints?: IntentConstraints;
@@ -301,6 +301,12 @@ export interface IntentSubmitOptions {
   expiresAt?: number;
   /** Compile the plan and execute nothing. */
   preview?: boolean;
+  /**
+   * The requester's own annotation of the intent: one JSON object of string keys (1 to 128 UTF-8 bytes) and JSON values,
+   * at most 4096 bytes encoded. The node records it as the intent's RequesterMetadata and governs nothing by it; the
+   * client refuses, by name, metadata the node would refuse (checkRequesterMetadata).
+   */
+  metadata?: Record<string, unknown>;
 }
 
 /** Filter for listing intents: the parameters GET /v4/intents accepts, and no others. */
