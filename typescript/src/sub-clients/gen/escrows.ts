@@ -28,6 +28,8 @@ export interface EscrowsWriteRootBody {
   readonly depositor: unknown;
   readonly holdingAccount?: unknown;
   readonly parties?: unknown;
+  readonly purpose?: unknown;
+  readonly workflowInstance?: unknown;
 }
 
 /** What POST /v4/escrows/{id}/fund answers: every member the route declares. */
@@ -100,8 +102,8 @@ export class EscrowsWrites extends SubClient {
 
   /** Send POST /v4/escrows. */
   async root(body: EscrowsWriteRootBody): Promise<EscrowsWriteRootAnswer> {
-    genCheckBody('POST /v4/escrows', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['conditions', false], ['depositor', true], ['holdingAccount', false], ['parties', false]]);
-    const r = await this.rest<Partial<EscrowsWriteRootAnswer>>('POST', '/v4/escrows', { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, conditions: body.conditions, depositor: body.depositor, holdingAccount: body.holdingAccount, parties: body.parties });
+    genCheckBody('POST /v4/escrows', body, [['actor', true], ['amount', false], ['arbiter', false], ['asset', false], ['assetType', false], ['beneficiary', true], ['conditions', false], ['depositor', true], ['holdingAccount', false], ['parties', false], ['purpose', false], ['workflowInstance', false]]);
+    const r = await this.rest<Partial<EscrowsWriteRootAnswer>>('POST', '/v4/escrows', { actor: body.actor, amount: body.amount, arbiter: body.arbiter, asset: body.asset, assetType: body.assetType, beneficiary: body.beneficiary, conditions: body.conditions, depositor: body.depositor, holdingAccount: body.holdingAccount, parties: body.parties, purpose: body.purpose, workflowInstance: body.workflowInstance });
     return {
       amount: genDeclared('POST /v4/escrows', 'amount', r.amount),
       asset: genDeclared('POST /v4/escrows', 'asset', r.asset),

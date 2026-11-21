@@ -65,6 +65,7 @@ export interface ApprovalsWriteRootBody {
   readonly intentId?: unknown;
   readonly keyPageRef?: unknown;
   readonly planHash?: unknown;
+  readonly rationale?: unknown;
   readonly role?: unknown;
   readonly signature?: unknown;
   readonly signatureAlgorithm?: unknown;
@@ -89,6 +90,7 @@ export interface ApprovalsWriteDenyBody {
   readonly actor: unknown;
   readonly approvalId?: unknown;
   readonly id?: unknown;
+  readonly intentId?: unknown;
   readonly reason?: unknown;
 }
 
@@ -119,6 +121,7 @@ export interface ApprovalsWriteForIdDenyBody {
   readonly actor: unknown;
   readonly approvalId?: unknown;
   readonly id?: unknown;
+  readonly intentId?: unknown;
   readonly reason?: unknown;
 }
 
@@ -196,8 +199,8 @@ export class ApprovalsWrites extends SubClient {
 
   /** Send POST /v4/approvals. */
   async root(body: ApprovalsWriteRootBody): Promise<ApprovalsWriteRootAnswer> {
-    genCheckBody('POST /v4/approvals', body, [['identity', false], ['intentId', false], ['keyPageRef', false], ['planHash', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signatureTimestamp', false], ['signerPublicKey', false], ['signerVersion', false], ['stageId', false], ['targetId', false], ['targetType', false]]);
-    const r = await this.rest<Partial<ApprovalsWriteRootAnswer>>('POST', '/v4/approvals', { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signatureTimestamp: body.signatureTimestamp, signerPublicKey: body.signerPublicKey, signerVersion: body.signerVersion, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
+    genCheckBody('POST /v4/approvals', body, [['identity', false], ['intentId', false], ['keyPageRef', false], ['planHash', false], ['rationale', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signaturePayload', false], ['signatureTimestamp', false], ['signerPublicKey', false], ['signerVersion', false], ['stageId', false], ['targetId', false], ['targetType', false]]);
+    const r = await this.rest<Partial<ApprovalsWriteRootAnswer>>('POST', '/v4/approvals', { identity: body.identity, intentId: body.intentId, keyPageRef: body.keyPageRef, planHash: body.planHash, rationale: body.rationale, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signaturePayload: body.signaturePayload, signatureTimestamp: body.signatureTimestamp, signerPublicKey: body.signerPublicKey, signerVersion: body.signerVersion, stageId: body.stageId, targetId: body.targetId, targetType: body.targetType });
     return {
       approvalId: genDeclared('POST /v4/approvals', 'approvalId', r.approvalId),
       intentId: genDeclared('POST /v4/approvals', 'intentId', r.intentId),
@@ -208,8 +211,8 @@ export class ApprovalsWrites extends SubClient {
 
   /** Send POST /v4/approvals/deny. */
   async deny(body: ApprovalsWriteDenyBody): Promise<ApprovalsWriteDenyAnswer> {
-    genCheckBody('POST /v4/approvals/deny', body, [['actor', true], ['approvalId', false], ['id', false], ['reason', false]]);
-    const r = await this.rest<Partial<ApprovalsWriteDenyAnswer>>('POST', '/v4/approvals/deny', { actor: body.actor, approvalId: body.approvalId, id: body.id, reason: body.reason });
+    genCheckBody('POST /v4/approvals/deny', body, [['actor', true], ['approvalId', false], ['id', false], ['intentId', false], ['reason', false]]);
+    const r = await this.rest<Partial<ApprovalsWriteDenyAnswer>>('POST', '/v4/approvals/deny', { actor: body.actor, approvalId: body.approvalId, id: body.id, intentId: body.intentId, reason: body.reason });
     return {
       id: genDeclared('POST /v4/approvals/deny', 'id', r.id),
       reason: genDeclared('POST /v4/approvals/deny', 'reason', r.reason),
@@ -231,8 +234,8 @@ export class ApprovalsWrites extends SubClient {
   /** Send POST /v4/approvals/{id}/deny. */
   async forIdDeny(id: string, body: ApprovalsWriteForIdDenyBody): Promise<ApprovalsWriteForIdDenyAnswer> {
     genPathValue('POST /v4/approvals/{id}/deny', 'id', id, 'string');
-    genCheckBody('POST /v4/approvals/{id}/deny', body, [['actor', true], ['approvalId', false], ['id', false], ['reason', false]]);
-    const r = await this.rest<Partial<ApprovalsWriteForIdDenyAnswer>>('POST', `/v4/approvals/${encodeURIComponent(id)}/deny`, { actor: body.actor, approvalId: body.approvalId, id: body.id, reason: body.reason });
+    genCheckBody('POST /v4/approvals/{id}/deny', body, [['actor', true], ['approvalId', false], ['id', false], ['intentId', false], ['reason', false]]);
+    const r = await this.rest<Partial<ApprovalsWriteForIdDenyAnswer>>('POST', `/v4/approvals/${encodeURIComponent(id)}/deny`, { actor: body.actor, approvalId: body.approvalId, id: body.id, intentId: body.intentId, reason: body.reason });
     return {
       id: genDeclared('POST /v4/approvals/{id}/deny', 'id', r.id),
       reason: genDeclared('POST /v4/approvals/{id}/deny', 'reason', r.reason),
