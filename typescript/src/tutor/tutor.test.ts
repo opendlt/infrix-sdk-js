@@ -3,9 +3,11 @@
  *
  * They verify the explanation / lesson / quiz helpers against the Go-generated
  * tutor fixture and assert the honesty invariants: the worked example explains
- * an OFFLINE proof, so it never claims L4, is never green, and discloses that
- * live L0 was not performed; the curriculum carries the seven lessons; and the
- * six audiences are present.
+ * a local run's proof verified under its own in-process Accumulate network pin
+ * (L4/G2 local-embedded, brief 28bl row 1), so every L4 line names the route, it
+ * is never green, and it discloses that live L0 was not performed and that it is
+ * not a Kermit or mainnet claim; the curriculum carries the seven lessons; and
+ * the six audiences are present.
  */
 
 import { test } from 'node:test';
@@ -19,6 +21,7 @@ import {
   claimsL4,
   disclosesNoLiveL0,
   isHonest,
+  localEmbeddedL4IsLabelled,
   lessonByTopic,
   isQuizAnswerCorrect,
   quizIsWellFormed,
@@ -38,12 +41,16 @@ function loadFixture(): TutorFixture {
   return JSON.parse(readFileSync(p, 'utf8')) as TutorFixture;
 }
 
-test('the worked example explains an OFFLINE proof and refuses L4', () => {
+test('the worked example is the local-embedded claim, labelled as such', () => {
   const { sample } = loadFixture();
-  assert.equal(isGreen(sample), false, 'an offline proof is never green');
-  assert.equal(claimsL4(sample), false, 'an offline proof never claims L4');
-  assert.equal(disclosesNoLiveL0(sample), true, 'an offline proof discloses live L0 was not performed');
+  assert.equal(isGreen(sample), false, 'a local proof is never green');
+  assert.equal(claimsL4(sample), true, 'the local proof states its L4/G2 local-embedded claim');
+  assert.equal(localEmbeddedL4IsLabelled(sample), true, 'every L4 line names local-embedded and it is not a Kermit or mainnet claim');
+  assert.equal(disclosesNoLiveL0(sample), true, 'a local proof discloses live L0 was not performed');
   assert.equal(isHonest(sample), true, 'the worked example satisfies the honesty rails');
+  // the bite: an L4 line without the route is not honest
+  const unlabelled = { ...sample, canClaim: [...sample.canClaim, 'This is an L4 proof.'] };
+  assert.equal(isHonest(unlabelled), false, 'an L4 line without the local-embedded route passes the honesty rails');
 });
 
 test('the curriculum carries the seven lessons, each well-formed', () => {
