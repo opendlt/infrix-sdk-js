@@ -4,6 +4,7 @@ import { AccountReads, AccountWrites } from './account';
 import { AnchorsReads, AnchorsWrites } from './anchors';
 import { ApprovalsReads, ApprovalsWrites } from './approvals';
 import { AuditReads } from './audit';
+import { BillingReads } from './billing';
 import { BridgeReads, BridgeWrites } from './bridge';
 import { CapabilitiesReads, CapabilitiesWrites } from './capabilities';
 import { CommitteesWrites } from './committees';
@@ -39,6 +40,7 @@ export * from './account';
 export * from './anchors';
 export * from './approvals';
 export * from './audit';
+export * from './billing';
 export * from './bridge';
 export * from './capabilities';
 export * from './committees';
@@ -126,6 +128,7 @@ export class GeneratedRouteReads {
   readonly anchors: AnchorsReads;
   readonly approvals: ApprovalsReads;
   readonly audit: AuditReads;
+  readonly billing: BillingReads;
   readonly bridge: BridgeReads;
   readonly capabilities: CapabilitiesReads;
   readonly contractSigners: ContractSignersReads;
@@ -158,6 +161,7 @@ export class GeneratedRouteReads {
     this.anchors = new AnchorsReads(rpc, rest);
     this.approvals = new ApprovalsReads(rpc, rest);
     this.audit = new AuditReads(rpc, rest);
+    this.billing = new BillingReads(rpc, rest);
     this.bridge = new BridgeReads(rpc, rest);
     this.capabilities = new CapabilitiesReads(rpc, rest);
     this.contractSigners = new ContractSignersReads(rpc, rest);
@@ -266,6 +270,7 @@ export const GENERATED_ROUTES: readonly GeneratedRouteInfo[] = [
   { route: 'POST /v4/approvals/revoke', write: true, family: 'approvals', method: 'revoke', path: '/v4/approvals/revoke', members: ['id', 'reason', 'status'], bodyFields: [{ name: 'actor', required: true }, { name: 'approvalId', required: false }, { name: 'id', required: false }, { name: 'reason', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/approvals/{id}/deny', write: true, family: 'approvals', method: 'forIdDeny', path: '/v4/approvals/{id}/deny', members: ['id', 'reason', 'status'], bodyFields: [{ name: 'actor', required: true }, { name: 'approvalId', required: false }, { name: 'id', required: false }, { name: 'intentId', required: false }, { name: 'reason', required: false }], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
   { route: 'POST /v4/approvals/{id}/revoke', write: true, family: 'approvals', method: 'forIdRevoke', path: '/v4/approvals/{id}/revoke', members: ['id', 'reason', 'status'], bodyFields: [{ name: 'actor', required: true }, { name: 'approvalId', required: false }, { name: 'id', required: false }, { name: 'reason', required: false }], pathValues: [{ name: 'id', kind: 'string', allowed: [] }], query: [] },
+  { route: 'POST /v4/billing/preview', write: false, family: 'billing', method: 'preview', path: '/v4/billing/preview', members: ['assuranceClass', 'assuranceMultiplier', 'baseIU', 'congestionMultiplier', 'congestionScheduleVersion', 'congestionTier', 'includedDrawn', 'meteredIU', 'overageIU', 'payer', 'planName', 'priority', 'priorityMultiplier', 'sponsorConfigId', 'sponsorRefusal', 'sponsorshipEvaluated', 'stakingDiscount', 'stakingTier', 'usdCharged'], bodyFields: [{ name: 'act', required: false }, { name: 'actor', required: false }, { name: 'facts', required: false }, { name: 'periodStartUnix', required: false }, { name: 'utilization', required: false }, { name: 'verdictInputs', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/bridge/receive', write: true, family: 'bridge', method: 'receive', path: '/v4/bridge/receive', members: ['governed', 'status'], bodyFields: [{ name: 'actor', required: true }, { name: 'messageId', required: true }, { name: 'payloadHash', required: true }, { name: 'proofHex', required: true }, { name: 'sourceChain', required: true }, { name: 'trustProfileId', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/bridge/send', write: true, family: 'bridge', method: 'send', path: '/v4/bridge/send', members: ['governed', 'status'], bodyFields: [{ name: 'actor', required: true }, { name: 'destChain', required: true }, { name: 'legs', required: false }, { name: 'method', required: true }, { name: 'payload', required: false }, { name: 'sourceChain', required: true }, { name: 'value', required: false }], pathValues: [], query: [] },
   { route: 'POST /v4/capabilities/grants', write: true, family: 'capabilities', method: 'grants', path: '/v4/capabilities/grants', members: ['intent'], bodyFields: [{ name: 'actor', required: true }, { name: 'capability', required: true }, { name: 'expiry', required: false }, { name: 'grantId', required: false }, { name: 'grantee', required: true }, { name: 'purpose', required: false }, { name: 'scope', required: false }], pathValues: [], query: [] },

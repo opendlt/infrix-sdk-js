@@ -173,6 +173,7 @@ export {
   PublicRoutesClient,
   PublicRouteError,
   BillingSubClient,
+  FeeEscrowSubClient,
   CommitteeSubClient,
   EmergencySubClient,
   BlockSubClient,
@@ -204,6 +205,10 @@ export type {
   SubsystemTaxonomy,
   BillingConsumption,
   IntentBillingEntry,
+  FeeEscrowAnswer,
+  FeeEscrowBalance,
+  FeeEscrowEntry,
+  FeeEscrowReconciliation,
   CommitteeList,
   CommitteeMotions,
   EmergencyCaseList,
@@ -265,6 +270,7 @@ import {
   PublicRoutesClient,
   PublicRouteError,
   BillingSubClient,
+  FeeEscrowSubClient,
   CommitteeSubClient,
   EmergencySubClient,
   BlockSubClient,
@@ -456,6 +462,9 @@ export class InfrixClient {
   /** The calling actor's IU billing: consumption for a period and the entry for one intent. */
   readonly billing: BillingSubClient;
 
+  /** The node's fee escrow: fund destination fees from a signed L0 ACME transfer, withdraw, read, reconcile (each a governed act). */
+  readonly feeEscrow: FeeEscrowSubClient;
+
   /** Committee state, visible to members only: list, motions. */
   readonly committees: CommitteeSubClient;
 
@@ -597,6 +606,7 @@ export class InfrixClient {
     this.eip712 = new EIP712SubClient(rpcFn, restFn);
     this.node = new NodeSubClient(rpcFn, restFn);
     this.billing = new BillingSubClient(rpcFn, restFn);
+    this.feeEscrow = new FeeEscrowSubClient(rpcFn, restFn);
     this.committees = new CommitteeSubClient(rpcFn, restFn);
     this.emergency = new EmergencySubClient(rpcFn, restFn);
     this.blocks = new BlockSubClient(rpcFn, restFn);
