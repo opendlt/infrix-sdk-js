@@ -5,22 +5,37 @@ import * as path from 'node:path';
 import * as nodeCrypto from 'node:crypto';
 
 import { fromHex, toHex, sha256, signEd25519 } from './crypto';
-import { governanceSignatureMetadataHash, governanceTransactionHash, signGovernanceHalf, GovernanceSigningMaterial } from './governance-signing';
+import {
+  governanceSignatureMetadataHash,
+  governanceSigningHash,
+  governanceTransactionHash,
+  signGovernanceHalf,
+  signGovernanceHalfAs,
+  GovernanceSignatureType,
+  GovernanceSigningMaterial,
+  GOVERNANCE_SIGNATURE_TYPES,
+} from './governance-signing';
+import { governanceKeySigner } from './governance-keys';
 
 interface Vector {
   name: string;
+  signatureType: GovernanceSignatureType;
   account: string;
   page: string;
   planHash: string;
   bundleId: string;
   pageVersion: number;
   timestamp: number;
-  keySeed: string;
+  keySeed?: string;
+  privateKey?: string;
+  publicKey: string;
+  keyHash: string;
   payload: string;
   publishedTransaction?: string;
   transaction?: string;
   transactionHash: string;
   signature: string;
+  randomized?: boolean;
   metadataHash: string;
   signingHash: string;
 }
@@ -46,9 +61,68 @@ test('the vectors are present: an initiator and a co-signer at least', () => {
   assert.ok(vectors.some((v) => v.transaction) && vectors.some((v) => v.publishedTransaction));
 });
 
-for (const v of vectors) {
+test('the vectors carry every approval signature type, as initiator and co-signer', () => {
+  for (const t of Object.keys(GOVERNANCE_SIGNATURE_TYPES)) {
+    assert.ok(vectors.some((v) => v.signatureType === t && v.transaction), `no ${t} initiator vector`);
+    assert.ok(vectors.some((v) => v.signatureType === t && v.publishedTransaction), `no ${t} co-signer vector`);
+  }
+});
+
+// a secp256k1 public key (compressed or uncompressed) as a platform key
+function secp256k1Key(pub: Uint8Array) {
+  const unc = nodeCrypto.ECDH.convertKey(Buffer.from(pub), 'secp256k1', undefined, undefined, 'uncompressed') as Buffer;
+  return nodeCrypto.createPublicKey({ key: { kty: 'EC', crv: 'secp256k1', x: unc.subarray(1, 33).toString('base64url'), y: unc.subarray(33, 65).toString('base64url') }, format: 'jwk' });
+}
+
+// the signature value of a user signature in the standard layout (field 3, one length byte: every value below 128 bytes is DER or 65 bytes)
+function standardSignatureValue(sig: Uint8Array): Uint8Array {
+  let i = 0;
+  assert.equal(sig[i++], 0x01);
+  i++; // the type
+  assert.equal(sig[i++], 0x02);
+  const pubLen = sig[i] < 0x80 ? sig[i++] : ((sig[i++] & 0x7f) | (sig[i++] << 7));
+  i += pubLen;
+  assert.equal(sig[i++], 0x03);
+  const len = sig[i++];
+  assert.ok(len < 0x80);
+  return sig.slice(i, i + len);
+}
+
+// EVERY APPROVAL SIGNATURE TYPE (core brief 28cq row 2, KNOWN-LIMITS L3185): the wallet's typed signer reproduces core's governance half from the
+// vector's key: the transaction, the metadata hash, the signing hash and the signature byte for byte; for btc, btcLegacy, eth and ecdsaSha256,
+// whose core signers draw their nonce at random, every byte but the value, the wallet's value and core's both verifying over the signing hash
+for (const v of vectors.filter((x) => x.signatureType !== 'ed25519')) {
+  test(`typed governance half reproduces the Go encoder: ${v.name}`, async () => {
+    const signer = governanceKeySigner(v.signatureType, fromHex(v.keySeed ?? v.privateKey!));
+    assert.equal(toHex(signer.publicKey), v.publicKey);
+    const half = await signGovernanceHalfAs(material(v, v.publishedTransaction), fromHex(v.planHash), BigInt(v.timestamp), signer);
+    assert.equal(half.governanceTransaction, v.transaction ?? '');
+    const md = await governanceSignatureMetadataHash(signer.publicKey, v.page, v.pageVersion, BigInt(v.timestamp), v.signatureType);
+    assert.equal(toHex(md), v.metadataHash);
+    const digest = await governanceSigningHash(md, fromHex(v.transactionHash), BigInt(v.timestamp), v.signatureType);
+    assert.equal(toHex(digest), v.signingHash);
+    if (!v.randomized) {
+      assert.equal(half.governanceSignature, v.signature);
+      return;
+    }
+    const mine = fromHex(half.governanceSignature);
+    const theirs = fromHex(v.signature);
+    const mv = standardSignatureValue(mine);
+    const tv = standardSignatureValue(theirs);
+    // the platform verifies ECDSA over sha256(preimage), which is the signing hash
+    const preimage = Buffer.from([...md, ...fromHex(v.transactionHash)]);
+    const key = v.signatureType === 'ecdsaSha256' ? nodeCrypto.createPublicKey({ key: Buffer.from(signer.publicKey), format: 'der', type: 'spki' }) : secp256k1Key(signer.publicKey);
+    const dsaEncoding = v.signatureType === 'eth' ? 'ieee-p1363' : 'der';
+    assert.ok(nodeCrypto.verify('sha256', preimage, { key, dsaEncoding }, Buffer.from(mv)), `the wallet ${v.signatureType} value verifies`);
+    assert.ok(nodeCrypto.verify('sha256', preimage, { key, dsaEncoding }, Buffer.from(tv)), `core's ${v.signatureType} value verifies`);
+    const swap = (b: Uint8Array) => toHex(b);
+    assert.equal(swap(mine).replace(toHex(new Uint8Array([mv.length, ...mv])), toHex(new Uint8Array([tv.length, ...tv]))), v.signature);
+  });
+}
+
+for (const v of vectors.filter((x) => x.signatureType === 'ed25519')) {
   test(`governance half reproduces the Go encoder byte for byte: ${v.name}`, async () => {
-    const key = envelopeFromSeed(v.keySeed);
+    const key = envelopeFromSeed(v.keySeed!);
     const half = await signGovernanceHalf(material(v, v.publishedTransaction), fromHex(v.planHash), BigInt(v.timestamp), key.slice(key.length - 32), (m) => signEd25519(key, m));
     assert.equal(half.governanceSignature, v.signature);
     assert.equal(half.governanceTransaction, v.transaction ?? '');
@@ -70,8 +144,8 @@ test('the initiator transaction hashes to the vector hash', async () => {
 });
 
 test('a published transaction that is not exactly the plan approval is refused', async () => {
-  const v = vectors.find((x) => x.publishedTransaction)!;
-  const key = envelopeFromSeed(v.keySeed);
+  const v = vectors.find((x) => x.publishedTransaction && x.signatureType === 'ed25519')!;
+  const key = envelopeFromSeed(v.keySeed!);
   const tampered = fromHex(v.publishedTransaction!);
   tampered[tampered.length - 1] ^= 0x01;
   await assert.rejects(signGovernanceHalf(material(v, toHex(tampered)), fromHex(v.planHash), BigInt(v.timestamp), key.slice(key.length - 32), (m) => signEd25519(key, m)), /not exactly the WriteData/);

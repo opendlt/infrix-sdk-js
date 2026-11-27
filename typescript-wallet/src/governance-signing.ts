@@ -1,6 +1,7 @@
 /**
  * The approver's governance half (brief 28ch row 5, core KNOWN-LIMITS L3160): the Accumulate WriteData an approval is executed as, and the
- * approver's ED25519 signature of it under the app's governance key page. This is the TypeScript port of core's ONE client body,
+ * approver's signature of it under the app's governance key page, in the approval key's own Accumulate signature type (every type an approval may
+ * be signed as since core brief 28cq row 2, L3185; the signers are in governance-keys.ts). This is the TypeScript port of core's ONE client body,
  * workflow.GovernanceSigning.Sign (proofcapture.InitiateGovernance / SignGovernanceFor), byte for byte:
  *
  * - before any approver submitted the transaction (the material publishes none), the approver INITIATES it: a WriteData of the approval payload
@@ -19,6 +20,29 @@ import { fromHex, sha256, toHex } from './crypto';
 
 /** Signs a message with the approver's Ed25519 key (the wallet's key store, or signEd25519 over a key envelope). */
 export type Ed25519Signer = (message: Uint8Array) => Promise<Uint8Array>;
+
+/** The Accumulate user signature types a governance half is signed as: exactly the approval signature types. */
+export type GovernanceSignatureType = 'legacyED25519' | 'ed25519' | 'rcd1' | 'btc' | 'btcLegacy' | 'eth' | 'rsaSha256' | 'ecdsaSha256';
+
+/** The protocol.SignatureType value of each governance signature type. */
+export const GOVERNANCE_SIGNATURE_TYPES: Record<GovernanceSignatureType, number> = {
+  legacyED25519: 1,
+  ed25519: 2,
+  rcd1: 3,
+  btc: 8,
+  btcLegacy: 9,
+  eth: 10,
+  rsaSha256: 14,
+  ecdsaSha256: 15,
+};
+
+/** An approver's governance key: its type, the public key its signatures carry, and a signer of the 32-byte digest the body computes, returning
+ * the signature value in the type's form (governanceKeySigner makes one of every type). */
+export interface GovernanceKeySigner {
+  type: GovernanceSignatureType;
+  publicKey: Uint8Array;
+  sign: (digest: Uint8Array) => Promise<Uint8Array>;
+}
 
 /** The governance half of the approval-signing material (`approval.signing` / GET /v4/intents/approval-signing: `governance`). */
 export interface GovernanceSigningMaterial {
@@ -41,7 +65,6 @@ export const GOVERNANCE_APPROVAL_TAG = 'infrix:approval:v1';
 
 const TX_TYPE_WRITE_DATA = 0x05;
 const DATA_ENTRY_DOUBLE_HASH = 0x03;
-const SIGNATURE_TYPE_ED25519 = 0x02;
 const EMPTY_OBJECT = 0x80;
 
 class Writer {
@@ -139,7 +162,8 @@ export async function governanceTransactionHash(account: string, initiator: Uint
   return sha256(concat(await sha256(header(account, initiator)), bodyHash));
 }
 
-interface Ed25519Fields {
+interface UserSignatureFields {
+  type: GovernanceSignatureType;
   publicKey: Uint8Array;
   signature?: Uint8Array;
   signer: string;
@@ -148,29 +172,59 @@ interface Ed25519Fields {
   transactionHash?: Uint8Array;
 }
 
-function encodeEd25519Signature(s: Ed25519Fields): Uint8Array {
+/** Accumulate's binary encoding of a user signature. Every type but legacyED25519 encodes 1 type, 2 publicKey, 3 signature, 4 signer,
+ * 5 signerVersion, 6 timestamp, 7 vote, 8 transactionHash; legacyED25519 encodes 1 type, 2 timestamp, 3 publicKey, 4 signature, 5 signer,
+ * 6 signerVersion, 7 vote, 8 transactionHash. The vote is accept (zero, omitted). */
+function encodeUserSignature(s: UserSignatureFields): Uint8Array {
+  const t = GOVERNANCE_SIGNATURE_TYPES[s.type];
+  if (t === undefined) throw new Error(`${s.type} is not a governance signature type`);
   const w = new Writer();
-  w.uint(1, SIGNATURE_TYPE_ED25519);
-  w.bytes(2, s.publicKey);
-  if (s.signature && s.signature.length > 0) w.bytes(3, s.signature);
-  w.string(4, s.signer);
-  if (s.signerVersion !== 0n) w.uint(5, s.signerVersion);
-  if (s.timestamp !== 0n) w.uint(6, s.timestamp);
+  w.uint(1, t);
+  if (s.type === 'legacyED25519') {
+    if (s.timestamp !== 0n) w.uint(2, s.timestamp);
+    w.bytes(3, s.publicKey);
+    if (s.signature && s.signature.length > 0) w.bytes(4, s.signature);
+    w.string(5, s.signer);
+    if (s.signerVersion !== 0n) w.uint(6, s.signerVersion);
+  } else {
+    w.bytes(2, s.publicKey);
+    if (s.signature && s.signature.length > 0) w.bytes(3, s.signature);
+    w.string(4, s.signer);
+    if (s.signerVersion !== 0n) w.uint(5, s.signerVersion);
+    if (s.timestamp !== 0n) w.uint(6, s.timestamp);
+  }
   if (s.transactionHash) w.hash(8, s.transactionHash);
   return w.done();
 }
 
-/** The hash of an ED25519 signature's metadata (the signature without its signature bytes and transaction hash): the initiator a transaction
- * header names, and the first half of what the key signs (sha256(metadata hash || transaction hash)). */
-export async function governanceSignatureMetadataHash(publicKey: Uint8Array, page: string, version: number | bigint, timestamp: number | bigint): Promise<Uint8Array> {
-  return sha256(encodeEd25519Signature({ publicKey, signer: page, signerVersion: uint64(version, 'the page version'), timestamp: uint64(timestamp, 'the timestamp') }));
+/** The hash of a user signature's metadata (the signature without its signature bytes and transaction hash): the initiator a transaction header
+ * names, and the first half of what the key signs. type defaults to ed25519. */
+export async function governanceSignatureMetadataHash(publicKey: Uint8Array, page: string, version: number | bigint, timestamp: number | bigint, type: GovernanceSignatureType = 'ed25519'): Promise<Uint8Array> {
+  return sha256(encodeUserSignature({ type, publicKey, signer: page, signerVersion: uint64(version, 'the page version'), timestamp: uint64(timestamp, 'the timestamp') }));
 }
 
-async function signUnder(txHash: Uint8Array, page: string, version: bigint, timestamp: bigint, publicKey: Uint8Array, sign: Ed25519Signer): Promise<Uint8Array> {
-  const md = await governanceSignatureMetadataHash(publicKey, page, version, timestamp);
-  const sig = await sign(await sha256(concat(md, txHash)));
-  if (sig.length !== 64) throw new Error('the Ed25519 signer returned a signature that is not 64 bytes');
-  return encodeEd25519Signature({ publicKey, signature: sig, signer: page, signerVersion: version, timestamp, transactionHash: txHash });
+/** The digest a governance key signs: sha256(metadata hash || transaction hash), with the timestamp's uvarint between them for legacyED25519
+ * (protocol.SignLegacyED25519). */
+export async function governanceSigningHash(metadataHash: Uint8Array, txHash: Uint8Array, timestamp: bigint, type: GovernanceSignatureType): Promise<Uint8Array> {
+  if (type !== 'legacyED25519') return sha256(concat(metadataHash, txHash));
+  const ts: number[] = [];
+  let x = timestamp;
+  while (x >= 0x80n) {
+    ts.push(Number((x & 0x7fn) | 0x80n));
+    x >>= 7n;
+  }
+  ts.push(Number(x));
+  return sha256(concat(metadataHash, new Uint8Array(ts), txHash));
+}
+
+async function signUnder(txHash: Uint8Array, page: string, version: bigint, timestamp: bigint, signer: GovernanceKeySigner): Promise<Uint8Array> {
+  const md = await governanceSignatureMetadataHash(signer.publicKey, page, version, timestamp, signer.type);
+  const sig = await signer.sign(await governanceSigningHash(md, txHash, timestamp, signer.type));
+  if (sig.length === 0) throw new Error(`the ${signer.type} signer returned no signature`);
+  if ((signer.type === 'ed25519' || signer.type === 'legacyED25519' || signer.type === 'rcd1') && sig.length !== 64) {
+    throw new Error(`the ${signer.type} signer returned a signature that is not 64 bytes`);
+  }
+  return encodeUserSignature({ type: signer.type, publicKey: signer.publicKey, signature: sig, signer: page, signerVersion: version, timestamp, transactionHash: txHash });
 }
 
 function checkMaterial(m: GovernanceSigningMaterial, planHash: Uint8Array): Uint8Array {
@@ -191,14 +245,24 @@ function checkMaterial(m: GovernanceSigningMaterial, planHash: Uint8Array): Uint
  */
 export async function signGovernanceHalf(m: GovernanceSigningMaterial, planHash: Uint8Array, timestamp: number | bigint, publicKey: Uint8Array, sign: Ed25519Signer): Promise<GovernanceHalf> {
   if (publicKey.length !== 32) throw new Error('the approver public key must be 32 bytes');
+  return signGovernanceHalfAs(m, planHash, timestamp, { type: 'ed25519', publicKey, sign });
+}
+
+/**
+ * The approver's governance half signed in the approval key's own signature type (signer: governanceKeySigner, or any signer of the type), as
+ * workflow.GovernanceSigning.Sign computes it; signGovernanceHalf is this for an Ed25519 key.
+ */
+export async function signGovernanceHalfAs(m: GovernanceSigningMaterial, planHash: Uint8Array, timestamp: number | bigint, signer: GovernanceKeySigner): Promise<GovernanceHalf> {
+  if (GOVERNANCE_SIGNATURE_TYPES[signer.type] === undefined) throw new Error(`${signer.type} is not a governance signature type`);
+  if (signer.publicKey.length === 0) throw new Error('the approver public key is empty');
   const payload = checkMaterial(m, planHash);
   const version = uint64(m.pageVersion, 'the page version');
   const ts = uint64(timestamp, 'the timestamp');
   if (ts === 0n) throw new Error('the governance signature needs a timestamp');
   if (!m.transaction) {
-    const initiator = await governanceSignatureMetadataHash(publicKey, m.page, version, ts);
+    const initiator = await governanceSignatureMetadataHash(signer.publicKey, m.page, version, ts, signer.type);
     const txHash = await governanceTransactionHash(m.account, initiator, payload);
-    const sig = await signUnder(txHash, m.page, version, ts, publicKey, sign);
+    const sig = await signUnder(txHash, m.page, version, ts, signer);
     return { governanceTransaction: toHex(encodeGovernanceTransaction(m.account, initiator, payload)), governanceSignature: toHex(sig) };
   }
   const published = fromHex(m.transaction);
@@ -210,7 +274,7 @@ export async function signGovernanceHalf(m: GovernanceSigningMaterial, planHash:
   if (toHex(txHash) !== (m.transactionHash ?? '').toLowerCase()) {
     throw new Error(`the published governance transaction hashes to ${toHex(txHash)}, not the published hash ${m.transactionHash}`);
   }
-  const sig = await signUnder(txHash, m.page, version, ts, publicKey, sign);
+  const sig = await signUnder(txHash, m.page, version, ts, signer);
   return { governanceTransaction: '', governanceSignature: toHex(sig) };
 }
 

@@ -42,8 +42,9 @@ export type {
 // Canonical approval signing (session 37, S24)
 export { approvalSigningPreimage, approvalSigningDigest, bindApprovalSigningRequest, settlementApprovalPreimage } from './approval-signing';
 export type { ApprovalSigningRequest, SettlementApprovalStatement } from './approval-signing';
-export { signGovernanceHalf, governanceApprovalPayload, encodeGovernanceTransaction, governanceTransactionHash, governanceSignatureMetadataHash, GOVERNANCE_APPROVAL_TAG } from './governance-signing';
-export type { GovernanceSigningMaterial, GovernanceHalf } from './governance-signing';
+export { signGovernanceHalf, signGovernanceHalfAs, governanceApprovalPayload, encodeGovernanceTransaction, governanceTransactionHash, governanceSignatureMetadataHash, governanceSigningHash, GOVERNANCE_APPROVAL_TAG, GOVERNANCE_SIGNATURE_TYPES } from './governance-signing';
+export { governanceKeySigner } from './governance-keys';
+export type { GovernanceSigningMaterial, GovernanceHalf, GovernanceKeySigner, GovernanceSignatureType } from './governance-signing';
 export { SUBMISSION_SIGNING_DOMAIN, canonicalJSON, canonicalRequest, submissionPreimage, checkSubmissionSigningRequest } from './submission-signing';
 export type { SubmissionSigningRequest } from './submission-signing';
 
