@@ -48,6 +48,8 @@ export interface AssuranceState {
   operatorAttested?: boolean;
   disclosureProofVerified?: boolean;
   releaseEvidenceVerified?: boolean;
+  /** the L0 confirmation rests on a local run's own network pin (local-embedded): never live, never Kermit (brief 28bl row 1) */
+  localEmbedded?: boolean;
   network?: string;
   proofLevel?: string;
   governanceLevel?: string;
