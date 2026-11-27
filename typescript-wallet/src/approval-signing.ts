@@ -22,6 +22,7 @@
  */
 
 import { sha256, toHex } from './crypto';
+import type { GovernanceSigningMaterial } from './governance-signing';
 
 /** The node's published signing material (workflow.ApprovalSigningRequest JSON). */
 export interface ApprovalSigningRequest {
@@ -47,6 +48,11 @@ export interface ApprovalSigningRequest {
   /** []byte — base64 (Go's JSON encoding of []byte), or a Uint8Array once bound. */
   signerPublicKey?: string | Uint8Array;
   digest: string;
+  /**
+   * The governance half's material when the stage names the app's governance page (core brief 28by row 1): every approval client signs
+   * the plan's governance WriteData under that page (signGovernanceHalf). It is outside the approval digest.
+   */
+  governance?: GovernanceSigningMaterial;
 }
 
 const APPROVAL_SIGNING_DOMAIN = 'infrix/approval-signature/v2';

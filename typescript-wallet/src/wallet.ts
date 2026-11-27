@@ -30,8 +30,9 @@
  * ```
  */
 
-import { toHex } from './crypto';
+import { fromHex, toHex } from './crypto';
 import { ApprovalSigningRequest, bindApprovalSigningRequest, hash32Hex } from './approval-signing';
+import { signGovernanceHalf } from './governance-signing';
 import { MemoryKeyStore, KeyStore, KeyInfo } from './keystore';
 import { SubmissionSigningRequest, checkSubmissionSigningRequest } from './submission-signing';
 import { checkRequesterMetadata } from './requester-metadata';
@@ -472,6 +473,13 @@ export class InfrixWallet {
     }
     const { bound, preimage } = await bindApprovalSigningRequest(material, this.activeKey);
     const signature = await this.keyStore.sign(this.activeKey, preimage);
+    // the governance half (core brief 28by row 1; brief 28ch row 5): a stage naming the app's governance page is executed on Accumulate as the
+    // plan's M-of-N WriteData, so the approval carries this approver's signature of it under that page (and, as the first approver, the
+    // transaction itself); signGovernanceHalf checks the published material and transaction before anything is signed
+    const activeKey = this.activeKey;
+    const governance = material.governance
+      ? await signGovernanceHalf(material.governance, fromHex(hash32Hex(bound.planHash)), BigInt(Date.now()) * 1000n, activeKey, (m) => this.keyStore.sign(activeKey, m))
+      : undefined;
 
     return (await this.rpc('approval.submit', {
       ...disclosure,
@@ -484,6 +492,8 @@ export class InfrixWallet {
       signerPublicKey: toHex(this.activeKey),
       signatureAlgorithm: 'ed25519',
       rationale: opts.rationale,
+      ...(governance ? { governanceSignature: governance.governanceSignature } : {}),
+      ...(governance && governance.governanceTransaction ? { governanceTransaction: governance.governanceTransaction } : {}),
     })) as unknown as ApprovalSubmitResult;
   }
 
