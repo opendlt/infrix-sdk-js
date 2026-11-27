@@ -8,6 +8,15 @@ import type { GenRest, GenRpc } from './runtime';
 export interface CapabilitiesRootAnswer {
   readonly capabilities: unknown;
   readonly count: unknown;
+  readonly items: unknown;
+  readonly pagination: unknown;
+  readonly total: unknown;
+}
+
+/** The query parameters GET /v4/capabilities declares. */
+export interface CapabilitiesRootQuery {
+  readonly limit?: number;
+  readonly offset?: number;
 }
 
 /** What GET /v4/capabilities/grants/{id} answers: every member the route declares. */
@@ -41,6 +50,7 @@ export interface CapabilitiesManifestForContractAnswer {
 
 /** What POST /v4/capabilities/grants answers: every member the route declares. */
 export interface CapabilitiesWriteGrantsAnswer {
+  readonly grantId: unknown;
   readonly intent: unknown;
 }
 
@@ -50,9 +60,10 @@ export interface CapabilitiesWriteGrantsBody {
   readonly capability: unknown;
   readonly expiry?: unknown;
   readonly grantId?: unknown;
+  readonly grantPurpose?: unknown;
   readonly grantee: unknown;
-  readonly purpose?: unknown;
-  readonly scope?: unknown;
+  readonly targetScope?: unknown;
+  readonly workflowStageScope?: unknown;
 }
 
 /** What POST /v4/capabilities/grants/{id}/revoke answers: every member the route declares. */
@@ -71,11 +82,15 @@ export interface CapabilitiesWriteGrantsForIdRevokeBody {
 /** Typed reads of the node's /v4/capabilities routes, generated from the route census. */
 export class CapabilitiesReads extends SubClient {
   /** Read GET /v4/capabilities. */
-  async root(): Promise<CapabilitiesRootAnswer> {
-    const r = await this.rest<Partial<CapabilitiesRootAnswer>>('GET', '/v4/capabilities');
+  async root(opts: CapabilitiesRootQuery = {}): Promise<CapabilitiesRootAnswer> {
+    const query = genQuery('GET /v4/capabilities', [['limit', opts.limit, 'int'], ['offset', opts.offset, 'int']]);
+    const r = await this.rest<Partial<CapabilitiesRootAnswer>>('GET', `/v4/capabilities${query}`);
     return {
       capabilities: genDeclared('GET /v4/capabilities', 'capabilities', r.capabilities),
       count: genDeclared('GET /v4/capabilities', 'count', r.count),
+      items: genDeclared('GET /v4/capabilities', 'items', r.items),
+      pagination: genDeclared('GET /v4/capabilities', 'pagination', r.pagination),
+      total: genDeclared('GET /v4/capabilities', 'total', r.total),
     };
   }
 
@@ -129,9 +144,10 @@ export class CapabilitiesWrites extends SubClient {
 
   /** Send POST /v4/capabilities/grants. */
   async grants(body: CapabilitiesWriteGrantsBody): Promise<CapabilitiesWriteGrantsAnswer> {
-    genCheckBody('POST /v4/capabilities/grants', body, [['actor', true], ['capability', true], ['expiry', false], ['grantId', false], ['grantee', true], ['purpose', false], ['scope', false]]);
-    const r = await this.rest<Partial<CapabilitiesWriteGrantsAnswer>>('POST', '/v4/capabilities/grants', { actor: body.actor, capability: body.capability, expiry: body.expiry, grantId: body.grantId, grantee: body.grantee, purpose: body.purpose, scope: body.scope });
+    genCheckBody('POST /v4/capabilities/grants', body, [['actor', true], ['capability', true], ['expiry', false], ['grantId', false], ['grantPurpose', false], ['grantee', true], ['targetScope', false], ['workflowStageScope', false]]);
+    const r = await this.rest<Partial<CapabilitiesWriteGrantsAnswer>>('POST', '/v4/capabilities/grants', { actor: body.actor, capability: body.capability, expiry: body.expiry, grantId: body.grantId, grantPurpose: body.grantPurpose, grantee: body.grantee, targetScope: body.targetScope, workflowStageScope: body.workflowStageScope });
     return {
+      grantId: genDeclared('POST /v4/capabilities/grants', 'grantId', r.grantId),
       intent: genDeclared('POST /v4/capabilities/grants', 'intent', r.intent),
     };
   }

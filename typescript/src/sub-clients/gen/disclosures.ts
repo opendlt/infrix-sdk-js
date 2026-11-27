@@ -7,6 +7,11 @@ import type { GenRest, GenRpc } from './runtime';
 /** What GET /v4/disclosures/check answers: every member the route declares. */
 export interface DisclosuresCheckAnswer {
   readonly authorized: unknown;
+  readonly hasAccess: unknown;
+  readonly id: unknown;
+  readonly identity: unknown;
+  readonly reason: unknown;
+  readonly state: unknown;
   readonly targetId: unknown;
   readonly targetType: unknown;
   readonly viewer: unknown;
@@ -17,6 +22,8 @@ export interface DisclosuresCheckQuery {
   readonly approvalId?: string;
   readonly field?: string;
   readonly grantId?: string;
+  readonly id?: string;
+  readonly identity?: string;
   readonly targetId?: string;
   readonly targetType?: string;
   readonly viewer?: string;
@@ -74,10 +81,15 @@ export interface DisclosuresWriteKeysBody {
 export class DisclosuresReads extends SubClient {
   /** Read GET /v4/disclosures/check. */
   async check(opts: DisclosuresCheckQuery = {}): Promise<DisclosuresCheckAnswer> {
-    const query = genQuery('GET /v4/disclosures/check', [['approvalId', opts.approvalId, 'string'], ['field', opts.field, 'string'], ['grantId', opts.grantId, 'string'], ['targetId', opts.targetId, 'string'], ['targetType', opts.targetType, 'string'], ['viewer', opts.viewer, 'string']]);
+    const query = genQuery('GET /v4/disclosures/check', [['approvalId', opts.approvalId, 'string'], ['field', opts.field, 'string'], ['grantId', opts.grantId, 'string'], ['id', opts.id, 'string'], ['identity', opts.identity, 'string'], ['targetId', opts.targetId, 'string'], ['targetType', opts.targetType, 'string'], ['viewer', opts.viewer, 'string']]);
     const r = await this.rest<Partial<DisclosuresCheckAnswer>>('GET', `/v4/disclosures/check${query}`);
     return {
       authorized: genDeclared('GET /v4/disclosures/check', 'authorized', r.authorized),
+      hasAccess: genDeclared('GET /v4/disclosures/check', 'hasAccess', r.hasAccess),
+      id: genDeclared('GET /v4/disclosures/check', 'id', r.id),
+      identity: genDeclared('GET /v4/disclosures/check', 'identity', r.identity),
+      reason: genDeclared('GET /v4/disclosures/check', 'reason', r.reason),
+      state: genDeclared('GET /v4/disclosures/check', 'state', r.state),
       targetId: genDeclared('GET /v4/disclosures/check', 'targetId', r.targetId),
       targetType: genDeclared('GET /v4/disclosures/check', 'targetType', r.targetType),
       viewer: genDeclared('GET /v4/disclosures/check', 'viewer', r.viewer),

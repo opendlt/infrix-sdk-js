@@ -68,7 +68,7 @@ export interface SettlementsWriteForIdApproveAnswer {
 
 /** The body members POST /v4/settlements/{id}/approve accepts. */
 export interface SettlementsWriteForIdApproveBody {
-  readonly identity: unknown;
+  readonly identity?: unknown;
   readonly keyPageRef?: unknown;
   readonly role?: unknown;
   readonly signature?: unknown;
@@ -130,7 +130,7 @@ export class SettlementsWrites extends SubClient {
   /** Send POST /v4/settlements/{id}/approve. */
   async forIdApprove(id: string, body: SettlementsWriteForIdApproveBody): Promise<SettlementsWriteForIdApproveAnswer> {
     genPathValue('POST /v4/settlements/{id}/approve', 'id', id, 'string');
-    genCheckBody('POST /v4/settlements/{id}/approve', body, [['identity', true], ['keyPageRef', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signerPublicKey', false]]);
+    genCheckBody('POST /v4/settlements/{id}/approve', body, [['identity', false], ['keyPageRef', false], ['role', false], ['signature', false], ['signatureAlgorithm', false], ['signerPublicKey', false]]);
     const r = await this.rest<Partial<SettlementsWriteForIdApproveAnswer>>('POST', `/v4/settlements/${encodeURIComponent(id)}/approve`, { identity: body.identity, keyPageRef: body.keyPageRef, role: body.role, signature: body.signature, signatureAlgorithm: body.signatureAlgorithm, signerPublicKey: body.signerPublicKey });
     return {
       governed: genDeclared('POST /v4/settlements/{id}/approve', 'governed', r.governed),

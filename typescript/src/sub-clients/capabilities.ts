@@ -6,7 +6,6 @@ import type {
   CapabilityCheckAnswer,
   CapabilityType,
   CapabilityListFilter,
-  CapabilityScope,
 } from '../types/governance';
 
 const GRANTS_ROUTE = 'GET /v4/capabilities/grants';
@@ -43,21 +42,32 @@ export class CapabilitySubClient extends SubClient {
   }
 
   /**
-   * Create a capability grant via the intent pipeline.
+   * Create a capability grant via the intent pipeline (JSON-RPC capability.grant, the node's POST /v4/capabilities/grants).
+   *
+   * One key per field, named as the node's CAPABILITY_GRANT declaration names it (main's ruling (C), 2c-28cm): this sent
+   * `capabilities` and a `scope` object, which the node's door never read (it refuses `scope` by name). The node answers the grant id
+   * it minted when none is named, so the caller can always revoke what it granted.
    *
    * @param grantee - DID or ADI URL of the grantee
-   * @param capabilities - Array of capability strings (e.g. ['token:transfer', 'object:create'])
-   * @param scope - Scope constraint for the grant
+   * @param capability - the one capability granted (e.g. 'object:create')
+   * @param opts - workflowStageScope ('*' for every stage) and grantPurpose are required; targetScope (the target the grant applies
+   *   to, every target when omitted), grantId and expiry (unix seconds) are optional
    */
   async grant(
     grantee: string,
-    capabilities: string[],
-    scope?: CapabilityScope
+    capability: string,
+    opts: { workflowStageScope: string; grantPurpose: string; targetScope?: string; grantId?: string; expiry?: string }
   ): Promise<{ intentId: string; grantId: string; status: string }> {
-    return this.rpc<{ intentId: string; grantId: string; status: string }>(
-      'capability.grant',
-      { grantee, capabilities, scope }
-    );
+    const params: Record<string, unknown> = {
+      grantee,
+      capability,
+      workflowStageScope: opts.workflowStageScope,
+      grantPurpose: opts.grantPurpose,
+    };
+    if (opts.targetScope !== undefined) params.targetScope = opts.targetScope;
+    if (opts.grantId !== undefined) params.grantId = opts.grantId;
+    if (opts.expiry !== undefined) params.expiry = opts.expiry;
+    return this.rpc<{ intentId: string; grantId: string; status: string }>('capability.grant', params);
   }
 
   /**

@@ -6,8 +6,11 @@ import type { GenRest, GenRpc } from './runtime';
 
 /** What GET /v4/audit answers: every member the route declares. */
 export interface AuditRootAnswer {
+  readonly count: unknown;
+  readonly entries: unknown;
   readonly items: unknown;
   readonly pagination: unknown;
+  readonly total: unknown;
 }
 
 /** The query parameters GET /v4/audit declares. */
@@ -17,12 +20,18 @@ export interface AuditRootQuery {
   readonly objectId?: string;
   readonly objectType?: string;
   readonly offset?: number;
+  readonly performedBy?: string;
 }
 
 /** What GET /v4/audit/export answers: every member the route declares. */
 export interface AuditExportAnswer {
+  readonly count: unknown;
+  readonly entries: unknown;
+  readonly exportedAt: unknown;
+  readonly format: unknown;
   readonly items: unknown;
   readonly pagination: unknown;
+  readonly total: unknown;
 }
 
 /** The query parameters GET /v4/audit/export declares. */
@@ -36,11 +45,14 @@ export interface AuditExportQuery {
 export class AuditReads extends SubClient {
   /** Read GET /v4/audit. */
   async root(opts: AuditRootQuery = {}): Promise<AuditRootAnswer> {
-    const query = genQuery('GET /v4/audit', [['action', opts.action, 'string'], ['limit', opts.limit, 'int'], ['objectId', opts.objectId, 'string'], ['objectType', opts.objectType, 'string'], ['offset', opts.offset, 'int']]);
+    const query = genQuery('GET /v4/audit', [['action', opts.action, 'string'], ['limit', opts.limit, 'int'], ['objectId', opts.objectId, 'string'], ['objectType', opts.objectType, 'string'], ['offset', opts.offset, 'int'], ['performedBy', opts.performedBy, 'string']]);
     const r = await this.rest<Partial<AuditRootAnswer>>('GET', `/v4/audit${query}`);
     return {
+      count: genDeclared('GET /v4/audit', 'count', r.count),
+      entries: genDeclared('GET /v4/audit', 'entries', r.entries),
       items: genDeclared('GET /v4/audit', 'items', r.items),
       pagination: genDeclared('GET /v4/audit', 'pagination', r.pagination),
+      total: genDeclared('GET /v4/audit', 'total', r.total),
     };
   }
 
@@ -49,8 +61,13 @@ export class AuditReads extends SubClient {
     const query = genQuery('GET /v4/audit/export', [['limit', opts.limit, 'int'], ['objectType', opts.objectType, 'string'], ['offset', opts.offset, 'int']]);
     const r = await this.rest<Partial<AuditExportAnswer>>('GET', `/v4/audit/export${query}`);
     return {
+      count: genDeclared('GET /v4/audit/export', 'count', r.count),
+      entries: genDeclared('GET /v4/audit/export', 'entries', r.entries),
+      exportedAt: genDeclared('GET /v4/audit/export', 'exportedAt', r.exportedAt),
+      format: genDeclared('GET /v4/audit/export', 'format', r.format),
       items: genDeclared('GET /v4/audit/export', 'items', r.items),
       pagination: genDeclared('GET /v4/audit/export', 'pagination', r.pagination),
+      total: genDeclared('GET /v4/audit/export', 'total', r.total),
     };
   }
 }
