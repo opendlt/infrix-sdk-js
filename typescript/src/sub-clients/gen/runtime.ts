@@ -92,12 +92,12 @@ export class GenParkedError extends Error {
   }
 }
 
-/** The REST injector with the parked envelope (status pending_approval and an intentId) turned into a GenParkedError. */
+/** The REST injector with the parked envelope (status awaiting_approval, protocol.ParkedStatus, and an intentId) turned into a GenParkedError. */
 export function genParkedGuard(rest: GenRest): GenRest {
   const guarded = async <T>(method: Parameters<GenRest>[0], path: string, body?: unknown): Promise<T> => {
     const data = await rest<T>(method, path, body);
     const answer = data as unknown as Record<string, unknown> | null | undefined;
-    if (answer !== null && typeof answer === 'object' && answer.status === 'pending_approval' && typeof answer.intentId === 'string') {
+    if (answer !== null && typeof answer === 'object' && answer.status === 'awaiting_approval' && typeof answer.intentId === 'string') {
       throw new GenParkedError(`${method} ${path}`, answer);
     }
     return data;

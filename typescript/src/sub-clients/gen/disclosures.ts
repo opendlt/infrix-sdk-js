@@ -70,19 +70,6 @@ export interface DisclosuresWriteKeysBody {
   readonly publicKey: unknown;
 }
 
-/** What POST /v4/disclosures/{id}/revoke answers: every member the route declares. */
-export interface DisclosuresWriteForIdRevokeAnswer {
-  readonly id: unknown;
-  readonly reason: unknown;
-  readonly status: unknown;
-}
-
-/** The body members POST /v4/disclosures/{id}/revoke accepts. */
-export interface DisclosuresWriteForIdRevokeBody {
-  readonly identity: unknown;
-  readonly reason?: unknown;
-}
-
 /** Typed reads of the node's /v4/disclosures routes, generated from the route census. */
 export class DisclosuresReads extends SubClient {
   /** Read GET /v4/disclosures/check. */
@@ -137,18 +124,6 @@ export class DisclosuresWrites extends SubClient {
       governed: genDeclared('POST /v4/disclosures/keys', 'governed', r.governed),
       intentId: genDeclared('POST /v4/disclosures/keys', 'intentId', r.intentId),
       status: genDeclared('POST /v4/disclosures/keys', 'status', r.status),
-    };
-  }
-
-  /** Send POST /v4/disclosures/{id}/revoke. */
-  async forIdRevoke(id: string, body: DisclosuresWriteForIdRevokeBody): Promise<DisclosuresWriteForIdRevokeAnswer> {
-    genPathValue('POST /v4/disclosures/{id}/revoke', 'id', id, 'string');
-    genCheckBody('POST /v4/disclosures/{id}/revoke', body, [['identity', true], ['reason', false]]);
-    const r = await this.rest<Partial<DisclosuresWriteForIdRevokeAnswer>>('POST', `/v4/disclosures/${encodeURIComponent(id)}/revoke`, { identity: body.identity, reason: body.reason });
-    return {
-      id: genDeclared('POST /v4/disclosures/{id}/revoke', 'id', r.id),
-      reason: genDeclared('POST /v4/disclosures/{id}/revoke', 'reason', r.reason),
-      status: genDeclared('POST /v4/disclosures/{id}/revoke', 'status', r.status),
     };
   }
 }

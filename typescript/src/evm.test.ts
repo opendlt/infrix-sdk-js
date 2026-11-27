@@ -27,7 +27,7 @@ test('evm.deploy submits a governed EVM_DEPLOY intent with normalized bytecode',
   let captured: { method?: string; params?: Record<string, unknown> } = {};
   setFetch(async (_url: unknown, init: unknown) => {
     captured = JSON.parse((init as { body: string }).body);
-    return { json: async () => ({ result: { intentId: 'intent-1', status: 'pending_approval' } }) };
+    return { json: async () => ({ result: { intentId: 'intent-1', status: 'awaiting_approval' } }) };
   });
   try {
     const res = await c.evm.deploy('0x60806040', { authority: 'acc://myco.acme' });

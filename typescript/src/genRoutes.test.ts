@@ -278,7 +278,7 @@ test('a governed write refuses a member the route does not accept and a missing 
 
 test('a write the node admitted but did not do is thrown, never returned as the act', async () => {
   const info = firstWrite((r) => r.pathValues.length === 0);
-  const parked = { status: 'pending_approval', intentId: 'intent-9', detail: 'parked awaiting approval' };
+  const parked = { status: 'awaiting_approval', intentId: 'intent-9', detail: 'parked awaiting approval' };
   await assert.rejects(
     () => against(parked, (c) => reader(c, info)(...callArgs(info))),
     (err: unknown) => err instanceof GenParkedError && err.answer['intentId'] === 'intent-9' && err.message.includes('has NOT happened') && err.message.includes(info.route.split(' ')[1])
@@ -286,9 +286,9 @@ test('a write the node admitted but did not do is thrown, never returned as the 
   // the same shape is an answer to a read: only a governed write can park
   const read = GENERATED_ROUTES.find((r) => !r.write && r.bodyFields.length === 0 && r.pathValues.length === 0 && r.members.includes('status'));
   if (read) {
-    const answer = { ...fullAnswer(read), status: 'pending_approval', intentId: 'intent-9' };
+    const answer = { ...fullAnswer(read), status: 'awaiting_approval', intentId: 'intent-9' };
     const { result } = await against(answer, (c) => reader(c, read)(...callArgs(read)));
-    assert.equal(result['status'], 'pending_approval');
+    assert.equal(result['status'], 'awaiting_approval');
   }
 });
 

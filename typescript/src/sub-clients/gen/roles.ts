@@ -59,9 +59,7 @@ export interface RolesWriteRevokeAnswer {
 export interface RolesWriteRevokeBody {
   readonly actor: unknown;
   readonly bindingId?: unknown;
-  readonly identity?: unknown;
   readonly reason?: unknown;
-  readonly role?: unknown;
 }
 
 /** Typed reads of the node's /v4/roles routes, generated from the route census. */
@@ -112,8 +110,8 @@ export class RolesWrites extends SubClient {
 
   /** Send POST /v4/roles/revoke. */
   async revoke(body: RolesWriteRevokeBody): Promise<RolesWriteRevokeAnswer> {
-    genCheckBody('POST /v4/roles/revoke', body, [['actor', true], ['bindingId', false], ['identity', false], ['reason', false], ['role', false]]);
-    const r = await this.rest<Partial<RolesWriteRevokeAnswer>>('POST', '/v4/roles/revoke', { actor: body.actor, bindingId: body.bindingId, identity: body.identity, reason: body.reason, role: body.role });
+    genCheckBody('POST /v4/roles/revoke', body, [['actor', true], ['bindingId', false], ['reason', false]]);
+    const r = await this.rest<Partial<RolesWriteRevokeAnswer>>('POST', '/v4/roles/revoke', { actor: body.actor, bindingId: body.bindingId, reason: body.reason });
     return {
       bindingId: genDeclared('POST /v4/roles/revoke', 'bindingId', r.bindingId),
       governed: genDeclared('POST /v4/roles/revoke', 'governed', r.governed),
