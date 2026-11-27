@@ -50,8 +50,10 @@ export interface CapabilitiesManifestForContractAnswer {
 
 /** What POST /v4/capabilities/grants answers: every member the route declares. */
 export interface CapabilitiesWriteGrantsAnswer {
+  readonly governed: unknown;
   readonly grantId: unknown;
-  readonly intent: unknown;
+  readonly intentId: unknown;
+  readonly status: unknown;
 }
 
 /** The body members POST /v4/capabilities/grants accepts. */
@@ -147,8 +149,10 @@ export class CapabilitiesWrites extends SubClient {
     genCheckBody('POST /v4/capabilities/grants', body, [['actor', true], ['capability', true], ['expiry', false], ['grantId', false], ['grantPurpose', false], ['grantee', true], ['targetScope', false], ['workflowStageScope', false]]);
     const r = await this.rest<Partial<CapabilitiesWriteGrantsAnswer>>('POST', '/v4/capabilities/grants', { actor: body.actor, capability: body.capability, expiry: body.expiry, grantId: body.grantId, grantPurpose: body.grantPurpose, grantee: body.grantee, targetScope: body.targetScope, workflowStageScope: body.workflowStageScope });
     return {
+      governed: genDeclared('POST /v4/capabilities/grants', 'governed', r.governed),
       grantId: genDeclared('POST /v4/capabilities/grants', 'grantId', r.grantId),
-      intent: genDeclared('POST /v4/capabilities/grants', 'intent', r.intent),
+      intentId: genDeclared('POST /v4/capabilities/grants', 'intentId', r.intentId),
+      status: genDeclared('POST /v4/capabilities/grants', 'status', r.status),
     };
   }
 
