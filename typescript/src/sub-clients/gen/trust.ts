@@ -23,6 +23,7 @@ export interface TrustWriteRootAnswer {
 export interface TrustWriteRootBody {
   readonly actor: unknown;
   readonly bridgeValidators?: unknown;
+  readonly dependencyRef: unknown;
   readonly domain: unknown;
   readonly label?: unknown;
   readonly profileId: unknown;
@@ -81,8 +82,8 @@ export class TrustWrites extends SubClient {
 
   /** Send POST /v4/trust. */
   async root(body: TrustWriteRootBody): Promise<TrustWriteRootAnswer> {
-    genCheckBody('POST /v4/trust', body, [['actor', true], ['bridgeValidators', false], ['domain', true], ['label', false], ['profileId', true], ['proofType', true], ['quorumThreshold', false], ['trustAssumption', true], ['verifierModuleId', false]]);
-    const r = await this.rest<Partial<TrustWriteRootAnswer>>('POST', '/v4/trust', { actor: body.actor, bridgeValidators: body.bridgeValidators, domain: body.domain, label: body.label, profileId: body.profileId, proofType: body.proofType, quorumThreshold: body.quorumThreshold, trustAssumption: body.trustAssumption, verifierModuleId: body.verifierModuleId });
+    genCheckBody('POST /v4/trust', body, [['actor', true], ['bridgeValidators', false], ['dependencyRef', true], ['domain', true], ['label', false], ['profileId', true], ['proofType', true], ['quorumThreshold', false], ['trustAssumption', true], ['verifierModuleId', false]]);
+    const r = await this.rest<Partial<TrustWriteRootAnswer>>('POST', '/v4/trust', { actor: body.actor, bridgeValidators: body.bridgeValidators, dependencyRef: body.dependencyRef, domain: body.domain, label: body.label, profileId: body.profileId, proofType: body.proofType, quorumThreshold: body.quorumThreshold, trustAssumption: body.trustAssumption, verifierModuleId: body.verifierModuleId });
     return {
       domain: genDeclared('POST /v4/trust', 'domain', r.domain),
       governed: genDeclared('POST /v4/trust', 'governed', r.governed),
