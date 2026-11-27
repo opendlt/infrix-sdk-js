@@ -20,6 +20,7 @@ const BOOLEAN_FIELDS: Record<string, boolean> = {
   operatorAttested: true,
   disclosureProofVerified: true,
   releaseEvidenceVerified: true,
+  localEmbedded: true,
 };
 
 /** conditionHolds evaluates a "field=value" token against an assurance state. */

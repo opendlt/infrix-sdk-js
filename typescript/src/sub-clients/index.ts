@@ -25,6 +25,8 @@ export type { RpcExtraParams } from './rpc';
 export type { AccountList, Account, AccountBalance } from './accounts';
 export { BillingSubClient } from './billing';
 export type { BillingConsumption, IntentBillingEntry, BillingPreviewInput, BillingQuote } from './billing';
+export { FeeEscrowSubClient } from './feeEscrow';
+export type { FeeEscrowAnswer, FeeEscrowBalance, FeeEscrowEntry, FeeEscrowReconciliation } from './feeEscrow';
 export type { PolicyDecisionAnswer, PolicyQuestion } from './policies';
 export { CommitteeSubClient, EmergencySubClient } from './governanceBodies';
 export type { CommitteeList, CommitteeMotions, EmergencyCaseList } from './governanceBodies';

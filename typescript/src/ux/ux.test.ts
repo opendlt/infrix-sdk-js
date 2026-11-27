@@ -97,6 +97,14 @@ test('the gate matches Go: Live L0 needs an L0 anchor', () => {
   assert.ok(off.includes('assurance.offline') && off.includes('assurance.no_node_trust'));
 });
 
+test('a local-embedded confirmation is labelled local-embedded, never Live L0 (brief 28bl row 1)', () => {
+  const le = reg.badgesFor({ ...liveL0, localEmbedded: true }).map((b) => b.id);
+  assert.ok(!le.includes('assurance.live_l0'), 'no Live L0 badge for a local-embedded confirmation');
+  assert.ok(le.includes('assurance.local_embedded_l0'), 'the local-embedded badge is present');
+  const live = reg.badgesFor(liveL0).map((b) => b.id);
+  assert.ok(!live.includes('assurance.local_embedded_l0'), 'no local-embedded badge on a live confirmation');
+});
+
 test('no green badge on a failed or operator-attested-only state', () => {
   for (const state of [failed, attested]) {
     const greens = reg.badgesFor(state).filter((b) => b.colorRole === 'positive');

@@ -76,9 +76,23 @@ export function isProofKind(kind: string): boolean {
   return kind === 'proof_receipt' || kind === 'proof_story' || kind === 'verifier_report';
 }
 
+/** localEmbeddedL4IsLabelled reports whether every L4 can-claim line names the
+ *  local-embedded route and the explanation says it is not a Kermit or mainnet
+ *  claim (brief 28bl row 1): a local run's L4/G2 is relative to its own
+ *  in-process Accumulate network pin, never live. */
+export function localEmbeddedL4IsLabelled(ex: Explanation): boolean {
+  const l4 = (ex.canClaim || []).filter((c) => /\bl4\b/i.test(c));
+  if (l4.length === 0) return false;
+  return l4.every((c) => /local-embedded/i.test(c)) &&
+    !(ex.canClaim || []).some((c) => /\blive\b/i.test(c)) &&
+    (ex.cannotClaim || []).some((c) => /not a kermit or mainnet claim/i.test(c));
+}
+
 /** isHonest applies the tutor's honesty rails to a proof-bearing explanation: a
- *  non-verified proof must not claim L4 and must disclose that live L0 was not
- *  performed; only a verified artifact may be green. It mirrors the Go guard. */
+ *  non-verified proof must disclose that live L0 was not performed, and may claim
+ *  L4 only on the local-embedded route, labelled as such
+ *  (localEmbeddedL4IsLabelled); only a verified artifact may be green. It mirrors
+ *  the Go guard. */
 export function isHonest(ex: Explanation): boolean {
   if (!isProofKind(ex.kind)) {
     // Non-proof kinds assert no verdict; they may never be green.
@@ -91,6 +105,6 @@ export function isHonest(ex: Explanation): boolean {
     // A green proof is honest only if it does NOT carry the offline disclosure.
     return !disclosesNoLiveL0(ex);
   }
-  // An offline (partial) proof must refuse L4 and disclose no live L0.
-  return !claimsL4(ex) && disclosesNoLiveL0(ex);
+  // A local (partial) proof discloses no live L0, and claims L4 only as the labelled local-embedded claim.
+  return disclosesNoLiveL0(ex) && (!claimsL4(ex) || localEmbeddedL4IsLabelled(ex));
 }

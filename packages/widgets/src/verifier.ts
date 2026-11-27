@@ -306,6 +306,8 @@ export interface AssuranceState {
   distinctOperatorsMet: boolean;
   disclosureProofVerified: boolean;
   releaseEvidenceVerified: boolean;
+  /** the L0 confirmation rests on a local run's own network pin; the browser verifier confirms L0 only live, so it is always false here */
+  localEmbedded: boolean;
 }
 
 /** assuranceState maps a VerifyResult to the data-gated badge state. Every
@@ -325,6 +327,7 @@ export function assuranceState(r: VerifyResult): AssuranceState {
     distinctOperatorsMet: false,
     disclosureProofVerified: false,
     releaseEvidenceVerified: false,
+    localEmbedded: false,
   };
 }
 

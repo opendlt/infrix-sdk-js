@@ -13,6 +13,7 @@ export {
   disclosesNoLiveL0,
   isProofKind,
   isHonest,
+  localEmbeddedL4IsLabelled,
 } from './explain.js';
 export type { Audience, Status, ArtifactKind, Explanation } from './explain.js';
 
